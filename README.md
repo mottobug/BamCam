@@ -71,9 +71,20 @@ Der für das CamBam-Beispiel `snap-together-box.cb` erzeugte G-Code stimmt in al
 mitgelieferten Referenz überein (Tiefenstufen, Haltestege, Freischnitte, Bögen, Verschachtelungs-Kopien).
 
 **Noch nicht umgesetzt:** Additiver 3D-Modus, exakte Radiusfräser-Geometrie (wird als Kugelfräser gerechnet), Drehen (Lathe), Spline- und Bitmap-Objekte, Skript-Objekte,
-interaktives Verschieben von Haltestegen, Anzeige der Verschachtelungs-Kopien, Optionsdialog, Druck, Werkzeugweg-Filter,
+Druck,
 Schnittgeschwindigkeits-Rechner. Diese Operationen bleiben beim Laden und Speichern von `.cb`-Dateien unverändert erhalten.
 
+## Einstellungen
+
+Tools ▸ Options (oder System ▸ Configuration) bearbeitet die Programmeinstellungen:
+- Anzeige und Farben, Raster für mm und Zoll, Einheiten und Schrift für neue Zeichnungen.
+- Wiederholen von Zeichenbefehlen, Fangen.
+- Standard-Postprozessor, G-Code-Endung, Nachfrage beim Überschreiben und externer G-Code-Editor.
+- Anzahl der Sicherungsdateien und Länge der Liste „Zuletzt geöffnet“.
+
+Gespeichert wird in `settings.json` im Systemordner (`%APPDATA%/BamCam` bzw. `~/.config/BamCam`), zusammen mit
+Fenstergröße, Spaltenbreiten und den zuletzt geöffneten Dateien. Mit der Umgebungsvariable `BAMCAM_SETTINGS`
+kann eine andere Datei verwendet werden.
 ## Bedienung (Auszug)
 
 | Eingabe | Wirkung |

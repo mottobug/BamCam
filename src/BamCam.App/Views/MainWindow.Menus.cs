@@ -38,6 +38,7 @@ public partial class MainWindow
         {
             set(!get());
             RefreshChecks();
+            SaveSettings();
             View.Invalidate();
             UpdateTitle();
         }
@@ -49,6 +50,14 @@ public partial class MainWindow
         }
         _checkItems.Add((item, get));
         return item;
+    }
+
+    private MenuItem RecentMenu()
+    {
+        _recentMenu = new MenuItem { Header = "_Recent Files" };
+        _recentMenu.Items.Add(new MenuItem { Header = "(empty)", IsEnabled = false });
+        _recentMenu.SubmenuOpened += (_, _) => FillRecentMenu();
+        return _recentMenu;
     }
 
     private void RefreshChecks()
@@ -75,6 +84,7 @@ public partial class MainWindow
             Item("Save _As...", () => _ = SaveAs(), "Ctrl+Shift+S"),
             "-",
             Sub("_Export", Item("To _DXF...", ExportDxf)),
+            RecentMenu(),
             "-",
             Item("E_xit", Close)));
 
@@ -170,6 +180,7 @@ public partial class MainWindow
         MainMenu.Items.Add(Sub("_Tools",
             Item("_Measure", () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)))),
             Item("Get Object _Extremas", ReportExtremas),
+            Item("_Options...", ShowOptions),
             Item("_Clear Messages", () => Messages.Text = ""),
             "-",
             Item("Reload Post Processors", () => { _system.Reload(); BuildSystemTree(); Log($"{_system.Posts.Count} post processors loaded."); }),
@@ -269,7 +280,7 @@ public partial class MainWindow
 
         var units = new ComboBox
         {
-            ItemsSource = new[] { "Millimeters", "Inches" }, SelectedIndex = 0, Width = 110, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            ItemsSource = new[] { "Millimeters", "Inches" }, SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0, Width = 110, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
         };
         ToolTip.SetTip(units, "Drawing units");
         units.SelectionChanged += (_, _) =>
@@ -277,7 +288,7 @@ public partial class MainWindow
             var u = units.SelectedIndex == 1 ? Core.Model.DrawingUnits.Inches : Core.Model.DrawingUnits.Millimeters;
             if (_session.Document.Units == u) return;
             _session.Execute("Change units", () => _session.Document.Units = u);
-            View.Settings.ApplyUnits(u);
+            _settings.ApplyGrid(View.Settings, u);
             View.Invalidate();
             UpdateTitle();
         };

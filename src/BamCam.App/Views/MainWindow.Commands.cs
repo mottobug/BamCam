@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Platform.Storage;
 using BamCam.App.Drawing;
+using BamCam.App.Services;
 using BamCam.Core.Cad;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
@@ -559,17 +560,25 @@ public partial class MainWindow
 
         var outFile = scope.Operation != null ? "" : scope.Part?.OutFile ?? doc.Machining.OutFile;
         string? path = string.IsNullOrWhiteSpace(outFile) ? null : ExpandOutFile(outFile);
-        if (path == null || !Path.IsPathRooted(path))
+        var showDialog = path == null || !Path.IsPathRooted(path) || _settings.OutFilePrompt == OutFilePrompt.Always;
+        if (!showDialog && _settings.OutFilePrompt == OutFilePrompt.IfExists && File.Exists(path))
         {
-            var suggested = scope.Operation != null
-                ? $"{doc.Name}.{scope.Part?.Name ?? ops[0].Part.Name}.{scope.Operation.Name}.nc"
-                : scope.Part != null ? $"{doc.Name}.{scope.Part.Name}.nc" : $"{doc.Name}.nc";
+            var answer = await Dialogs.Ask(this, "Produce G-code", $"{path}\nalready exists. Overwrite it?\n(No = choose another file)");
+            if (answer == null) return;
+            showDialog = answer == false;
+        }
+        if (showDialog)
+        {
+            var ext = _settings.DefaultGCodeExtension;
+            var suggested = path != null && Path.IsPathRooted(path) ? Path.GetFileName(path)
+                : scope.Operation != null ? $"{doc.Name}.{scope.Part?.Name ?? ops[0].Part.Name}.{scope.Operation.Name}{ext}"
+                : scope.Part != null ? $"{doc.Name}.{scope.Part.Name}{ext}" : $"{doc.Name}{ext}";
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
                 Title = "Produce G-code",
                 SuggestedFileName = suggested,
-                DefaultExtension = "nc",
-                FileTypeChoices = [NcType],
+                DefaultExtension = ext.TrimStart('.'),
+                FileTypeChoices = [NcType, AllType],
             });
             if (file?.TryGetLocalPath() is not { } chosen) return;
             path = chosen;
@@ -605,6 +614,18 @@ public partial class MainWindow
         {
             Log("No G-code file yet. Use Produce Gcode first.");
             return;
+        }
+        if (!string.IsNullOrWhiteSpace(_settings.GCodeEditor))
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(_settings.GCodeEditor, $"\"{path}\"") { UseShellExecute = true });
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log($"Could not start G-code editor '{_settings.GCodeEditor}': {ex.Message}. Using the internal editor.");
+            }
         }
         new GCodeWindow(path).Show(this);
     }

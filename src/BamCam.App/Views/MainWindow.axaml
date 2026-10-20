@@ -53,7 +53,7 @@
       </DockPanel>
     </Border>
 
-    <Grid ColumnDefinitions="310,4,*">
+    <Grid x:Name="MainGrid" ColumnDefinitions="310,4,*">
       <!-- Left column: Drawing / System tabs with tree and property grid -->
       <Grid Grid.Column="0" RowDefinitions="*,4,1.2*">
         <TabControl Grid.Row="0" x:Name="LeftTabs" Padding="0" Margin="0">
@@ -71,7 +71,7 @@
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" />
 
       <!-- Right: prompt line, drawing view, messages -->
-      <Grid Grid.Column="2" RowDefinitions="Auto,*,4,110">
+      <Grid x:Name="RightGrid" Grid.Column="2" RowDefinitions="Auto,*,4,110">
         <Border Grid.Row="0" Background="#FFFFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2" x:Name="PromptBar" IsVisible="False">
           <TextBlock x:Name="PromptText" />
         </Border>

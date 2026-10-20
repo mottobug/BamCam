@@ -22,8 +22,9 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         TextEntity.OutlineProvider = TextOutlines.Build;
+        LoadSettings();
 
-        _session = new DocumentSession(CadDocument.CreateNew())
+        _session = new DocumentSession(NewDocument())
         {
             Snapshot = CbWriter.ToString,
             Restore = CbReader.Parse,
@@ -49,8 +50,16 @@ public partial class MainWindow : Window
             else View.SetTool(new EditPointsTool(ent));
         };
 
-        Properties.ValueChanging += (_, _) => _session.BeginEdit();
-        Properties.ValueChanged += (_, _) => OnPropertyEdited();
+        Properties.ValueChanging += (_, _) =>
+        {
+            // Configuration edits are not part of the drawing's undo history.
+            if (Properties.SelectedObject is not AppSettings) _session.BeginEdit();
+        };
+        Properties.ValueChanged += (_, _) =>
+        {
+            if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
+            else OnPropertyEdited();
+        };
 
         DrawingTree.SelectionChanged += OnTreeSelectionChanged;
         DrawingTree.KeyDown += OnTreeKeyDown;
@@ -61,13 +70,17 @@ public partial class MainWindow : Window
         BuildToolbar();
 
         _system.Reload();
-        foreach (var m in _system.LoadMessages) Log(m);
+        _system.DefaultPostName = _settings.DefaultPostProcessor;
+        foreach (var m in _pendingLogs.Concat(_system.LoadMessages)) Log(m);
+        if (_system.Posts.All(p => !p.Name.Equals(_settings.DefaultPostProcessor, StringComparison.OrdinalIgnoreCase)))
+            Log($"Default post processor '{_settings.DefaultPostProcessor}' not found; using '{_system.Resolve(null).Name}'.");
         BuildSystemTree();
 
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
         Closing += OnClosing;
+        Closed += (_, _) => SaveSettings();
 
         OnDocumentReplaced();
         Log("BamCam ready. Draw or open a drawing (.cb / .dxf).");
@@ -101,7 +114,7 @@ public partial class MainWindow : Window
 
     private void OnDocumentReplaced()
     {
-        View.Settings.ApplyUnits(_session.Document.Units);
+        _settings.ApplyGrid(View.Settings, _session.Document.Units);
         View.Settings.ShowRapids = _session.Document.ShowRapids;
         View.Settings.ShowStock = _session.Document.ShowStock;
         View.Settings.ToolpathVisibilitySelectedOnly = _session.Document.ToolpathVisibility == ToolpathVisibility.SelectedOnly;
@@ -128,7 +141,7 @@ public partial class MainWindow : Window
     private void OnDocumentReplacedSettingsOnly()
     {
         var doc = _session.Document;
-        View.Settings.ApplyUnits(doc.Units);
+        _settings.ApplyGrid(View.Settings, doc.Units);
         View.Settings.ShowRapids = doc.ShowRapids;
         View.Settings.ShowStock = doc.ShowStock;
         View.Settings.ToolpathVisibilitySelectedOnly = doc.ToolpathVisibility == ToolpathVisibility.SelectedOnly;
@@ -148,6 +161,7 @@ public partial class MainWindow : Window
     public void CaptureScreenshotAndExit(string path, bool generate, IReadOnlyDictionary<string, string>? options = null)
     {
         options ??= new Dictionary<string, string>();
+        _screenshotMode = true;
         Opened += async (_, _) =>
         {
             await Task.Delay(1200);
@@ -179,6 +193,11 @@ public partial class MainWindow : Window
                     }
                     View.View.Fit(box, View.Bounds.Size);
                 }
+            }
+            if (options.ContainsKey("--config"))
+            {
+                LeftTabs.SelectedIndex = 1;
+                Properties.SelectedObject = _settings;
             }
             if (options.TryGetValue("--drag-tab", out var drag))
             {
@@ -229,7 +248,7 @@ public partial class MainWindow : Window
     private async void NewDrawing()
     {
         if (!await ConfirmDiscard()) return;
-        var doc = CadDocument.CreateNew();
+        var doc = NewDocument();
         _session.Replace(doc);
         Log("New drawing.");
     }
@@ -284,6 +303,7 @@ public partial class MainWindow : Window
                 doc = CbReader.Load(path);
             }
             _session.Replace(doc);
+            AddRecentFile(path);
             var ops = doc.Parts.Sum(p => p.Operations.Count);
             Log($"Opened {path}: {doc.AllEntities().Count()} objects, {doc.Layers.Count} layers, {ops} machining operations.");
             foreach (var op in doc.Parts.SelectMany(p => p.Operations).OfType<Core.Cam.UnsupportedOp>())
@@ -320,7 +340,8 @@ public partial class MainWindow : Window
     {
         try
         {
-            CbWriter.Save(_session.Document, path, backups: 3);
+            CbWriter.Save(_session.Document, path, backups: _settings.FileBackups);
+            AddRecentFile(path);
             Log($"Saved {path}");
             UpdateTitle();
             return true;

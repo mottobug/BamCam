@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using BamCam.App.Drawing;
+using BamCam.App.Services;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
@@ -287,7 +288,7 @@ public partial class MainWindow
                 var layer = tag as Layer;
                 Add("New Layer", () =>
                 {
-                    var l = new Layer(doc.UniqueLayerName());
+                    var l = new Layer(doc.UniqueLayerName()) { Color = _settings.DefaultLayerColor };
                     _session.Execute("New layer", () =>
                     {
                         doc.Layers.Add(l);
@@ -443,6 +444,7 @@ public partial class MainWindow
     private void BuildSystemTree()
     {
         SystemTree.Items.Clear();
+        SystemTree.Items.Add(new TreeViewItem { Header = "Configuration", Tag = _settings });
         var posts = new TreeViewItem { Header = "Post Processors", IsExpanded = true };
         foreach (var p in _system.Posts)
         {
@@ -455,7 +457,13 @@ public partial class MainWindow
             ToolTip.SetTip(item, src ?? "Built into BamCam");
             var menu = new ContextMenu();
             var setDefault = new MenuItem { Header = "Set As Default" };
-            setDefault.Click += (_, _) => { _system.DefaultPostName = p.Name; BuildSystemTree(); };
+            setDefault.Click += (_, _) =>
+            {
+                _system.DefaultPostName = p.Name;
+                _settings.DefaultPostProcessor = p.Name;
+                SaveSettings();
+                BuildSystemTree();
+            };
             menu.Items.Add(setDefault);
             item.ContextMenu = menu;
             posts.Items.Add(item);
@@ -486,7 +494,7 @@ public partial class MainWindow
     private void OnSystemTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var tag = (SystemTree.SelectedItem as TreeViewItem)?.Tag;
-        if (tag is PostProcessorDefinition or ToolDefinition) Properties.SelectedObject = tag;
+        if (tag is PostProcessorDefinition or ToolDefinition or AppSettings) Properties.SelectedObject = tag;
     }
 
     private void ShowViewContextMenu(Point p)

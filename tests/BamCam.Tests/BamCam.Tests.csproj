@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BamCam.Core\BamCam.Core.csproj" />
     <ProjectReference Include="..\..\src\BamCam.IO\BamCam.IO.csproj" />
+    <ProjectReference Include="..\..\src\BamCam.App\BamCam.App.csproj" />
   </ItemGroup>
 
 </Project>

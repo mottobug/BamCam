@@ -95,7 +95,7 @@ public sealed partial class PropertyGrid : DockPanel
 
     private static bool IsCompositeType(Type t) =>
         t == typeof(Stock) || t == typeof(NestingSettings) || t == typeof(LeadMove) ||
-        t == typeof(HoldingTabSettings) || t == typeof(SideProfile);
+        t == typeof(HoldingTabSettings) || t == typeof(SideProfile) || t == typeof(Services.GridInfo);
 
     [GeneratedRegex("(?<=[a-z0-9])(?=[A-Z])")]
     private static partial Regex WordBoundary();
@@ -190,6 +190,7 @@ public sealed partial class PropertyGrid : DockPanel
             Part p => $"Part: {p.Name}",
             CadDocument d => $"Drawing: {d.Name}",
             MachiningOptions => "Machining",
+            Services.AppSettings => "Configuration",
             _ => _target.GetType().Name,
         };
 
