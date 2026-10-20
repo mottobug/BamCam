@@ -10,6 +10,11 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>BamCam</AssemblyName>
     <RootNamespace>BamCam.App</RootNamespace>
+    <ApplicationIcon>Assets\bamcam.ico</ApplicationIcon>
+    <!-- Overridden by CI from the git tag: dotnet publish -p:Version=1.2.3 -->
+    <Version>0.1.0</Version>
+    <Product>BamCam</Product>
+    <Description>Cross-platform 2.5D/3D CAD/CAM</Description>
   </PropertyGroup>
 
   <ItemGroup>

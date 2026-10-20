@@ -32,6 +32,37 @@ dotnet publish src/BamCam.App -c Release -r win-x64 --self-contained -o artifact
 Weitere Runtime-IDs: `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`.
 Unter macOS ist das Ergebnis ein ausführbares Programm, noch kein signiertes `.app`-Bundle.
 
+## Pakete und Releases
+
+Das Skript `build/package.ps1` veröffentlicht BamCam für eine Plattform und verpackt es passend. Es läuft mit
+Windows PowerShell 5.1 und PowerShell 7:
+
+```bash
+powershell -ExecutionPolicy Bypass -File build/package.ps1 -Rid win-x64 -Version 1.0.0
+```
+
+| Plattform | Ergebnis in `artifacts/` |
+|---|---|
+| `win-x64` | `BamCam-<Version>-win-x64.zip`, dazu `-setup.exe`, wenn Inno Setup 6 installiert ist |
+| `linux-x64`, `linux-arm64` | `.tar.gz` mit `install.sh` (pro Benutzer, oder `sudo ./install.sh --system`), `.desktop`-Eintrag und Icon |
+| `osx-x64`, `osx-arm64` | `.zip` mit `BamCam.app`, unsigniert. Icon und Ausführungsrechte entstehen nur beim Bauen auf macOS |
+
+Linux- und macOS-Pakete sollten auf dem jeweiligen System gebaut werden (das erledigt die CI), damit die
+Ausführungsrechte erhalten bleiben. Unsignierte macOS-Apps öffnet man beim ersten Start per Rechtsklick ▸ Öffnen.
+
+**CI (GitHub Actions, `.github/workflows/build.yml`):**
+- Jeder Push und Pull Request baut und testet auf Windows, Linux und macOS.
+- Ein Tag `v1.2.3` erzeugt zusätzlich alle Pakete und ein GitHub-Release:
+
+```bash
+git tag v1.2.3
+```
+
+```bash
+git push origin v1.2.3
+```
+
+Das App-Icon erzeugt `build/make-icon.ps1` (Windows). Die erzeugten Dateien liegen in `src/BamCam.App/Assets`.
 ## Projektstruktur
 
 | Projekt | Inhalt |

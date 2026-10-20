@@ -4,6 +4,7 @@
         xmlns:c="clr-namespace:BamCam.App.Controls"
         x:Class="BamCam.App.Views.MainWindow"
         Title="BamCam"
+        Icon="avares://BamCam/Assets/bamcam.ico"
         Width="1366" Height="860" MinWidth="1024" MinHeight="700"
         WindowStartupLocation="CenterScreen">
 
