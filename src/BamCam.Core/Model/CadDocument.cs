@@ -8,6 +8,8 @@ namespace BamCam.Core.Model;
 
 public enum DrawingUnits { Millimeters, Inches, Centimeters, Meters, Thousandths, Unspecified }
 
+public enum ToolpathVisibility { All, SelectedOnly }
+
 public sealed class Layer
 {
     private readonly ObservableCollection<Entity> _entities = [];
@@ -31,6 +33,19 @@ public sealed class Layer
 
     [Category("Layer"), Description("Pen width used for display.")]
     public double PenWidth { get; set; } = 1;
+
+    [Category("Layer")]
+    public string? Tag { get; set; }
+
+    /// <summary>Layer script source (kept verbatim).</summary>
+    [Browsable(false)]
+    public string? Script { get; set; }
+
+    [Browsable(false)]
+    public int ModificationCount { get; set; }
+
+    [Category("Layer"), DisplayName("Number of Entities")]
+    public int EntityCount => _entities.Count;
 
     [Browsable(false)]
     public ReadOnlyObservableCollection<Entity> Entities => new(_entities);
@@ -75,8 +90,24 @@ public sealed class CadDocument
     [Browsable(false)]
     public string? ActivePartName { get; set; }
 
-    [Category("Drawing")]
+    [Category("Display"), DisplayName("Show Cut Widths")]
     public bool ShowCutWidths { get; set; }
+
+    [Category("Display"), DisplayName("Show Direction Vector")]
+    public bool ShowDirectionVector { get; set; } = true;
+
+    [Category("Display"), DisplayName("Show Rapids")]
+    public bool ShowRapids { get; set; } = true;
+
+    [Category("Display"), DisplayName("Show Stock")]
+    public bool ShowStock { get; set; } = true;
+
+    [Category("Display"), DisplayName("Toolpath Visibility")]
+    public ToolpathVisibility ToolpathVisibility { get; set; } = ToolpathVisibility.All;
+
+    /// <summary>Drawing-level script source (kept verbatim).</summary>
+    [Browsable(false)]
+    public string? Script { get; set; }
 
     /// <summary>Unknown root-level XML children, preserved on save.</summary>
     [Browsable(false)]

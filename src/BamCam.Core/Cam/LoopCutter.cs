@@ -1,0 +1,238 @@
+using BamCam.Core.Geometry;
+
+namespace BamCam.Core.Cam;
+
+/// <summary>Holding tab placement on a loop: arc-length interval [Start, End].</summary>
+internal readonly record struct TabInterval(double Start, double End)
+{
+    public double Mid => (Start + End) / 2;
+}
+
+/// <summary>
+/// Emits the moves for cutting one loop at one depth level, including lead moves and holding tabs.
+/// </summary>
+internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
+{
+    private const double FitTolerance = 0.005;
+
+    public double TabTop { get; init; } = double.NegativeInfinity;
+    public TabStyle TabStyle { get; init; } = TabStyle.Square;
+    public LeadMove LeadIn { get; init; } = LeadMove.None;
+    public LeadMove LeadOut { get; init; } = LeadMove.None;
+
+    /// <summary>Normal pointing away from the material at the loop start (for tangent leads).</summary>
+    public Func<Loop, Point2, Point2>? AwayNormal { get; init; }
+
+    /// <summary>
+    /// Cuts <paramref name="loop"/> at <paramref name="z"/>. <paramref name="prevZ"/> is the previous cut level
+    /// (or stock surface) used for the rapid-down rule. Linking feed is used when the tool is already close.
+    /// </summary>
+    public void Cut(Loop loop, double z, double prevZ, IReadOnlyList<TabInterval> tabs, double? linkFeed = null)
+    {
+        var start = loop.Start.ToPoint3(z);
+        var leadInStart = TangentLeadStart(loop, LeadIn);
+
+        if (linkFeed is { } lf && mb.Position is { } pos && Math.Abs(pos.Z - z) < 1e-9)
+        {
+            // Stepover move at the current level.
+            mb.Line(start, lf);
+        }
+        else if (leadInStart is { } ls && LeadIn.LeadMoveType == LeadMoveType.Tangent)
+        {
+            mb.MoveToAndPlunge(ls.Start.ToPoint3(z), ctx.PlungeFeed, prevZ);
+            var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
+            mb.Arc(start, ls.Center, ls.Clockwise, feed);
+        }
+        else if (LeadIn.LeadMoveType == LeadMoveType.Spiral && loop.Closed && z < prevZ - 1e-9)
+        {
+            mb.MoveToAndPlunge(loop.Start.ToPoint3(prevZ), ctx.PlungeFeed, prevZ);
+            Ramp(loop, prevZ, z);
+        }
+        else
+        {
+            mb.MoveToAndPlunge(start, ctx.PlungeFeed, prevZ);
+        }
+
+        FollowWithTabs(loop, z, prevZ, z < TabTop - 1e-9 ? tabs : []);
+
+        var leadOut = TangentLeadEnd(loop, LeadOut);
+        if (leadOut is { } lo && LeadOut.LeadMoveType == LeadMoveType.Tangent)
+        {
+            var feed = LeadOut.LeadMoveFeedrate > 0 ? LeadOut.LeadMoveFeedrate : ctx.CutFeed;
+            mb.Arc(lo.End.ToPoint3(z), lo.Center, lo.Clockwise, feed);
+        }
+    }
+
+    /// <summary>Spiral (ramped) entry along the loop from <paramref name="fromZ"/> down to <paramref name="toZ"/>.</summary>
+    private void Ramp(Loop loop, double fromZ, double toZ)
+    {
+        var len = loop.Length;
+        if (len < 1e-9) return;
+        var angle = LeadIn.SpiralAngle;
+        var rampLen = angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : len;
+        var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
+        var pts = loop.Points;
+        double s = 0;
+        var i = 0;
+        var prev = pts[0];
+        while (s < rampLen - 1e-9)
+        {
+            var next = pts[(i + 1) % pts.Count];
+            var seg = Point2.Distance(prev, next);
+            if (s + seg >= rampLen)
+            {
+                var p = Point2.Lerp(prev, next, (rampLen - s) / seg);
+                mb.Line(p.ToPoint3(toZ), feed);
+                // Finish the lap at depth back to the loop start is handled by the caller's
+                // full lap; return to the start along the loop for continuity.
+                var k = i + 1;
+                var guard = 0;
+                while (guard++ <= pts.Count)
+                {
+                    var q = pts[k % pts.Count];
+                    mb.Line(q.ToPoint3(toZ), ctx.CutFeed);
+                    if (k % pts.Count == 0) break;
+                    k++;
+                }
+                return;
+            }
+            s += seg;
+            var z = fromZ - (fromZ - toZ) * s / rampLen;
+            mb.Line(next.ToPoint3(z), feed);
+            prev = next;
+            i++;
+        }
+    }
+
+    private readonly record struct LeadArc(Point2 Start, Point2 End, Point2 Center, bool Clockwise);
+
+    private LeadArc? TangentLeadStart(Loop loop, LeadMove lead)
+    {
+        if (lead.LeadMoveType != LeadMoveType.Tangent || lead.TangentRadius <= 0 || loop.Points.Count < 2 || AwayNormal == null) return null;
+        var p = loop.Start;
+        var t = (loop.Points[1] - p).Normalized();
+        var n = AwayNormal(loop, t);
+        var r = lead.TangentRadius;
+        var c = p + n * r;
+        var s = c - t * r;
+        var clockwise = Point2.Cross(s - c, p - c) < 0;
+        return new LeadArc(s, p, c, clockwise);
+    }
+
+    private LeadArc? TangentLeadEnd(Loop loop, LeadMove lead)
+    {
+        if (lead.LeadMoveType != LeadMoveType.Tangent || lead.TangentRadius <= 0 || loop.Points.Count < 2 || AwayNormal == null) return null;
+        var p = loop.End;
+        var prev = loop.Closed ? loop.Points[^1] : loop.Points[^2];
+        var t = (p - prev).Normalized();
+        var n = AwayNormal(loop, t);
+        var r = lead.TangentRadius;
+        var c = p + n * r;
+        var e = c + t * r;
+        var clockwise = Point2.Cross(p - c, e - c) < 0;
+        return new LeadArc(p, e, c, clockwise);
+    }
+
+    /// <summary>Follows the loop from its start, lifting over holding tabs.</summary>
+    private void FollowWithTabs(Loop loop, double z, double prevZ, IReadOnlyList<TabInterval> tabs)
+    {
+        var pts = new List<Point2>(loop.Points);
+        if (loop.Closed) pts.Add(pts[0]);
+
+        if (tabs.Count == 0)
+        {
+            EmitRun(pts, z);
+            return;
+        }
+
+        // Build a list of (point, z) samples with breaks at tab boundaries.
+        var samples = new List<(Point2 P, double Z)>();
+        var sorted = tabs.OrderBy(t => t.Start).ToList();
+        double ZAt(double s)
+        {
+            foreach (var t in sorted)
+            {
+                if (s < t.Start - 1e-9 || s > t.End + 1e-9) continue;
+                if (TabStyle == TabStyle.Triangle)
+                {
+                    var half = (t.End - t.Start) / 2;
+                    var f = 1 - Math.Abs(s - t.Mid) / half;
+                    return z + (TabTop - z) * Math.Clamp(f, 0, 1);
+                }
+                return TabTop;
+            }
+            return z;
+        }
+
+        double acc = 0;
+        samples.Add((pts[0], ZAt(0)));
+        for (var i = 1; i < pts.Count; i++)
+        {
+            var a = pts[i - 1];
+            var b = pts[i];
+            var len = Point2.Distance(a, b);
+            if (len < 1e-12) continue;
+            var cuts = new List<double>();
+            foreach (var t in sorted)
+            {
+                foreach (var s in TabStyle == TabStyle.Triangle ? new[] { t.Start, t.Mid, t.End } : [t.Start, t.End])
+                    if (s > acc + 1e-9 && s < acc + len - 1e-9) cuts.Add(s);
+            }
+            cuts.Sort();
+            foreach (var s in cuts)
+            {
+                var p = Point2.Lerp(a, b, (s - acc) / len);
+                if (TabStyle == TabStyle.Triangle)
+                {
+                    samples.Add((p, ZAt(s)));
+                }
+                else
+                {
+                    // Square tab boundary: vertical step.
+                    var inside = sorted.Any(t => Math.Abs(t.Start - s) < 1e-9);
+                    samples.Add((p, inside ? z : TabTop));
+                    samples.Add((p, inside ? TabTop : z));
+                }
+            }
+            acc += len;
+            samples.Add((b, ZAt(acc)));
+        }
+
+        // Emit: runs of constant Z are arc-fitted; vertical steps become rapid-up / plunge-down.
+        var run = new List<Point2> { samples[0].P };
+        var runZ = samples[0].Z;
+        for (var i = 1; i < samples.Count; i++)
+        {
+            var (p, sz) = samples[i];
+            var samePos = p.AlmostEquals(samples[i - 1].P, 1e-9);
+            if (samePos && Math.Abs(sz - runZ) > 1e-9)
+            {
+                EmitRun(run, runZ);
+                if (sz > runZ) mb.Rapid(p.ToPoint3(sz));
+                else mb.PlungeTo(sz, ctx.PlungeFeed, prevZ);
+                run = [p];
+                runZ = sz;
+            }
+            else if (Math.Abs(sz - runZ) > 1e-9)
+            {
+                // Sloped (triangle tab) segment.
+                EmitRun(run, runZ);
+                mb.Line(p.ToPoint3(sz), ctx.CutFeed);
+                run = [p];
+                runZ = sz;
+            }
+            else
+            {
+                run.Add(p);
+            }
+        }
+        EmitRun(run, runZ);
+    }
+
+    private void EmitRun(List<Point2> run, double z)
+    {
+        if (run.Count < 2) return;
+        var path = ArcFitter.Fit(Path2.FromPoints(run, closed: false, z), FitTolerance);
+        mb.Follow(path, ctx.CutFeed);
+    }
+}

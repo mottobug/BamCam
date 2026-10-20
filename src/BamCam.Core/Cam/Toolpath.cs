@@ -2,19 +2,26 @@ using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Cam;
 
-public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment }
+public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle }
+
+/// <summary>Canned drilling cycle parameters (G81/G82/G83).</summary>
+public readonly record struct DrillCycle(double RetractZ, double Peck, double Dwell);
 
 /// <summary>
 /// One machine move. For arcs, <see cref="Center"/> is the arc centre (absolute XY) and the
-/// move ends at <see cref="To"/>; Z may change linearly (helix).
+/// move ends at <see cref="To"/>; Z may change linearly (helix). For drill cycles, <see cref="To"/>
+/// is the hole bottom.
 /// </summary>
-public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Point2 Center = default, string? Text = null, double Seconds = 0)
+public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Point2 Center = default,
+    string? Text = null, double Seconds = 0, DrillCycle Cycle = default)
 {
     public static Move Rapid(Point3 to) => new(MoveKind.Rapid, to);
     public static Move Line(Point3 to, double feed) => new(MoveKind.Feed, to, feed);
     public static Move Arc(Point3 to, Point2 center, bool clockwise, double feed) =>
         new(clockwise ? MoveKind.ArcCW : MoveKind.ArcCCW, to, feed, center);
     public static Move Note(string text) => new(MoveKind.Comment, default, Text: text);
+    public static Move Drill(Point3 bottom, double feed, DrillCycle cycle) =>
+        new(MoveKind.DrillCycle, bottom, feed, Cycle: cycle);
 
     public bool IsArc => Kind is MoveKind.ArcCW or MoveKind.ArcCCW;
     public bool IsMotion => Kind is MoveKind.Rapid or MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW;
@@ -92,6 +99,17 @@ public sealed class Toolpath
         Point3? pos = StartPosition;
         foreach (var m in Moves)
         {
+            if (m.Kind == MoveKind.DrillCycle)
+            {
+                var top = m.To with { Z = m.Cycle.RetractZ };
+                if (pos is { } p0) yield return (p0, top with { Z = p0.Z }, MoveKind.Rapid);
+                var start = pos is { } p1 ? top with { Z = p1.Z } : top;
+                if (start.Z > top.Z) yield return (start, top, MoveKind.Rapid);
+                yield return (top, m.To, MoveKind.Feed);
+                yield return (m.To, start, MoveKind.Rapid);
+                pos = start;
+                continue;
+            }
             if (!m.IsMotion) continue;
             if (pos is null)
             {

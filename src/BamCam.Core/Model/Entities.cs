@@ -218,6 +218,87 @@ public sealed class ArcEntity : Entity
         CopyBase(new ArcEntity { Center = Center, Radius = Radius, StartAngle = StartAngle, Sweep = Sweep });
 }
 
+public sealed class RectEntity : Entity
+{
+    public override string TypeName => "Rectangle";
+
+    [Category("Rectangle"), DisplayName("Lower Left")]
+    public Point3 LowerLeft { get; set; }
+
+    [Category("Rectangle")]
+    public double Width { get; set; }
+
+    [Category("Rectangle")]
+    public double Height { get; set; }
+
+    [Category("Rectangle"), DisplayName("Corner Radius")]
+    public double CornerRadius { get; set; }
+
+    public static RectEntity FromCorners(Point2 a, Point2 b, double cornerRadius = 0) => new()
+    {
+        LowerLeft = new Point3(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y), 0),
+        Width = Math.Abs(a.X - b.X),
+        Height = Math.Abs(a.Y - b.Y),
+        CornerRadius = cornerRadius,
+    };
+
+    public Path2 LocalPath
+    {
+        get
+        {
+            var (x, y, z) = (LowerLeft.X, LowerLeft.Y, LowerLeft.Z);
+            var r = Math.Clamp(CornerRadius, 0, Math.Min(Width, Height) / 2);
+            if (r <= Tolerance.Point)
+            {
+                return new Path2([
+                    new Vertex(new Point3(x, y, z)), new Vertex(new Point3(x + Width, y, z)),
+                    new Vertex(new Point3(x + Width, y + Height, z)), new Vertex(new Point3(x, y + Height, z)),
+                ], true);
+            }
+            // Counter-clockwise with quarter-circle corners (bulge tan(22.5°)).
+            var b = Math.Tan(Math.PI / 8);
+            return new Path2([
+                new Vertex(new Point3(x + r, y, z)),
+                new Vertex(new Point3(x + Width - r, y, z), b),
+                new Vertex(new Point3(x + Width, y + r, z)),
+                new Vertex(new Point3(x + Width, y + Height - r, z), b),
+                new Vertex(new Point3(x + Width - r, y + Height, z)),
+                new Vertex(new Point3(x + r, y + Height, z), b),
+                new Vertex(new Point3(x, y + Height - r, z)),
+                new Vertex(new Point3(x, y + r, z), b),
+            ], true);
+        }
+    }
+
+    public override IEnumerable<Path2> ToPaths()
+    {
+        yield return Transform.IsIdentity ? LocalPath : LocalPath.Transformed(Transform);
+    }
+
+    public override void ApplyTransform(Matrix4 m)
+    {
+        var t = Transform * m;
+        // Rectangles stay axis-aligned only under translation / scale; otherwise keep the matrix.
+        if (Math.Abs(t.M12) < 1e-12 && Math.Abs(t.M21) < 1e-12 && t.M11 > 0 && t.M22 > 0)
+        {
+            LowerLeft = t.Transform(LowerLeft);
+            Width *= t.M11;
+            Height *= t.M22;
+            CornerRadius *= Math.Min(t.M11, t.M22);
+            Transform = Matrix4.Identity;
+        }
+        else
+        {
+            Transform = t;
+        }
+    }
+
+    public override Entity CloneEntity() => CopyBase(new RectEntity
+    {
+        LowerLeft = LowerLeft, Width = Width, Height = Height, CornerRadius = CornerRadius,
+    });
+}
+
 public sealed class PointListEntity : Entity
 {
     public override string TypeName => "Point List";
@@ -283,6 +364,8 @@ public sealed class RegionEntity : Entity
 
 public enum TextAlignment { Left, Center, Right }
 
+public enum TextVerticalAlignment { Top, Center, Bottom }
+
 public sealed class TextEntity : Entity
 {
     public override string TypeName => "Text";
@@ -305,8 +388,15 @@ public sealed class TextEntity : Entity
     [Category("Text")]
     public bool Italic { get; set; }
 
-    [Category("Text")]
+    [Category("Text"), DisplayName("Text Alignment Horizontal")]
     public TextAlignment HorizontalAlignment { get; set; }
+
+    [Category("Text"), DisplayName("Text Alignment Vertical")]
+    public TextVerticalAlignment VerticalAlignment { get; set; } = TextVerticalAlignment.Bottom;
+
+    /// <summary>Second text point from files (meaning unknown; preserved verbatim).</summary>
+    [Browsable(false)]
+    public string? P2 { get; set; }
 
     /// <summary>Outlines produced by a font renderer; filled in by the UI layer (fonts are platform services).</summary>
     [Browsable(false)]
