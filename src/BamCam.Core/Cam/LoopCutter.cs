@@ -48,6 +48,11 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
             mb.MoveToAndPlunge(loop.Start.ToPoint3(prevZ), ctx.PlungeFeed, prevZ);
             Ramp(loop, prevZ, z);
         }
+        else if (LeadIn.LeadMoveType == LeadMoveType.Spiral && !loop.Closed && loop.Points.Count > 1 && z < prevZ - 1e-9)
+        {
+            mb.MoveToAndPlunge(loop.Start.ToPoint3(prevZ), ctx.PlungeFeed, prevZ);
+            RampOpen(loop, prevZ, z);
+        }
         else
         {
             mb.MoveToAndPlunge(start, ctx.PlungeFeed, prevZ);
@@ -61,6 +66,31 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
             var feed = LeadOut.LeadMoveFeedrate > 0 ? LeadOut.LeadMoveFeedrate : ctx.CutFeed;
             mb.Arc(lo.End.ToPoint3(z), lo.Center, lo.Clockwise, feed);
         }
+    }
+
+    /// <summary>
+    /// Ramped entry on an open path: descend along the path (one path length for angle 0, otherwise by the
+    /// ramp angle), then feed back to the start at depth.
+    /// </summary>
+    private void RampOpen(Loop loop, double fromZ, double toZ)
+    {
+        var pts = loop.Points;
+        var len = loop.Length;
+        if (len < 1e-9) return;
+        var angle = LeadIn.SpiralAngle;
+        var rampLen = Math.Min(angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : len, len);
+        var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
+        var back = new List<Point2> { pts[0] };
+        double s = 0;
+        for (var i = 1; i < pts.Count && s < rampLen - 1e-9; i++)
+        {
+            var seg = Point2.Distance(pts[i - 1], pts[i]);
+            var p = s + seg > rampLen ? Point2.Lerp(pts[i - 1], pts[i], (rampLen - s) / seg) : pts[i];
+            s = Math.Min(s + seg, rampLen);
+            mb.Line(p.ToPoint3(fromZ - (fromZ - toZ) * s / rampLen), feed);
+            back.Add(p);
+        }
+        for (var i = back.Count - 2; i >= 0; i--) mb.Line(back[i].ToPoint3(toZ), ctx.CutFeed);
     }
 
     /// <summary>Spiral (ramped) entry along the loop from <paramref name="fromZ"/> down to <paramref name="toZ"/>.</summary>
