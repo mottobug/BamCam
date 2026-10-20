@@ -16,6 +16,9 @@ public partial class MainWindow
     private readonly List<(MenuItem Item, Func<bool> IsChecked)> _checkItems = [];
     private MenuItem? _postMenu;
 
+    /// <summary>True while the main menu is built: shortcuts and check items are registered only then (context menus reuse the same builders).</summary>
+    private bool _registering;
+
     private MenuItem Item(string header, Action action, string? gesture = null)
     {
         var item = new MenuItem { Header = header };
@@ -24,7 +27,7 @@ public partial class MainWindow
         {
             item.InputGesture = KeyGesture.Parse(gesture);
             var g = item.InputGesture;
-            _shortcuts[(g.Key, g.KeyModifiers)] = action;
+            if (_registering) _shortcuts[(g.Key, g.KeyModifiers)] = action;
         }
         return item;
     }
@@ -43,12 +46,12 @@ public partial class MainWindow
             UpdateTitle();
         }
         item.Click += (_, _) => Toggle();
-        if (gesture != null)
+        if (gesture != null && _registering)
         {
             var g = KeyGesture.Parse(gesture);
             _shortcuts[(g.Key, g.KeyModifiers)] = Toggle;
         }
-        _checkItems.Add((item, get));
+        if (_registering) _checkItems.Add((item, get));
         return item;
     }
 
@@ -74,7 +77,7 @@ public partial class MainWindow
 
     private void BuildMenu()
     {
-        var s = View.Settings;
+        _registering = true;
         MainMenu.Items.Clear();
 
         MainMenu.Items.Add(Sub("_File",
@@ -88,95 +91,13 @@ public partial class MainWindow
             "-",
             Item("E_xit", Close)));
 
-        MainMenu.Items.Add(Sub("_Edit",
-            Item("_Undo", Undo, "Ctrl+Z"),
-            Item("_Redo", Redo, "Ctrl+Y"),
-            "-",
-            Item("Cu_t", () => _ = CutSelection(), "Ctrl+X"),
-            Item("_Copy", () => _ = CopySelection(), "Ctrl+C"),
-            Item("_Paste", () => _ = Paste(), "Ctrl+V"),
-            Item("Paste Format", PasteFormat, "Ctrl+Shift+V"),
-            Item("_Delete", DeleteSelection, "Delete"),
-            "-",
-            Item("Select _All", () => { _session.SelectAll(); View.Invalidate(); }, "Ctrl+A"),
-            Item("Select All on Active Layer", () => { _session.Select(_session.Document.ActiveLayer.Entities); View.Invalidate(); }, "Ctrl+Shift+A"),
-            "-",
-            Item("E_xplode", Explode),
-            Item("_Join...", Join, "Ctrl+J"),
-            Item("_Offset...", () => Offset(false)),
-            Item("Open Offset...", () => Offset(true)),
-            Item("_Union", () => BooleanOp("Union"), "Ctrl+U"),
-            Item("_Subtract", () => BooleanOp("Subtract")),
-            Item("_Intersection", () => BooleanOp("Intersection")),
-            Sub("Convert To",
-                Item("_Polyline", ConvertToPolyline, "Ctrl+P"),
-                Item("_Region", ConvertToRegion, "Ctrl+I")),
-            Sub("Polyline",
-                Item("_Reverse", ReversePolylines),
-                Item("_Clean", CleanPolylines)),
-            Sub("_Transform",
-                Item("_Move", () => View.SetTool(new MoveTool()), "Ctrl+M"),
-                Item("_Rotate", () => View.SetTool(new RotateTool()), "Ctrl+R"),
-                Item("Resi_ze...", Resize, "Ctrl+E"),
-                Item("M_irror", () => View.SetTool(new MirrorTool())),
-                Item("_Array Copy...", ArrayCopy),
-                Item("_Polar Array Copy...", PolarArrayCopy),
-                Item("_Center (Extents)", CenterExtents),
-                Item("Apply Transformations", ApplyTransformations))));
-
-        MainMenu.Items.Add(Sub("_View",
-            Item("_Reset", () => View.ResetView(), "Home"),
-            Item("Zoom To _Fit", () => View.ZoomToFit()),
-            "-",
-            Item("_XY Plane", () => View.SetStandardView("XY")),
-            Item("X_Z Plane", () => View.SetStandardView("XZ")),
-            Item("_YZ Plane", () => View.SetStandardView("YZ")),
-            Item("_Isometric", () => View.SetStandardView("ISO")),
-            "-",
-            Check("Show _Toolpaths", () => s.ShowToolpaths, v => s.ShowToolpaths = v),
-            Check("Show Cut _Widths", () => _session.Document.ShowCutWidths, v => _session.Document.ShowCutWidths = v),
-            Check("Show _Rapids", () => s.ShowRapids, v => { s.ShowRapids = v; _session.Document.ShowRapids = v; }),
-            Check("Show _Stock", () => s.ShowStock, v => { s.ShowStock = v; _session.Document.ShowStock = v; }),
-            Check("Show Direction Arrows", () => s.ShowDirectionArrows, v => s.ShowDirectionArrows = v),
-            Check("Show _Grid", () => s.ShowGrid, v => s.ShowGrid = v),
-            Check("Show _Axis", () => s.ShowAxis, v => s.ShowAxis = v),
-            Check("Show _Nests", () => s.ShowNests, v => s.ShowNests = v),
-            Check("Holding Tab Drag Toolpath Refresh", () => s.TabDragToolpathRefresh, v => s.TabDragToolpathRefresh = v),
-            Item("Toolpath View _Filter...", ShowToolpathFilter, "Ctrl+F"),
-            "-",
-            Check("Snap to _Grid", () => s.SnapToGrid, v => s.SnapToGrid = v, "Ctrl+G"),
-            Check("Snap to _Objects", () => s.SnapToObjects, v => s.SnapToObjects = v)));
-
-        MainMenu.Items.Add(Sub("_Draw",
-            Item("_Line", () => View.SetTool(new PolylineTool(linesOnly: true))),
-            Item("_Polyline", () => View.SetTool(new PolylineTool())),
-            Item("_Arc", () => View.SetTool(new ArcTool())),
-            Item("_Circle", () => View.SetTool(new CircleTool())),
-            Item("_Rectangle", () => View.SetTool(new RectangleTool())),
-            Sub("Point _List",
-                Item("_Draw", () => View.SetTool(new PointListTool())),
-                Item("Di_vide Geometry...", DividePoints),
-                Item("_Centers", CenterPoints)),
-            Item("_Text...", DrawText)));
-
+        MainMenu.Items.Add(Sub("_Edit", EditMenuItems()));
+        MainMenu.Items.Add(Sub("_View", ViewMenuItems()));
+        MainMenu.Items.Add(Sub("_Draw", DrawMenuItems()));
         _postMenu = Sub("Post Processor");
         _postMenu.SubmenuOpened += (_, _) => FillPostMenu();
-        MainMenu.Items.Add(Sub("_Machining",
-            Item("_Profile", () => CreateOp(new ProfileOp())),
-            Item("P_ocket", () => CreateOp(new PocketOp())),
-            Item("_Drill", () => CreateOp(new DrillOp())),
-            Item("_Engrave", () => CreateOp(new EngraveOp())),
-            Item("_3D Profile", () => CreateOp(new Profile3DOp())),
-            "-",
-            Item("New Part", NewPart),
-            "-",
-            Item("_Generate Toolpaths", () => GenerateToolpaths(), "Ctrl+T"),
-            Item("Produce G_code", () => _ = ProduceGCode(PostScope.All), "Ctrl+W"),
-            Item("Edit Gcode", EditGCode),
-            "-",
-            _postMenu,
-            Item("Machining Options", () => _session.Inspect(_session.Document.Machining))));
-
+        MainMenu.Items.Add(Sub("_Machining", MachiningMenuItems().Concat(["-", _postMenu,
+            Item("Machining Options", () => _session.Inspect(_session.Document.Machining))]).ToArray()));
         MainMenu.Items.Add(Sub("_Tools",
             Item("_Measure", () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)))),
             Item("Get Object _Extremas", ReportExtremas),
@@ -200,8 +121,112 @@ public partial class MainWindow
         _shortcuts[(Key.T, KeyModifiers.None)] = DrawText;
         _shortcuts[(Key.M, KeyModifiers.None)] = () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)));
         _shortcuts[(Key.F2, KeyModifiers.None)] = () => _ = RenameSelected();
+        _registering = false;
     }
 
+
+    // ------------------------------------------------------------------ menu builders (main menu and context menus)
+
+    private object[] EditMenuItems() =>
+    [
+        Item("_Undo", Undo, "Ctrl+Z"),
+        Item("_Redo", Redo, "Ctrl+Y"),
+        "-",
+        Item("Cu_t", () => _ = CutSelection(), "Ctrl+X"),
+        Item("_Copy", () => _ = CopySelection(), "Ctrl+C"),
+        Item("_Paste", () => _ = Paste(), "Ctrl+V"),
+        Item("Paste Format", PasteFormat, "Ctrl+Shift+V"),
+        Item("_Delete", DeleteSelection, "Delete"),
+        "-",
+        Item("Select _All", () => { _session.SelectAll(); View.Invalidate(); }, "Ctrl+A"),
+        Item("Select All on Active Layer", () => { _session.Select(_session.Document.ActiveLayer.Entities); View.Invalidate(); }, "Ctrl+Shift+A"),
+        "-",
+        Item("E_xplode", Explode),
+        Item("_Join...", Join, "Ctrl+J"),
+        Item("_Offset...", () => Offset(false)),
+        Item("Open Offset...", () => Offset(true)),
+        Item("_Union", () => BooleanOp("Union"), "Ctrl+U"),
+        Item("_Subtract", () => BooleanOp("Subtract")),
+        Item("_Intersection", () => BooleanOp("Intersection")),
+        Sub("Convert To",
+            Item("_Polyline", ConvertToPolyline, "Ctrl+P"),
+            Item("_Region", ConvertToRegion, "Ctrl+I")),
+        Sub("Polyline",
+            Item("_Edit Points...", () => { if (Selected.FirstOrDefault() is { } e) EditPoints(e); }),
+            Item("_Reverse", ReversePolylines),
+            Item("_Clean", CleanPolylines)),
+        Sub("_Transform", TransformMenuItems()),
+    ];
+
+    private object[] TransformMenuItems() =>
+    [
+        Item("_Move", () => View.SetTool(new MoveTool()), "Ctrl+M"),
+        Item("_Rotate", () => View.SetTool(new RotateTool()), "Ctrl+R"),
+        Item("Resi_ze...", Resize, "Ctrl+E"),
+        Item("M_irror", () => View.SetTool(new MirrorTool())),
+        Item("_Array Copy...", ArrayCopy),
+        Item("_Polar Array Copy...", PolarArrayCopy),
+        Item("_Center (Extents)", CenterExtents),
+        Item("Apply Transformations", ApplyTransformations),
+    ];
+
+    private object[] ViewMenuItems()
+    {
+        var s = View.Settings;
+        return
+        [
+            Item("_Reset", () => View.ResetView(), "Home"),
+            Item("Zoom To _Fit", () => View.ZoomToFit()),
+            "-",
+            Item("_XY Plane", () => View.SetStandardView("XY")),
+            Item("X_Z Plane", () => View.SetStandardView("XZ")),
+            Item("_YZ Plane", () => View.SetStandardView("YZ")),
+            Item("_Isometric", () => View.SetStandardView("ISO")),
+            "-",
+            Check("Show _Toolpaths", () => s.ShowToolpaths, v => s.ShowToolpaths = v),
+            Check("Show Cut _Widths", () => _session.Document.ShowCutWidths, v => _session.Document.ShowCutWidths = v),
+            Check("Show _Rapids", () => s.ShowRapids, v => { s.ShowRapids = v; _session.Document.ShowRapids = v; }),
+            Check("Show _Stock", () => s.ShowStock, v => { s.ShowStock = v; _session.Document.ShowStock = v; }),
+            Check("Show Direction Arrows", () => s.ShowDirectionArrows, v => s.ShowDirectionArrows = v),
+            Check("Show _Grid", () => s.ShowGrid, v => s.ShowGrid = v),
+            Check("Show _Axis", () => s.ShowAxis, v => s.ShowAxis = v),
+            Check("Show _Nests", () => s.ShowNests, v => s.ShowNests = v),
+            Check("Holding Tab Drag Toolpath Refresh", () => s.TabDragToolpathRefresh, v => s.TabDragToolpathRefresh = v),
+            Item("Toolpath View _Filter...", ShowToolpathFilter, "Ctrl+F"),
+            "-",
+            Check("Snap to _Grid", () => s.SnapToGrid, v => s.SnapToGrid = v, "Ctrl+G"),
+            Check("Snap to _Objects", () => s.SnapToObjects, v => s.SnapToObjects = v),
+        ];
+    }
+
+    private object[] DrawMenuItems() =>
+    [
+        Item("_Line", () => View.SetTool(new PolylineTool(linesOnly: true))),
+        Item("_Polyline", () => View.SetTool(new PolylineTool())),
+        Item("_Arc", () => View.SetTool(new ArcTool())),
+        Item("_Circle", () => View.SetTool(new CircleTool())),
+        Item("_Rectangle", () => View.SetTool(new RectangleTool())),
+        Sub("Point _List",
+            Item("_Draw", () => View.SetTool(new PointListTool())),
+            Item("Di_vide Geometry...", DividePoints),
+            Item("_Centers", CenterPoints)),
+        Item("_Text...", DrawText),
+    ];
+
+    private object[] MachiningMenuItems() =>
+    [
+        Item("_Profile", () => CreateOp(new ProfileOp())),
+        Item("P_ocket", () => CreateOp(new PocketOp())),
+        Item("_Drill", () => CreateOp(new DrillOp())),
+        Item("_Engrave", () => CreateOp(new EngraveOp())),
+        Item("_3D Profile", () => CreateOp(new Profile3DOp())),
+        "-",
+        Item("New Part", NewPart),
+        "-",
+        Item("_Generate Toolpaths", () => GenerateToolpaths(), "Ctrl+T"),
+        Item("Produce G_code", () => _ = ProduceGCode(PostScope.All), "Ctrl+W"),
+        Item("Edit Gcode", EditGCode),
+    ];
     private bool HandleShortcut(Key key, KeyModifiers mods)
     {
         // Letter keys only when the drawing view is idle or the shortcut belongs to the active tool.

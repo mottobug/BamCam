@@ -375,10 +375,15 @@ public partial class MainWindow
                 break;
 
             case Entity e:
-                Add("Copy", () => _ = CopySelection());
-                Add("Cut", () => _ = CutSelection());
-                Add("Delete", DeleteSelection);
-                if (e is TextEntity t) Add("Edit Text", () => _ = EditTextEntity(t));
+                // Built when opened: the full object menu is large and the tree can hold thousands of objects.
+                menu.Items.Add(new MenuItem { Header = "..." });
+                menu.Opening += (_, _) =>
+                {
+                    var current = doc.FindEntity(e.Id) ?? e;
+                    if (!_session.Selection.Contains(current)) _session.Select([current]);
+                    menu.Items.Clear();
+                    foreach (var i in ObjectMenuItems(current)) menu.Items.Add(i is "-" ? new Separator() : i);
+                };
                 break;
 
             default:
@@ -497,74 +502,75 @@ public partial class MainWindow
         if (tag is PostProcessorDefinition or ToolDefinition or AppSettings) Properties.SelectedObject = tag;
     }
 
-    private void ShowViewContextMenu(Point p)
+    private ContextMenu ShowViewContextMenu(Point p)
     {
+        // Like CamBam: right-clicking an object selects it (unless it is already part of the selection).
+        var hit = View.HitTest(p).FirstOrDefault();
+        if (hit != null && !_session.Selection.Contains(hit))
+        {
+            _session.Select([hit]);
+            View.Invalidate();
+        }
+        var target = hit ?? (_session.Selection.Count == 1 ? _session.Selection.First() : null);
+
         var menu = new ContextMenu();
-        void Add(ItemsControl parent, string header, Action a)
+        void Add(object i) => menu.Items.Add(i is "-" ? new Separator() : i);
+        if (_session.Selection.Count > 0)
+            foreach (var i in ObjectMenuItems(target)) Add(i);
+        else
         {
-            var mi = new MenuItem { Header = header };
-            mi.Click += (_, _) => a();
-            parent.Items.Add(mi);
+            Add(Item("Paste", () => _ = Paste()));
+            Add(Item("Select All", () => { _session.SelectAll(); View.Invalidate(); }));
+            Add("-");
+            Add(Sub("Draw", DrawMenuItems()));
+            Add(Sub("Machining", MachiningMenuItems()));
         }
-        var hasSel = _session.Selection.Count > 0;
-        if (hasSel)
-        {
-            Add(menu, "Cut", () => _ = CutSelection());
-            Add(menu, "Copy", () => _ = CopySelection());
-        }
-        Add(menu, "Paste", () => _ = Paste());
-        if (hasSel)
-        {
-            Add(menu, "Delete", DeleteSelection);
-            menu.Items.Add(new Separator());
-            var edit = new MenuItem { Header = "Edit" };
-            Add(edit, "Join...", Join);
-            Add(edit, "Offset...", () => Offset(false));
-            Add(edit, "Explode", Explode);
-            Add(edit, "Union", () => BooleanOp("Union"));
-            Add(edit, "Subtract", () => BooleanOp("Subtract"));
-            Add(edit, "Intersection", () => BooleanOp("Intersection"));
-            Add(edit, "Convert To Polyline", ConvertToPolyline);
-            Add(edit, "Convert To Region", ConvertToRegion);
-            Add(edit, "Reverse", ReversePolylines);
-            menu.Items.Add(edit);
-            var tr = new MenuItem { Header = "Transform" };
-            Add(tr, "Move", () => View.SetTool(new MoveTool()));
-            Add(tr, "Rotate", () => View.SetTool(new RotateTool()));
-            Add(tr, "Resize...", Resize);
-            Add(tr, "Mirror", () => View.SetTool(new MirrorTool()));
-            Add(tr, "Array Copy...", ArrayCopy);
-            Add(tr, "Center (Extents)", CenterExtents);
-            menu.Items.Add(tr);
-            var cam = new MenuItem { Header = "Machining" };
-            Add(cam, "Profile", () => CreateOp(new ProfileOp()));
-            Add(cam, "Pocket", () => CreateOp(new PocketOp()));
-            Add(cam, "Drill", () => CreateOp(new DrillOp()));
-            Add(cam, "Engrave", () => CreateOp(new EngraveOp()));
-            Add(cam, "3D Profile", () => CreateOp(new Profile3DOp()));
-            menu.Items.Add(cam);
-        }
-        menu.Items.Add(new Separator());
-        var view = new MenuItem { Header = "View" };
-        Add(view, "Zoom To Fit", () => View.ZoomToFit());
-        Add(view, "Reset", () => View.ResetView());
-        Add(view, "Snap To Grid", () => { View.Settings.SnapToGrid = !View.Settings.SnapToGrid; RefreshChecks(); UpdateTitle(); });
-        Add(view, "Snap To Objects", () => { View.Settings.SnapToObjects = !View.Settings.SnapToObjects; RefreshChecks(); UpdateTitle(); });
-        menu.Items.Add(view);
-        var gen = new MenuItem { Header = "Generate Toolpaths" };
-        gen.Click += (_, _) => GenerateToolpaths();
-        menu.Items.Add(gen);
+        Add("-");
+        Add(Sub("View", ViewMenuItems()));
         if (_session.Inspected is ProfileOp)
         {
-            menu.Items.Add(new Separator());
-            var tabs = new MenuItem { Header = "Holding Tabs" };
-            Add(tabs, "Autocalc", View.AutocalcTabs);
-            Add(tabs, "Add Tab", () => View.AddTabAt(p));
+            Add("-");
             var remove = new MenuItem { Header = "Remove Tab", IsEnabled = View.TabAt(p) != null };
             remove.Click += (_, _) => View.RemoveTabAt(p);
-            tabs.Items.Add(remove);
-            menu.Items.Add(tabs);
+            Add(Sub("Holding Tabs",
+                Item("Autocalc", View.AutocalcTabs),
+                Item("Add Tab", () => View.AddTabAt(p)),
+                remove));
         }
         menu.Open(View);
+        return menu;
     }
-}
+
+    /// <summary>
+    /// Context menu for selected drawing objects (drawing view and object tree): clipboard, point editing,
+    /// properties and the complete Edit / Transform / Machining menus.
+    /// </summary>
+    private object[] ObjectMenuItems(Entity? target)
+    {
+        var items = new List<object>();
+        if (target is PolylineEntity or LineEntity or PointListEntity)
+            items.Add(Item("Edit _Points...", () => EditPoints(target)));
+        if (target != null)
+        {
+            items.Add(Item(target is TextEntity ? "Edit _Text..." : "Edit In _Drawing", () => EditInView(target)));
+            items.Add(Item("P_roperties", () => _session.Inspect(target)));
+            items.Add("-");
+        }
+        items.AddRange(
+        [
+            Item("Cu_t", () => _ = CutSelection(), "Ctrl+X"),
+            Item("_Copy", () => _ = CopySelection(), "Ctrl+C"),
+            Item("_Paste", () => _ = Paste(), "Ctrl+V"),
+            Item("_Delete", DeleteSelection, "Delete"),
+            "-",
+            Sub("_Edit", EditMenuItems()),
+            Sub("_Transform", TransformMenuItems()),
+            Sub("Convert To",
+                Item("_Polyline", ConvertToPolyline, "Ctrl+P"),
+                Item("_Region", ConvertToRegion, "Ctrl+I")),
+            "-",
+            Sub("_Machining", MachiningMenuItems()),
+            Item("Generate Toolpaths", () => GenerateToolpaths(), "Ctrl+T"),
+        ]);
+        return items.ToArray();
+    }}

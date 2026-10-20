@@ -4,6 +4,7 @@
              RequestedThemeVariant="Light">
   <Application.Styles>
     <FluentTheme DensityStyle="Compact" />
+    <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Fluent.xaml" />
     <StyleInclude Source="avares://BamCam/Styles/Classic.axaml" />
   </Application.Styles>
 </Application>

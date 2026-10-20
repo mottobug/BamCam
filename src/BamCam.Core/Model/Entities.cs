@@ -70,7 +70,7 @@ public sealed class PolylineEntity : Entity
     [Category("Polyline"), Description("Whether the last point connects back to the first.")]
     public bool Closed { get; set; }
 
-    [Browsable(false)]
+    [Category("Polyline"), Description("Vertices: X, Y, Z and the bulge of the segment to the next point. Click [...] to edit.")]
     public List<Vertex> Points { get; } = [];
 
     public PolylineEntity() { }
@@ -108,7 +108,7 @@ public sealed class LineEntity : Entity
 {
     public override string TypeName => "Line";
 
-    [Browsable(false)]
+    [Category("Line"), Description("Points of the line. Click [...] to edit.")]
     public List<Point3> Points { get; } = [];
 
     public override IEnumerable<Path2> ToPaths()
@@ -303,7 +303,7 @@ public sealed class PointListEntity : Entity
 {
     public override string TypeName => "Point List";
 
-    [Browsable(false)]
+    [Category("Point List"), Description("Points of the list (e.g. drill positions). Click [...] to edit.")]
     public List<Point3> Points { get; } = [];
 
     public IEnumerable<Point3> WorldPoints() => Transform.IsIdentity ? Points : Points.Select(Transform.Transform);

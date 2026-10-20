@@ -43,12 +43,9 @@ public partial class MainWindow : Window
             PromptText.Text = text;
             PromptBar.IsVisible = !string.IsNullOrEmpty(text);
         };
-        View.ContextMenuRequested += (_, p) => ShowViewContextMenu(p);
-        View.EntityDoubleClicked += (_, ent) =>
-        {
-            if (ent is TextEntity t) _ = EditTextEntity(t);
-            else View.SetTool(new EditPointsTool(ent));
-        };
+        View.ContextMenuRequested += (_, p) => _ = ShowViewContextMenu(p);
+        View.EntityDoubleClicked += (_, ent) => EditInView(ent);
+        Properties.CollectionEditRequested += (_, e) => EditPoints(e.Target, e.Property);
 
         Properties.ValueChanging += (_, _) =>
         {
@@ -214,6 +211,18 @@ public partial class MainWindow : Window
             {
                 LeftTabs.SelectedIndex = 1;
                 Properties.SelectedObject = _settings;
+            }
+            if (options.TryGetValue("--context", out var ctx))
+            {
+                // Right-click at a drawing coordinate "x,y": logs the context menu entries.
+                var v = ctx.Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+                var menu = ShowViewContextMenu(View.WorldToScreen(new(v[0], v[1])));
+                static string Dump(ItemsControl m, string indent) => string.Join("\n", m.Items.Select(i => i is MenuItem mi
+                    ? indent + mi.Header + (mi.Items.Count > 0 ? "\n" + Dump(mi, indent + "  ") : "")
+                    : indent + "----"));
+                var dump = $"--context: {_session.Selection.Count} selected\n{Dump(menu, "  ")}";
+                Log(dump);
+                File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bamcam-context.txt"), dump);
             }
             if (options.TryGetValue("--click", out var clicks))
             {

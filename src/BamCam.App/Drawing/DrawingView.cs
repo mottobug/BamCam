@@ -191,6 +191,9 @@ public sealed partial class DrawingView : Control, IToolHost
     /// Diagnostics: runs a hover, left press and release at a drawing coordinate through the same code
     /// paths as real mouse input (tab dragging, active tool, selection).
     /// </summary>
+    /// <summary>Diagnostics: screen position of a drawing coordinate.</summary>
+    public Point WorldToScreen(Point2 worldPoint) => _view.ToScreen(worldPoint);
+
     public void SimulateClick(Point2 worldPoint, KeyModifiers mods = KeyModifiers.None)
     {
         var pos = _view.ToScreen(worldPoint);

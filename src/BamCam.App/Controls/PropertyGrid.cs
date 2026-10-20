@@ -35,6 +35,9 @@ public sealed partial class PropertyGrid : DockPanel
     /// <summary>Raised before a value is changed (used for undo snapshots).</summary>
     public event EventHandler? ValueChanging;
 
+    /// <summary>Raised when the [...] button of a point list property is clicked (target object, property).</summary>
+    public event EventHandler<(object Target, PropertyInfo Property)>? CollectionEditRequested;
+
     /// <summary>Raised after a value was changed.</summary>
     public event EventHandler<string>? ValueChanged;
 
@@ -134,6 +137,17 @@ public sealed partial class PropertyGrid : DockPanel
                 continue;
             }
 
+            if (prop.PropertyType == typeof(List<Vertex>) || prop.PropertyType == typeof(List<Point3>))
+            {
+                var listProp = prop;
+                var owner = target;
+                yield return new Node
+                {
+                    Key = key, Display = display, Category = category, Description = desc, Type = prop.PropertyType,
+                    Get = () => listProp.GetValue(owner), Set = _ => CollectionEditRequested?.Invoke(this, (owner, listProp)), Depth = depth,
+                };
+                continue;
+            }
             if (!IsEditableType(prop.PropertyType) && !IsCompositeType(prop.PropertyType)) continue;
             var canWrite = prop.SetMethod is { IsPublic: true };
             Action<object?>? setter = null;
@@ -341,6 +355,19 @@ public sealed partial class PropertyGrid : DockPanel
         var t = node.Type;
         var isDefault = node.Param is { State: ParamState.Default };
         var readOnly = node.Set == null;
+
+        if (t == typeof(List<Vertex>) || t == typeof(List<Point3>))
+        {
+            var count = (value as System.Collections.ICollection)?.Count ?? 0;
+            var panel = new DockPanel();
+            var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+            ToolTip.SetTip(button, "Edit points");
+            button.Click += (_, _) => node.Set?.Invoke(null);
+            DockPanel.SetDock(button, Dock.Right);
+            panel.Children.Add(button);
+            panel.Children.Add(new TextBlock { Text = $"({count} points)", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center });
+            return panel;
+        }
 
         if (node.IsComposite)
             return new TextBlock { Text = value?.ToString() ?? "", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray };
