@@ -24,9 +24,19 @@ public partial class App : Application
                 args = args.Where((_, i) => i != shot && i != shot + 1).ToArray();
             }
             var generate = args.Contains("--generate");
+            // Diagnostic options with a value: --inspect <part/MOP name>, --filter <index>[,<z level>],
+            // --drag-tab <fromX,fromY,toX,toY> (drawing coordinates).
+            var options = new Dictionary<string, string>();
+            foreach (var name in new[] { "--inspect", "--filter", "--drag-tab" })
+            {
+                var i = Array.IndexOf(args, name);
+                if (i < 0 || i + 1 >= args.Length) continue;
+                options[name] = args[i + 1];
+                args = args.Where((_, k) => k != i && k != i + 1).ToArray();
+            }
             var files = args.Where(a => !a.StartsWith("--")).ToArray();
             if (files.Length > 0) window.OpenFileOnStartup(files[0]);
-            if (screenshotPath != null) window.CaptureScreenshotAndExit(screenshotPath, generate);
+            if (screenshotPath != null) window.CaptureScreenshotAndExit(screenshotPath, generate, options);
         }
         base.OnFrameworkInitializationCompleted();
     }

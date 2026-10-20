@@ -318,6 +318,11 @@ public static class CbReader
                 case "Rows": n.Rows = CbFormat.ParseInt(v, 1); break;
                 case "Columns": n.Columns = CbFormat.ParseInt(v, 1); break;
                 case "Spacing": n.Spacing = CbFormat.ParseDouble(v); break;
+                case "GridOrder" when CbFormat.TryParseEnum(typeof(NestGridOrder), v, out var go):
+                    n.GridOrder = (NestGridOrder)go;
+                    break;
+                case "GridAlternate": n.GridAlternate = !string.Equals(v.Trim(), "false", StringComparison.OrdinalIgnoreCase); break;
+                case "PointListID": n.PointListID = CbFormat.ParseInt(v); break;
                 default: n.Extensions.Add(new XElement(c)); break;
             }
         }

@@ -74,3 +74,16 @@ public enum StartCorner { BottomLeft, BottomRight, TopLeft, TopRight }
 public enum FlipAxis { X, Y }
 
 public enum BoundaryMethod { ShapeOutline, BoundingBox, SelectedShapes }
+
+/// <summary>Grid nesting order: the first direction, then the direction of the next row/column.</summary>
+public enum NestGridOrder
+{
+    [EnumMember(Value = "Right Up")] RightUp,
+    [EnumMember(Value = "Right Down")] RightDown,
+    [EnumMember(Value = "Left Up")] LeftUp,
+    [EnumMember(Value = "Left Down")] LeftDown,
+    [EnumMember(Value = "Up Right")] UpRight,
+    [EnumMember(Value = "Up Left")] UpLeft,
+    [EnumMember(Value = "Down Right")] DownRight,
+    [EnumMember(Value = "Down Left")] DownLeft,
+}

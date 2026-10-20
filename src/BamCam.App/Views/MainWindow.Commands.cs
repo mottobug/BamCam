@@ -504,7 +504,40 @@ public partial class MainWindow
         }
         if (count == 0) Log("No enabled machining operations.");
         else Log($"Toolpaths generated in {sw.ElapsedMilliseconds} ms.");
+        UpdateNesting(_session.Document.Parts.Where(p => scope.Part == null || p == scope.Part));
         View.Invalidate();
+    }
+
+    /// <summary>Re-lays out Grid / ISO Grid nest copies (spacing is measured between toolpaths).</summary>
+    private void UpdateNesting(IEnumerable<Part> parts)
+    {
+        foreach (var part in parts)
+            if (NestingLayout.Update(_session.Document, part, _session.Toolpaths))
+                Log($"{part.Name}: {part.NestingItems.Count} nest copies ({part.Nesting.NestMethod}).");
+    }
+
+    private ToolpathFilterWindow? _filterWindow;
+
+    private void ShowToolpathFilter()
+    {
+        if (_filterWindow == null)
+        {
+            _filterWindow = new ToolpathFilterWindow(View);
+            _filterWindow.Closed += (_, _) =>
+            {
+                // Closing the filter shows all toolpaths again.
+                View.Settings.Filter.IndexEnabled = false;
+                View.Settings.Filter.ZEnabled = false;
+                View.Invalidate();
+                _filterWindow = null;
+            };
+            _filterWindow.Show(this);
+        }
+        else
+        {
+            _filterWindow.Load();
+            _filterWindow.Activate();
+        }
     }
 
     private string ExpandOutFile(string pattern)

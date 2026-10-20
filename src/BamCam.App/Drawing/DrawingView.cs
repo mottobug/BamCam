@@ -13,7 +13,7 @@ namespace BamCam.App.Drawing;
 /// The main drawing window: renders entities, grid, axes, stock and toolpaths, and routes
 /// mouse/keyboard input to navigation and the active <see cref="ViewTool"/>.
 /// </summary>
-public sealed class DrawingView : Control, IToolHost
+public sealed partial class DrawingView : Control, IToolHost
 {
     private DocumentSession? _session;
     private ViewTool _tool = new SelectTool();
@@ -173,6 +173,13 @@ public sealed class DrawingView : Control, IToolHost
             return;
         }
 
+        if (props.IsLeftButtonPressed && e.ClickCount == 1 && BeginTabDrag(pos))
+        {
+            e.Pointer.Capture(this);
+            InvalidateVisual();
+            return;
+        }
+
         var world = Snap(_view.ToWorld(pos), pos);
         _tool.PointerPressed(pos, world, props, e.KeyModifiers);
         e.Pointer.Capture(this);
@@ -212,6 +219,14 @@ public sealed class DrawingView : Control, IToolHost
             return;
         }
 
+        if (_dragTab != null)
+        {
+            CursorMoved?.Invoke(this, _view.ToWorld(pos));
+            DragTab(pos);
+            return;
+        }
+        UpdateHoverCursor(pos);
+
         var world = Snap(_view.ToWorld(pos), pos);
         CursorMoved?.Invoke(this, world);
         _tool.PointerMoved(pos, world, e.KeyModifiers);
@@ -223,6 +238,12 @@ public sealed class DrawingView : Control, IToolHost
         base.OnPointerReleased(e);
         var pos = e.GetPosition(this);
         e.Pointer.Capture(null);
+
+        if (_dragTab != null)
+        {
+            EndTabDrag();
+            return;
+        }
 
         if (_drag != DragMode.None)
         {
@@ -465,7 +486,13 @@ public sealed class DrawingView : Control, IToolHost
             if (Settings.ShowStock) RenderStock(dc);
             if (Settings.ShowToolpaths) RenderToolpaths(dc, cutWidthsPass: true);
             RenderEntities(dc);
-            if (Settings.ShowToolpaths) RenderToolpaths(dc, cutWidthsPass: false);
+            if (Settings.ShowToolpaths)
+            {
+                if (Settings.Filter.Active) RenderFilteredToolpaths(dc);
+                else RenderToolpaths(dc, cutWidthsPass: false);
+            }
+            RenderNests(dc);
+            RenderTabs(dc);
             _tool.RenderOverlay(dc, _view);
             RenderSnapMarker(dc);
         }
@@ -622,63 +649,58 @@ public sealed class DrawingView : Control, IToolHost
         var doc = session.Document;
         if (cutWidthsPass && !(doc.ShowCutWidths && _view.IsTopView)) return;
 
-        var selectedOnly = Settings.ToolpathVisibilitySelectedOnly;
-        var cutPen = new Pen(new SolidColorBrush(Settings.ToolpathColor), 1);
-        var arcPen = new Pen(new SolidColorBrush(Settings.ToolpathArcColor), 1);
-        var rapidPen = new Pen(new SolidColorBrush(Settings.RapidColor), 1, DashStyle.Dash);
+        var a = (byte)Math.Clamp(Settings.Filter.Alpha * 255, 0, 255);
+        var w = Settings.Filter.LineWidth;
+        SolidColorBrush B(Color c) => new(Color.FromArgb(a, c.R, c.G, c.B));
+        var cutPen = new Pen(B(Settings.ToolpathColor), w);
+        var arcPen = new Pen(B(Settings.ToolpathArcColor), w);
+        var rapidPen = new Pen(B(Settings.RapidColor), w, DashStyle.Dash);
 
-        foreach (var part in doc.Parts)
+        foreach (var (_, op, tp) in VisibleToolpaths())
         {
-            if (!part.Enabled) continue;
-            foreach (var op in part.Operations)
+            if (cutWidthsPass)
             {
-                if (!op.Enabled || !session.Toolpaths.TryGetValue(op, out var tp)) continue;
-                if (selectedOnly && !ReferenceEquals(session.Inspected, op) && !ReferenceEquals(session.Inspected, part)) continue;
-
-                if (cutWidthsPass)
+                var width = _view.ToScreenLength(op.EffectiveToolDiameter(doc));
+                if (width < 1) continue;
+                var c = Settings.CutWidthColor;
+                var widthPen = new Pen(new SolidColorBrush(c), width, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+                var geo = new StreamGeometry();
+                using (var ctx = geo.Open())
                 {
-                    var width = _view.ToScreenLength(op.EffectiveToolDiameter(doc));
-                    if (width < 1) continue;
-                    var c = Settings.CutWidthColor;
-                    var widthPen = new Pen(new SolidColorBrush(c), width, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
-                    var geo = new StreamGeometry();
-                    using (var ctx = geo.Open())
+                    var open = false;
+                    foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
                     {
-                        var open = false;
-                        foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
+                        if (kind == MoveKind.Rapid)
                         {
-                            if (kind == MoveKind.Rapid)
-                            {
-                                if (open) ctx.EndFigure(false);
-                                open = false;
-                                continue;
-                            }
-                            if (!open)
-                            {
-                                ctx.BeginFigure(_view.ToScreen(from.XY), false);
-                                open = true;
-                            }
-                            ctx.LineTo(_view.ToScreen(to.XY));
+                            if (open) ctx.EndFigure(false);
+                            open = false;
+                            continue;
                         }
-                        if (open) ctx.EndFigure(false);
+                        if (!open)
+                        {
+                            ctx.BeginFigure(_view.ToScreen(from.XY), false);
+                            open = true;
+                        }
+                        ctx.LineTo(_view.ToScreen(to.XY));
                     }
-                    dc.DrawGeometry(null, widthPen, geo);
-                    continue;
+                    if (open) ctx.EndFigure(false);
                 }
-
-                foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
-                {
-                    if (kind == MoveKind.Rapid)
-                    {
-                        if (Settings.ShowRapids) dc.DrawLine(rapidPen, _view.ToScreen(from), _view.ToScreen(to));
-                    }
-                    else
-                    {
-                        dc.DrawLine(kind == MoveKind.Feed ? cutPen : arcPen, _view.ToScreen(from), _view.ToScreen(to));
-                    }
-                }
-                if (Settings.ShowDirectionArrows) DrawStartArrow(dc, tp, cutPen);
+                dc.DrawGeometry(null, widthPen, geo);
+                continue;
             }
+
+            foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
+            {
+                if (kind == MoveKind.Rapid)
+                {
+                    if (Settings.ShowRapids) dc.DrawLine(rapidPen, _view.ToScreen(from), _view.ToScreen(to));
+                }
+                else
+                {
+                    dc.DrawLine(kind == MoveKind.Feed ? cutPen : arcPen, _view.ToScreen(from), _view.ToScreen(to));
+                }
+            }
+            if (Settings.ShowDirectionArrows) DrawStartArrow(dc, tp, cutPen);
         }
     }
 
@@ -724,6 +746,11 @@ public sealed class ViewSettings
     public bool SnapToGrid { get; set; } = true;
     public bool SnapToObjects { get; set; }
     public bool SelectFade { get; set; } = true;
+    /// <summary>Show nest copies while their Part is selected.</summary>
+    public bool ShowNests { get; set; } = true;
+    /// <summary>Regenerate the toolpath while a holding tab is dragged (instead of on the next Generate Toolpaths).</summary>
+    public bool TabDragToolpathRefresh { get; set; }
+    public ToolpathFilterSettings Filter { get; } = new();
 
     public double GridMinor { get; set; } = 1;
     public double GridMajor { get; set; } = 10;
