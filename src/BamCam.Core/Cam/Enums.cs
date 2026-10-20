@@ -66,3 +66,16 @@ public enum ArcCenterMode
 public enum RebuildToolpath { Always, Prompt, IfNeeded }
 
 public enum NestMethod { None, Grid, ISOGrid, Manual, PointList }
+
+/// <summary>Grid nesting order: the first direction, then the direction of the next row/column.</summary>
+public enum NestGridOrder
+{
+    [EnumMember(Value = "Right Up")] RightUp,
+    [EnumMember(Value = "Right Down")] RightDown,
+    [EnumMember(Value = "Left Up")] LeftUp,
+    [EnumMember(Value = "Left Down")] LeftDown,
+    [EnumMember(Value = "Up Right")] UpRight,
+    [EnumMember(Value = "Up Left")] UpLeft,
+    [EnumMember(Value = "Down Right")] DownRight,
+    [EnumMember(Value = "Down Left")] DownLeft,
+}

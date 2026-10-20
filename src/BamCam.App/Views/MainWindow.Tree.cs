@@ -545,6 +545,17 @@ public partial class MainWindow
         var gen = new MenuItem { Header = "Generate Toolpaths" };
         gen.Click += (_, _) => GenerateToolpaths();
         menu.Items.Add(gen);
+        if (_session.Inspected is ProfileOp)
+        {
+            menu.Items.Add(new Separator());
+            var tabs = new MenuItem { Header = "Holding Tabs" };
+            Add(tabs, "Autocalc", View.AutocalcTabs);
+            Add(tabs, "Add Tab", () => View.AddTabAt(p));
+            var remove = new MenuItem { Header = "Remove Tab", IsEnabled = View.TabAt(p) != null };
+            remove.Click += (_, _) => View.RemoveTabAt(p);
+            tabs.Items.Add(remove);
+            menu.Items.Add(tabs);
+        }
         menu.Open(View);
     }
 }

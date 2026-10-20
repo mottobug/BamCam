@@ -302,6 +302,9 @@ public static class CbWriter
         if (n.Rows != 1) nest.Add(new XElement("Rows", CbFormat.Int(n.Rows)));
         if (n.Columns != 1) nest.Add(new XElement("Columns", CbFormat.Int(n.Columns)));
         if (n.Spacing != 0) nest.Add(new XElement("Spacing", CbFormat.Double(n.Spacing)));
+        if (n.GridOrder != NestGridOrder.RightUp) nest.Add(new XElement("GridOrder", CbFormat.EnumText(n.GridOrder)));
+        if (!n.GridAlternate) nest.Add(new XElement("GridAlternate", "false"));
+        if (n.PointListID != 0) nest.Add(new XElement("PointListID", CbFormat.Int(n.PointListID)));
         foreach (var x in n.Extensions) nest.Add(new XElement(x));
         el.Add(nest);
         if (part.NestingItems.Count > 0)

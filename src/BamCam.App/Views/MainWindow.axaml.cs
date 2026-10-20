@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -120,6 +121,7 @@ public partial class MainWindow : Window
         }
         if (_session.Inspected is CadDocument)
             OnDocumentReplacedSettingsOnly();
+        if (_session.Inspected is Core.Cam.Part part) UpdateNesting([part]);
         _session.NotifyChanged();
     }
 
@@ -143,8 +145,9 @@ public partial class MainWindow : Window
     public void OpenFileOnStartup(string path) => Dispatcher.UIThread.Post(() => OpenPath(path));
 
     /// <summary>Diagnostics: renders the window to a PNG after start-up and exits.</summary>
-    public void CaptureScreenshotAndExit(string path, bool generate)
+    public void CaptureScreenshotAndExit(string path, bool generate, IReadOnlyDictionary<string, string>? options = null)
     {
+        options ??= new Dictionary<string, string>();
         Opened += async (_, _) =>
         {
             await Task.Delay(1200);
@@ -156,11 +159,60 @@ public partial class MainWindow : Window
                 View.ZoomToFit();
                 await Task.Delay(400);
             }
+            if (options.TryGetValue("--inspect", out var name))
+            {
+                var doc = _session.Document;
+                object? target = doc.Parts.FirstOrDefault(p => p.Name == name)
+                                 ?? (object?)doc.Parts.SelectMany(p => p.Operations).FirstOrDefault(o => o.Name == name);
+                if (target == null) Log($"--inspect: '{name}' not found.");
+                _session.Inspect(target);
+                if (target is Core.Cam.Part)
+                {
+                    // Include the nest copies in the view.
+                    View.ZoomToFit();
+                    var box = Core.Cam.NestingLayout.PartExtents(doc, (Core.Cam.Part)target, _session.Toolpaths);
+                    foreach (var m in Core.Cam.NestingLayout.CopyTransforms((Core.Cam.Part)target))
+                    {
+                        var a = m.Transform(box.Min.XY);
+                        var b = m.Transform(box.Max.XY);
+                        box = box.Union(Core.Geometry.BoundingBox.FromCorners(a, b));
+                    }
+                    View.View.Fit(box, View.Bounds.Size);
+                }
+            }
+            if (options.TryGetValue("--drag-tab", out var drag))
+            {
+                var v = drag.Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+                var moved = View.SimulateTabDrag(new(v[0], v[1]), new(v[2], v[3]));
+                Log(moved ? "--drag-tab: tab moved." : "--drag-tab: no tab at the start point.");
+            }
+            if (options.TryGetValue("--filter", out var filter))
+            {
+                var v = filter.Split(',');
+                var f = View.Settings.Filter;
+                f.IndexEnabled = v[0].Length > 0 && v[0] != "-";
+                if (f.IndexEnabled) f.Index = int.Parse(v[0], CultureInfo.InvariantCulture);
+                f.ZEnabled = v.Length > 1;
+                if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
+                ShowToolpathFilter();
+            }
+            if (options.Count > 0)
+            {
+                View.Invalidate();
+                await Task.Delay(400);
+            }
             var size = new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height);
             using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
             bmp.Render(this);
             bmp.Save(path);
+            if (_filterWindow is { } fw)
+            {
+                using var fbmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)fw.Bounds.Width, (int)fw.Bounds.Height));
+                fbmp.Render(fw);
+                fbmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, Path.GetFileNameWithoutExtension(path) + "-filter.png"));
+            }
             File.WriteAllText(Path.ChangeExtension(path, ".log"), Messages.Text);
+            _closingConfirmed = true; // diagnostic edits are never saved
             Close();
         };
     }

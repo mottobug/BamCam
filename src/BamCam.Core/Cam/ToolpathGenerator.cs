@@ -296,6 +296,21 @@ internal static class LoopTools
         return pts[^1];
     }
 
+    /// <summary>Point at arc-length <paramref name="s"/> along a closed point loop.</summary>
+    public static Point2 PointAtDistance(List<Point2> pts, double s)
+    {
+        double acc = 0;
+        for (var i = 0; i < pts.Count; i++)
+        {
+            var a = pts[i];
+            var b = pts[(i + 1) % pts.Count];
+            var len = Point2.Distance(a, b);
+            if (acc + len >= s && len > 1e-12) return Point2.Lerp(a, b, (s - acc) / len);
+            acc += len;
+        }
+        return pts[0];
+    }
+
     /// <summary>Arc-length position of the point on the loop closest to <paramref name="p"/>.</summary>
     public static double ProjectDistance(List<Point2> pts, bool closed, Point2 p)
     {

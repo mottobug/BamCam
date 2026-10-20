@@ -36,12 +36,23 @@ public sealed class Stock
 public sealed class NestingSettings
 {
     public Point2 BasePoint { get; set; }
+
+    [DisplayName("Nest Method"), Description("Grid / ISO Grid lay out Rows x Columns copies; Manual keeps the copy list as edited.")]
     public NestMethod NestMethod { get; set; } = NestMethod.None;
+
     public int Rows { get; set; } = 1;
     public int Columns { get; set; } = 1;
+
+    [Description("Gap between the outermost toolpaths of neighbouring copies.")]
     public double Spacing { get; set; }
-    public string GridOrder { get; set; } = "";
-    public bool GridAlternate { get; set; }
+
+    [DisplayName("Grid Order"), Description("First direction, then the direction of the next row or column.")]
+    public NestGridOrder GridOrder { get; set; } = NestGridOrder.RightUp;
+
+    [DisplayName("Grid Alternate"), Description("Zig-zag rows (or columns) instead of returning to the start of each row.")]
+    public bool GridAlternate { get; set; } = true;
+
+    [DisplayName("Point List ID")]
     public int PointListID { get; set; }
 
     /// <summary>Unknown nesting children kept for round-tripping.</summary>

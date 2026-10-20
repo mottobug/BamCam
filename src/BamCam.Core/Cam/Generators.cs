@@ -80,7 +80,7 @@ internal static class ProfileGenerator
             LeadOut = op.LeadOutMove.Value,
             AwayNormal = (loop, t) => AwayNormal(loop, t),
         };
-        var tabMap = ordered.ToDictionary(l => l, l => ComputeTabs(op, l, dia, tabsSettings));
+        var tabMap = ordered.ToDictionary(l => l, l => ComputeTabs(op, l, dia, tabsSettings, tp));
 
         if (op.CutOrdering.Value == CutOrdering.LevelFirst)
         {
@@ -188,7 +188,7 @@ internal static class ProfileGenerator
         return loop.WithPoints(result);
     }
 
-    private static List<TabInterval> ComputeTabs(ProfileOp op, Loop loop, double dia, HoldingTabSettings s)
+    private static List<TabInterval> ComputeTabs(ProfileOp op, Loop loop, double dia, HoldingTabSettings s, Toolpath tp)
     {
         var result = new List<TabInterval>();
         if (s.TabMethod == TabMethod.None || !loop.Closed) return result;
@@ -205,6 +205,7 @@ internal static class ProfileGenerator
             {
                 var p = LoopTools.PointAtFraction(loop.Source, tab.ParametricPoint);
                 centres.Add(LoopTools.ProjectDistance(loop.Points, true, p));
+                RecordTab(tp, tab.Clone());
             }
         }
         else
@@ -214,6 +215,9 @@ internal static class ProfileGenerator
             var count = s.TabDistance > 0 ? (int)Math.Round(perimeter / s.TabDistance) : s.MinimumTabs;
             count = Math.Clamp(count, s.MinimumTabs, Math.Max(s.MinimumTabs, s.MaximumTabs));
             for (var i = 0; i < count; i++) centres.Add((i + 0.5) * len / count);
+            if (loop.Source != null)
+                foreach (var c in centres)
+                    RecordTab(tp, HoldingTabTools.CreateTab(loop.SourceId, loop.Source, LoopTools.PointAtDistance(loop.Points, c)));
         }
 
         foreach (var c in centres)
@@ -237,6 +241,13 @@ internal static class ProfileGenerator
             }
         }
         return result;
+    }
+
+    /// <summary>Keeps the applied tab positions for display (once per source position, across passes).</summary>
+    private static void RecordTab(Toolpath tp, HoldingTab tab)
+    {
+        if (tp.TabPlacements.Any(t => t.ParentEntityID == tab.ParentEntityID && Math.Abs(t.ParametricPoint - tab.ParametricPoint) < 1e-6)) return;
+        tp.TabPlacements.Add(tab);
     }
 }
 
