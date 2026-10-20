@@ -131,6 +131,11 @@ internal static class CbParams
             value = CbFormat.ParseMatrix(text);
             return true;
         }
+        if (type == typeof(Point2))
+        {
+            value = CbFormat.ParsePoint2(text);
+            return true;
+        }
         return false;
     }
 
@@ -186,6 +191,7 @@ internal static class CbParams
             case string s: if (s.Length > 0) el.Value = s; break;
             case OptionalPoint op: if (op.Point is { } p) el.Value = CbFormat.Pt3(p); break;
             case Matrix4 m: el.Add(new XAttribute("m", CbFormat.Matrix(m))); break;
+            case Point2 p2: el.Value = CbFormat.Pt2(p2); break;
             case Enum e: el.Value = CbFormat.EnumText(e); break;
             case { } other: el.Value = other.ToString() ?? ""; break;
         }

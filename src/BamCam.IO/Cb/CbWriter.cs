@@ -328,6 +328,13 @@ public static class CbWriter
                      "RetractHeight Dwell CustomScript " + BaseOrder).Split(' '),
         ["engrave"] = ("TargetDepth DepthIncrement FinalDepthIncrement " + BaseOrder).Split(' '),
         ["ncfile"] = ("SourceFile " + BaseOrder).Split(' '),
+        // Only the older order (base properties first) has been observed for 3D profiles.
+        ["surface3d"] = ("WorkPlane OptimisationMode RoughingFinishing ToolDiameter ToolNumber ToolProfile PlungeFeedrate CutFeedrate " +
+                         "MaxCrossoverDistance StartPoint CustomMOPHeader CustomMOPFooter Name StockSurface RoughingClearance ClearancePlane " +
+                         "SpindleDirection SpindleSpeed SpindleRange VelocityMode primitive Style Enabled DepthIncrement TargetDepth StepOver " +
+                         "StepoverFeedrate Resolution ClipAreaMin ClipAreaMax StartCorner Profile3DMethod BackFaceCulling PlaneSliceOnly " +
+                         "ScanlineGradientThreshold Mold Additive BackFace BackFaceZeroZ FlipAxis CutOrdering MillingDirection LeadInMove " +
+                         "LeadOutMove BoundaryMethod BoundaryShapes BoundaryMargin BoundaryTaper RegionFillStyle").Split(' '),
     };
 
     private static XElement WriteOp(MachineOp op)
@@ -370,6 +377,10 @@ public static class CbWriter
                 case "primitive":
                     el.Add(new XElement("primitive", op.PrimitiveIds.Select(id => new XElement("prim", id))));
                     return;
+                case "BoundaryShapes":
+                    if (op is Profile3DOp p3 && (p3.BoundaryShapes.Count > 0 || op.ElementOrder.Contains("BoundaryShapes")))
+                        el.Add(new XElement("BoundaryShapes", p3.BoundaryShapes.Select(id => new XElement("id", id))));
+                    return;
                 case "Tabs":
                     if (op is ProfileOp { Tabs.Count: > 0 } p)
                         el.Add(new XElement("Tabs", p.Tabs.Select(t => new XElement("HoldingTab",
@@ -392,7 +403,8 @@ public static class CbWriter
         foreach (var name in order) WriteName(name);
         // Anything not covered by the stored order: canonical names, then explicitly set parameters, then extensions.
         foreach (var name in canonical)
-            if (!written.Contains(name) && (name is "Name" or "primitive" || parameters.ContainsKey(name))) WriteName(name);
+            if (!written.Contains(name) && (name is "Name" or "primitive" || parameters.ContainsKey(name) ||
+                                            name == "BoundaryShapes" && op is Profile3DOp { BoundaryShapes.Count: > 0 })) WriteName(name);
         foreach (var (name, param) in parameters)
             if (!written.Contains(name) && param.State != ParamState.Default) WriteName(name);
         if (!written.Contains("Enabled") && !op.Enabled) WriteName("Enabled");

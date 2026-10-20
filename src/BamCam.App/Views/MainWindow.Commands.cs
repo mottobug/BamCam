@@ -394,6 +394,11 @@ public partial class MainWindow
     private void CreateOp(MachineOp op)
     {
         var sel = Selected;
+        if (op is Profile3DOp && !sel.Any(e => e is SurfaceEntity))
+        {
+            Log("Select surface (mesh) objects before inserting a 3D Profile operation. Import meshes with File > Open (.stl).");
+            return;
+        }
         if (op is DrillOp ? !sel.Any() : !sel.Any(e => e is not PointListEntity))
         {
             Log($"Select drawing objects before inserting a {op.DisplayType} operation.");
@@ -409,6 +414,13 @@ public partial class MainWindow
             if (CamLibraries.FindStyleLibrary(doc, part) != null) LibraryFiles.ApplyStyle(doc, op);
             else ApplyUnitDefaults(op);
             var stockEmpty = (part.Stock.IsEmpty ? doc.Machining.Stock : part.Stock).IsEmpty;
+            if (op is Profile3DOp p3 && stockEmpty)
+            {
+                // Without stock: machine from the top of the selected meshes down to their lowest point.
+                var b = Core.Cad.CadOps.Bounds(sel.OfType<SurfaceEntity>());
+                p3.StockSurface.Set(Math.Round(b.Max.Z, 3));
+                p3.TargetDepth.Set(Math.Round(b.Min.Z, 3));
+            }
             if (op is DepthOp depth && (depth.TargetDepth.Value >= depth.StockSurface.Value && (stockEmpty || depth.TargetDepth.State != ParamState.Auto)))
                 depth.TargetDepth.Set(doc.Units == DrawingUnits.Inches ? -0.04 : -1);
             if (op.ToolDiameter.Value <= 0 && CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc)) == null)
@@ -438,14 +450,45 @@ public partial class MainWindow
             .Where(x => scope.Operation == null || x.o == scope.Operation)
             .Where(x => x.o.Enabled || scope.Operation != null);
 
-    private void GenerateToolpaths(PostScope? scope = null)
+    private bool _generating;
+
+    private void GenerateToolpaths(PostScope? scope = null) => _ = GenerateToolpathsAsync(scope);
+
+    /// <summary>
+    /// Generates toolpaths on a worker thread, one operation at a time, so the window keeps repainting.
+    /// Editing is disabled meanwhile because generators read the live document.
+    /// </summary>
+    private async Task GenerateToolpathsAsync(PostScope? scope = null)
     {
+        if (_generating) return;
         scope ??= PostScope.All;
+        _generating = true;
+        var content = (Control)Content!;
+        content.IsEnabled = false;
+        Cursor = new Cursor(StandardCursorType.Wait);
+        try
+        {
+            await GenerateCore(scope);
+        }
+        finally
+        {
+            _generating = false;
+            content.IsEnabled = true;
+            Cursor = Cursor.Default;
+            SetStatus("Ready");
+        }
+    }
+
+    private async Task GenerateCore(PostScope scope)
+    {
         var sw = Stopwatch.StartNew();
         var count = 0;
-        foreach (var (_, op) in OpsInScope(scope))
+        var ops = OpsInScope(scope).ToList();
+        foreach (var (_, op) in ops)
         {
-            var tp = ToolpathGenerator.Generate(_session.Document, op);
+            SetStatus($"Generating toolpaths: {op.Name} ({count + 1}/{ops.Count})…");
+            var doc = _session.Document;
+            var tp = await Task.Run(() => ToolpathGenerator.Generate(doc, op));
             _session.SetToolpath(op, tp);
             foreach (var w in tp.Warnings) Log("Warning: " + w);
             var len = 0.0;
@@ -479,7 +522,7 @@ public partial class MainWindow
         var ops = OpsInScope(scope).ToList();
         if (ops.Count == 0) { Log("Nothing to post: no enabled machining operations."); return; }
         if (ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
-            GenerateToolpaths(scope);
+            await GenerateToolpathsAsync(scope);
 
         var outFile = scope.Operation != null ? "" : scope.Part?.OutFile ?? doc.Machining.OutFile;
         string? path = string.IsNullOrWhiteSpace(outFile) ? null : ExpandOutFile(outFile);

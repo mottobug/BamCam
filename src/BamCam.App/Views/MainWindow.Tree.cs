@@ -533,6 +533,7 @@ public partial class MainWindow
             Add(cam, "Pocket", () => CreateOp(new PocketOp()));
             Add(cam, "Drill", () => CreateOp(new DrillOp()));
             Add(cam, "Engrave", () => CreateOp(new EngraveOp()));
+            Add(cam, "3D Profile", () => CreateOp(new Profile3DOp()));
             menu.Items.Add(cam);
         }
         menu.Items.Add(new Separator());

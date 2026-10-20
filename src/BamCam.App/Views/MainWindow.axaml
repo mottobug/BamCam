@@ -25,6 +25,7 @@
     <StreamGeometry x:Key="IconPocket">M3,3 L21,3 L21,21 L3,21 Z M6,6 L18,6 L18,18 L6,18 Z M9,9 L15,9 L15,15 L9,15 Z</StreamGeometry>
     <StreamGeometry x:Key="IconDrill">M12,2 L12,15 M8,15 L16,15 L12,22 Z M6,4 L18,4</StreamGeometry>
     <StreamGeometry x:Key="IconEngrave">M3,18 C7,6 11,6 12,12 C13,18 17,18 21,6</StreamGeometry>
+    <StreamGeometry x:Key="Icon3D">M2,20 C6,8 9,6 12,12 C15,18 18,14 22,4 M2,22 L22,22</StreamGeometry>
     <StreamGeometry x:Key="IconGenerate">M4,4 L20,12 L4,20 Z</StreamGeometry>
     <StreamGeometry x:Key="IconGcode">M3,4 L21,4 L21,20 L3,20 Z M6,9 L11,9 M6,13 L16,13 M6,17 L13,17</StreamGeometry>
     <StreamGeometry x:Key="IconGrid">M3,3 L21,3 L21,21 L3,21 Z M9,3 L9,21 M15,3 L15,21 M3,9 L21,9 M3,15 L21,15</StreamGeometry>

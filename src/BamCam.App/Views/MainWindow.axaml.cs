@@ -151,7 +151,7 @@ public partial class MainWindow : Window
             if (generate)
             {
                 View.Settings.ToolpathVisibilitySelectedOnly = false;
-                GenerateToolpaths();
+                await GenerateToolpathsAsync();
                 _session.ClearSelection();
                 View.ZoomToFit();
                 await Task.Delay(400);

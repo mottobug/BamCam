@@ -1,3 +1,5 @@
+using BamCam.Core.Geometry;
+
 namespace BamCam.Core.Cam;
 
 /// <summary>Operations with stepped depth passes (profile, pocket, engrave, drill, 3D).</summary>
@@ -98,6 +100,36 @@ public sealed class DrillOp : DepthOp
     [Param(68, "Drilling")] public CamParam<string> CustomScript { get; set; } = new("");
 }
 
+/// <summary>3D surface machining of triangle meshes (scanline and waterline strategies).</summary>
+public sealed class Profile3DOp : AreaOp
+{
+    public override string XmlName => "surface3d";
+    public override string DisplayType => "3D Profile";
+
+    [Param(60, "3D")] public CamParam<Profile3DMethod> Profile3DMethod { get; set; } = new(Cam.Profile3DMethod.WaterlineRough);
+    [Param(61, "3D")] public CamParam<double> Resolution { get; set; } = new(0.2);
+    [Param(62, "3D")] public CamParam<Point2> ClipAreaMin { get; set; } = new(Point2.Zero);
+    [Param(63, "3D")] public CamParam<Point2> ClipAreaMax { get; set; } = new(Point2.Zero);
+    [Param(64, "3D")] public CamParam<StartCorner> StartCorner { get; set; } = new(Cam.StartCorner.BottomLeft);
+    [Param(65, "3D")] public CamParam<bool> BackFaceCulling { get; set; } = new(true);
+    [Param(66, "3D")] public CamParam<bool> PlaneSliceOnly { get; set; } = new(false);
+    [Param(67, "3D")] public CamParam<double> ScanlineGradientThreshold { get; set; } = new(90);
+    [Param(68, "3D")] public CamParam<bool> Mold { get; set; } = new(false);
+    [Param(69, "3D")] public CamParam<bool> Additive { get; set; } = new(false);
+    [Param(70, "Back Face")] public CamParam<bool> BackFace { get; set; } = new(false);
+    [Param(71, "Back Face")] public CamParam<double> BackFaceZeroZ { get; set; } = new(0);
+    [Param(72, "Back Face")] public CamParam<FlipAxis> FlipAxis { get; set; } = new(Cam.FlipAxis.X);
+    [Param(73, "Boundary")] public CamParam<BoundaryMethod> BoundaryMethod { get; set; } = new(Cam.BoundaryMethod.ShapeOutline);
+    [Param(74, "Boundary")] public CamParam<double> BoundaryMargin { get; set; } = new(0);
+    [Param(75, "Boundary")] public CamParam<double> BoundaryTaper { get; set; } = new(0);
+    [Param(76, "Cutting")] public CamParam<RegionFillStyle> RegionFillStyle { get; set; } = new(Cam.RegionFillStyle.InsideOutsideOffsets);
+
+    /// <summary>Entity ids used as boundary when <see cref="BoundaryMethod"/> is SelectedShapes (no state attribute).</summary>
+    public List<int> BoundaryShapes { get; } = [];
+
+    protected override void CloneExtra(MachineOp clone) => ((Profile3DOp)clone).BoundaryShapes.AddRange(BoundaryShapes);
+}
+
 /// <summary>Embeds an existing G-code file (back-plotted for display, copied verbatim on output).</summary>
 public sealed class NcFileOp : MachineOp
 {
@@ -139,6 +171,7 @@ public static class MachineOpFactory
         "pocket" => new PocketOp(),
         "engrave" => new EngraveOp(),
         "drill" => new DrillOp(),
+        "surface3d" => new Profile3DOp(),
         "ncfile" => new NcFileOp(),
         _ => null,
     };

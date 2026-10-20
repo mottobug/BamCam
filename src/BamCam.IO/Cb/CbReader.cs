@@ -351,6 +351,9 @@ public static class CbReader
                 case "primitive":
                     foreach (var prim in c.Elements("prim")) op.PrimitiveIds.Add(CbFormat.ParseInt(prim.Value));
                     break;
+                case "BoundaryShapes" when op is Profile3DOp p3:
+                    foreach (var id in c.Elements("id")) p3.BoundaryShapes.Add(CbFormat.ParseInt(id.Value));
+                    break;
                 case "Tabs" when op is ProfileOp profile:
                     foreach (var t in c.Elements("HoldingTab"))
                     {

@@ -153,6 +153,7 @@ public partial class MainWindow
             Item("P_ocket", () => CreateOp(new PocketOp())),
             Item("_Drill", () => CreateOp(new DrillOp())),
             Item("_Engrave", () => CreateOp(new EngraveOp())),
+            Item("_3D Profile", () => CreateOp(new Profile3DOp())),
             "-",
             Item("New Part", NewPart),
             "-",
@@ -296,6 +297,7 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
         p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp())));
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
+        p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp())));
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths()));
         p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All)));

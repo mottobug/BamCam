@@ -65,7 +65,7 @@ Punkte teilen/Zentren, Ausschneiden/Kopieren/Einfügen (auch zwischen Instanzen)
 Der für das CamBam-Beispiel `snap-together-box.cb` erzeugte G-Code stimmt in allen 6382 Bewegungszeilen mit der
 mitgelieferten Referenz überein (Tiefenstufen, Haltestege, Freischnitte, Bögen, Verschachtelungs-Kopien).
 
-**Noch nicht umgesetzt:** 3D-Profil (Waterline/Scanline), Drehen (Lathe), Spline- und Bitmap-Objekte, Skript-Objekte,
+**Noch nicht umgesetzt:** Additiver 3D-Modus, exakte Radiusfräser-Geometrie (wird als Kugelfräser gerechnet), Drehen (Lathe), Spline- und Bitmap-Objekte, Skript-Objekte,
 interaktives Verschieben von Haltestegen, Anzeige der Verschachtelungs-Kopien, Optionsdialog, Druck, Werkzeugweg-Filter,
 Schnittgeschwindigkeits-Rechner. Diese Operationen bleiben beim Laden und Speichern von `.cb`-Dateien unverändert erhalten.
 

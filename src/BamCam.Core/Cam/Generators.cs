@@ -329,7 +329,7 @@ internal static class PocketGenerator
     }
 
     /// <summary>Concentric offsets from the centre outwards; the boundary (first inset) is cut last.</summary>
-    private static List<Loop> OffsetSequence(Shape region, double step, bool climb)
+    internal static List<Loop> OffsetSequence(Shape region, double step, bool climb)
     {
         var rings = new List<List<Shape>> { new() { region } };
         var current = new List<Shape> { region };

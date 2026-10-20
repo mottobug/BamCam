@@ -66,3 +66,11 @@ public enum ArcCenterMode
 public enum RebuildToolpath { Always, Prompt, IfNeeded }
 
 public enum NestMethod { None, Grid, ISOGrid, Manual, PointList }
+
+public enum Profile3DMethod { Horizontal, Vertical, WaterlineRough, WaterlineFinish }
+
+public enum StartCorner { BottomLeft, BottomRight, TopLeft, TopRight }
+
+public enum FlipAxis { X, Y }
+
+public enum BoundaryMethod { ShapeOutline, BoundingBox, SelectedShapes }

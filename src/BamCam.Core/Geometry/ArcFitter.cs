@@ -25,12 +25,46 @@ public static class ArcFitter
         var i = 0;
         while (i < pts.Count - 1)
         {
+            // Greedy: the shortest candidate must fit, then extend while it keeps fitting.
+            // Extension grows in doubling steps with a binary search back, keeping this near-linear.
             var best = -1;
             Arc2 bestArc = default;
-            for (var j = i + minPoints - 1; j < pts.Count; j++)
+            var first = i + minPoints - 1;
+            if (first < pts.Count && TryFit(pts, i, first, tolerance, out var arc0))
             {
-                if (TryFit(pts, i, j, tolerance, out var arc)) { best = j; bestArc = arc; }
-                else if (best >= 0) break;
+                best = first;
+                bestArc = arc0;
+                var step = 1;
+                var lo = first;
+                var hi = -1;
+                while (true)
+                {
+                    var j = Math.Min(lo + step, pts.Count - 1);
+                    if (j == lo) break;
+                    if (TryFit(pts, i, j, tolerance, out var a))
+                    {
+                        lo = j;
+                        best = j;
+                        bestArc = a;
+                        step *= 2;
+                    }
+                    else
+                    {
+                        hi = j;
+                        break;
+                    }
+                }
+                while (hi > 0 && hi - lo > 1)
+                {
+                    var mid = (lo + hi) / 2;
+                    if (TryFit(pts, i, mid, tolerance, out var a))
+                    {
+                        lo = mid;
+                        best = mid;
+                        bestArc = a;
+                    }
+                    else hi = mid;
+                }
             }
             if (best >= 0)
             {

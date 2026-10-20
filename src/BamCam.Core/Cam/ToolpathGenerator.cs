@@ -21,6 +21,7 @@ public static class ToolpathGenerator
                 case PocketOp p: PocketGenerator.Generate(ctx, p, tp); break;
                 case EngraveOp e: EngraveGenerator.Generate(ctx, e, tp); break;
                 case DrillOp d: DrillGenerator.Generate(ctx, d, tp); break;
+                case Profile3DOp p3: Profile3DGenerator.Generate(ctx, p3, tp); break;
                 case NcFileOp nc:
                 {
                     var path = ResolveNcPath(doc, nc);
