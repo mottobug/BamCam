@@ -94,6 +94,14 @@ public static class ArcFitter
         var ccw = f.Sweep > 0;
         var prevAngle = f.StartAngle;
         double travelled = 0;
+        // Successive chords must turn gently and in the arc's direction (rejects corners and zig-zags).
+        for (var k = i + 1; k < j; k++)
+        {
+            var d1 = (pts[k].XY - pts[k - 1].XY).Normalized();
+            var d2 = (pts[k + 1].XY - pts[k].XY).Normalized();
+            var turn = Math.Atan2(Point2.Cross(d1, d2), Point2.Dot(d1, d2));
+            if (Math.Abs(turn) > Angles.ToRadians(30) || (Math.Abs(turn) > 1e-6 && (turn > 0) != ccw)) return false;
+        }
         for (var k = i + 1; k <= j; k++)
         {
             var p = pts[k].XY;

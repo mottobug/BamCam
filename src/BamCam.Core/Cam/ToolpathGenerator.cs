@@ -28,6 +28,7 @@ public static class ToolpathGenerator
         {
             tp.Warnings.Add($"{op.Name}: toolpath generation failed: {ex.Message}");
         }
+        tp.TrimTrailingRetracts();
         if (tp.Moves.Count == 0 && tp.Warnings.Count == 0)
             tp.Warnings.Add($"{op.Name}: no toolpath was generated (check the selected drawing objects).");
         return tp;

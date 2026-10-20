@@ -28,7 +28,8 @@ internal static class ProfileGenerator
             foreach (var (entity, src) in sources)
             {
                 if (src.Count < 2) continue;
-                var startTarget = op.StartPoint.Value.Point?.XY ?? src.StartPoint.XY;
+                var startTarget = op.StartPoint.Value.Point?.XY
+                                  ?? (src.Closed ? DefaultStart(src, ccw, sign * (baseOffset + extra)) : src.StartPoint.XY);
                 if (!src.Closed)
                 {
                     // Open shapes are cut along their centreline.
@@ -105,6 +106,31 @@ internal static class ProfileGenerator
         }
         mb.Retract();
         ctx.Finish(tp);
+    }
+
+    /// <summary>
+    /// Default start: the shape's first vertex moved by the offset along the normal of the first
+    /// segment in cutting direction (matches the reference output).
+    /// </summary>
+    private static Point2 DefaultStart(Path2 src, bool ccw, double signedOffset)
+    {
+        var oriented = (src.SignedArea() > 0) == ccw ? src : src.Reversed();
+        var first = oriented.Segments().First();
+        var v0 = first.Start.XY;
+        Point2 t;
+        if (first.IsArc)
+        {
+            var arc = first.ToArc();
+            var radial = (v0 - arc.Center).Normalized();
+            t = arc.IsClockwise ? -radial.Perp : radial.Perp;
+        }
+        else
+        {
+            t = (first.End.XY - v0).Normalized();
+        }
+        // Outward normal: right of travel for a CCW path, left for CW.
+        var outward = ccw ? new Point2(t.Y, -t.X) : t.Perp;
+        return v0 + outward * signedOffset;
     }
 
     /// <summary>Unions overlapping offset loops so neighbouring shapes don't gouge each other.</summary>

@@ -41,6 +41,20 @@ public sealed class Toolpath
 
     public void Add(Move m) => Moves.Add(m);
 
+    /// <summary>
+    /// Removes final rapid moves that only lift the tool: the post processor retracts at the start of
+    /// the next operation and in the file footer, which mirrors CamBam's output.
+    /// </summary>
+    public void TrimTrailingRetracts()
+    {
+        while (Moves.Count >= 2 && Moves[^1].Kind == MoveKind.Rapid)
+        {
+            var prev = Moves[^2];
+            if (!prev.IsMotion || !prev.To.XY.AlmostEquals(Moves[^1].To.XY, 1e-9) || Moves[^1].To.Z < prev.To.Z) break;
+            Moves.RemoveAt(Moves.Count - 1);
+        }
+    }
+
     /// <summary>Last commanded position, if any motion exists.</summary>
     public Point3? LastPosition
     {
