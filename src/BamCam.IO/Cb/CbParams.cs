@@ -72,6 +72,10 @@ internal static class CbParams
             }
             else if (!TryParseScalar(type, el.Value, out var value))
             {
+                // Values from a localised CamBam ("Eintauch-Vorschub"): understood, but written back verbatim
+                // (RawXml) so the file stays as that CamBam wrote it until the value is edited.
+                if (type.IsEnum && CbFormat.TryParseLocalizedEnum(type, el.Value, out var localized))
+                    param.BoxedValue = localized;
                 param.RawXml = new XElement(el);
             }
             else

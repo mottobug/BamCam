@@ -11,6 +11,7 @@ public static class ArcFitter
     {
         var src = path.Vertices;
         if (src.Count < minPoints || src.Any(v => Math.Abs(v.Bulge) > 1e-12)) return path.Clone();
+        if (FullCircle(path, tolerance) is { } circle) return circle;
 
         var pts = src.Select(v => v.Point).ToList();
         if (path.Closed)
@@ -70,7 +71,8 @@ public static class ArcFitter
             {
                 // Split arcs larger than 180° for robust bulge representation.
                 var sweep = bestArc.Sweep;
-                var parts = Math.Abs(sweep) > Math.PI * 0.999 ? 2 : 1;
+                // Up to and including 180° stays one arc (a semicircle is one G2/G3 in the reference output).
+                var parts = Math.Abs(sweep) > Math.PI * 1.01 ? 2 : 1;
                 for (var k = 0; k < parts; k++)
                 {
                     var sub = new Arc2(bestArc.Center, bestArc.Radius, bestArc.StartAngle + sweep * k / parts, sweep / parts);
@@ -89,6 +91,58 @@ public static class ArcFitter
         return new Path2(result, path.Closed);
     }
 
+    /// <summary>
+    /// A complete circle (closed, or open with coincident ends) becomes three 120° arcs starting at its first
+    /// point, which is how circular passes appear in the reference G-code.
+    /// </summary>
+    private static Path2? FullCircle(Path2 path, double tolerance)
+    {
+        var pts = path.Vertices.Select(v => v.Point).ToList();
+        var closedRun = !path.Closed && pts[0].XY.AlmostEquals(pts[^1].XY, tolerance);
+        if (!path.Closed && !closedRun) return null;
+        if (pts.Any(p => Math.Abs(p.Z - pts[0].Z) > 1e-9)) return null;
+        var n = closedRun ? pts.Count - 1 : pts.Count;
+        if (n < 8) return null;
+        var fit = Arc2.FromThreePoints(pts[0].XY, pts[n / 3].XY, pts[2 * n / 3].XY);
+        if (fit is not { } c || c.Radius > 1e5) return null;
+        double turn = 0;
+        for (var i = 0; i < n; i++)
+        {
+            var a = pts[i].XY;
+            var b = pts[(i + 1) % n].XY;
+            if (Math.Abs(Point2.Distance(a, c.Center) - c.Radius) > tolerance) return null;
+            var half = Point2.Distance(a, b) / 2;
+            if (half > c.Radius) return null;
+            if (Math.Abs(Point2.Distance(Point2.Lerp(a, b, 0.5), c.Center) - Math.Sqrt(c.Radius * c.Radius - half * half)) > tolerance) return null;
+            turn += Point2.Cross(a - c.Center, b - c.Center);
+        }
+        var ccw = turn > 0;
+        var z = pts[0].Z;
+        var start = (pts[0].XY - c.Center).Angle;
+        var sweep = (ccw ? 1 : -1) * Angles.TwoPi / 3;
+        var bulge = Math.Tan(sweep / 4);
+        var verts = new List<Vertex>();
+        for (var k = 0; k < 3; k++)
+            verts.Add(new Vertex((c.Center + Point2.FromAngle(start + sweep * k, c.Radius)).ToPoint3(z), bulge));
+        if (path.Closed) return new Path2(verts, true);
+        verts.Add(new Vertex(pts[0]));
+        return new Path2(verts, false);
+    }
+
+    /// <summary>True when the closed point loop lies on one circle (within <paramref name="tolerance"/>).</summary>
+    public static bool TryCircle(IReadOnlyList<Point2> pts, double tolerance, out Point2 center, out double radius)
+    {
+        center = default;
+        radius = 0;
+        var n = pts.Count;
+        if (n < 8) return false;
+        if (Arc2.FromThreePoints(pts[0], pts[n / 3], pts[2 * n / 3]) is not { } c || c.Radius > 1e5) return false;
+        foreach (var p in pts)
+            if (Math.Abs(Point2.Distance(p, c.Center) - c.Radius) > tolerance) return false;
+        center = c.Center;
+        radius = c.Radius;
+        return true;
+    }
     private static int FindCorner(List<Point3> pts)
     {
         var n = pts.Count;
@@ -120,7 +174,8 @@ public static class ArcFitter
         if ((i + j) / 2 == i || (i + j) / 2 == j) return false;
         var fit = Arc2.FromThreePoints(a, b, c);
         if (fit is not { } f) return false;
-        if (f.Radius > 1e5) return false;
+        // Huge radii are near-straight runs (e.g. a line plus a few corner points), not arcs.
+        if (f.Radius > 1e3) return false;
 
         // For a closed loop (a == c) FromThreePoints fails; require distinct endpoints.
         if (a.AlmostEquals(c, tol)) return false;
@@ -128,6 +183,17 @@ public static class ArcFitter
         var ccw = f.Sweep > 0;
         var prevAngle = f.StartAngle;
         double travelled = 0;
+        // Arcs from offsetting/flattening are sampled evenly. A long chord among short ones is a straight
+        // segment next to an arc and must not be absorbed into a huge-radius arc.
+        // Compared with the median chord: offsetting inserts tiny join chords at every polygon vertex, which must
+        // not count as irregular sampling.
+        var chords = new double[j - i];
+        for (var k = i + 1; k <= j; k++) chords[k - i - 1] = Point2.Distance(pts[k - 1].XY, pts[k].XY);
+        var maxChord = chords.Max();
+        Array.Sort(chords);
+        var median = chords[chords.Length / 2];
+        if (maxChord > 4 * median && maxChord > 10 * tol) return false;
+
         // Successive chords must turn gently and in the arc's direction (rejects corners and zig-zags).
         for (var k = i + 1; k < j; k++)
         {

@@ -114,6 +114,27 @@ internal static class CbFormat
         return false;
     }
 
+    /// <summary>
+    /// Localised UI texts → English, for enum values written by a localised CamBam (e.g. "Eintauch-Vorschub").
+    /// Seeded with common German values; more come from translation files via <see cref="CbLocalization"/>.
+    /// </summary>
+    internal static readonly Dictionary<string, string> LocalizedToEnglish = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Eintauch-Vorschub"] = "Plunge Feedrate",
+        ["Vorschub"] = "Cut Feedrate",
+    };
+
+    /// <summary>Parses an enum value given in a translated form.</summary>
+    public static bool TryParseLocalizedEnum(Type enumType, string? text, out object value)
+    {
+        value = Activator.CreateInstance(enumType)!;
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        lock (LocalizedToEnglish)
+        {
+            return LocalizedToEnglish.TryGetValue(text.Trim(), out var english) && TryParseEnum(enumType, english, out value);
+        }
+    }
+
     public static string EnumText(object value)
     {
         var type = value.GetType();

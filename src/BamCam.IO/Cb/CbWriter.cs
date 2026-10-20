@@ -174,9 +174,12 @@ public static class CbWriter
             }
             case ArcEntity a:
             {
-                // CamBam's own arc element has not been observed; a bulged polyline is read by every version.
-                var path = a.ToPaths().First();
-                var el = PolylineXml(a.Id, path.Transformed(InverseOrIdentity(a.Transform)), a.Transform);
+                var el = new XElement("arc", new XAttribute("id", a.Id),
+                    new XAttribute("p", CbFormat.Pt3(a.Center)),
+                    new XAttribute("r", CbFormat.Double(a.Radius)),
+                    new XAttribute("s", CbFormat.Double(a.StartAngle)),
+                    new XAttribute("w", CbFormat.Double(a.Sweep)),
+                    Mat(a.Transform));
                 AddCommon(el, e);
                 return [el];
             }

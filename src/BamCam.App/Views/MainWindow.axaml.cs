@@ -96,6 +96,22 @@ public partial class MainWindow : Window
 
     private void SetStatus(string text) => StatusText.Text = text;
 
+    /// <summary>Logs an unexpected error with its stack trace (message window and crash.log in the system folder).</summary>
+    public void ReportError(Exception ex)
+    {
+        Log("Internal error: " + ex.Message + " (details in crash.log)");
+        try
+        {
+            Directory.CreateDirectory(SystemLibrary.SystemFolder);
+            File.AppendAllText(Path.Combine(SystemLibrary.SystemFolder, "crash.log"), $"{DateTime.Now:u}\n{ex}\n\n");
+        }
+        catch
+        {
+            // Logging must never throw.
+        }
+        if (_screenshotMode) Log(ex.ToString());
+    }
+
     private void UpdateTitle()
     {
         var doc = _session.Document;
@@ -198,6 +214,24 @@ public partial class MainWindow : Window
             {
                 LeftTabs.SelectedIndex = 1;
                 Properties.SelectedObject = _settings;
+            }
+            if (options.TryGetValue("--click", out var clicks))
+            {
+                // One or more drawing coordinates "x,y;x,y", optionally prefixed with "ctrl:".
+                foreach (var c in clicks.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var ctrl = c.StartsWith("ctrl:");
+                    var v = c.Replace("ctrl:", "").Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+                    try
+                    {
+                        View.SimulateClick(new(v[0], v[1]), ctrl ? KeyModifiers.Control : KeyModifiers.None);
+                        Log($"--click {v[0]},{v[1]}: {_session.Selection.Count} selected.");
+                    }
+                    catch (Exception ex)
+                    {
+                        ReportError(ex);
+                    }
+                }
             }
             if (options.TryGetValue("--drag-tab", out var drag))
             {

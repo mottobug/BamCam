@@ -156,10 +156,10 @@ public static class CbReader
             }
             case "arc":
             {
-                // Not observed in CamBam files; accept a plausible encoding for files written by other tools.
+                // <arc p="cx,cy,cz" r="radius" s="start°" w="sweep°">; the start angle may exceed 360.
                 e = new ArcEntity
                 {
-                    Center = CbFormat.ParsePoint3((string?)el.Attribute("c")),
+                    Center = CbFormat.ParsePoint3((string?)el.Attribute("p") ?? (string?)el.Attribute("c")),
                     Radius = CbFormat.ParseDouble((string?)el.Attribute("r")),
                     StartAngle = CbFormat.ParseDouble((string?)el.Attribute("s")),
                     Sweep = CbFormat.ParseDouble((string?)el.Attribute("w")),
@@ -229,7 +229,7 @@ public static class CbReader
 
     private static void ReadMachining(MachiningOptions m, XElement el)
     {
-        m.FastPlungeHeight = -1; // help: default = one minor grid unit
+        m.FastPlungeHeight = -1; // absent = default: one minor grid unit
         foreach (var c in el.Elements())
         {
             var v = c.Value;

@@ -52,6 +52,16 @@ public sealed class SystemLibrary
     {
         CamLibraries.StyleLibraries.Clear();
         CamLibraries.ToolLibraries.Clear();
+
+        // Translation tables of a local CamBam: drawings saved by a localised CamBam contain translated values.
+        var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        if (Directory.Exists(common))
+            foreach (var dir in Directory.GetDirectories(common, "CamBam*"))
+            foreach (var file in Directory.GetFiles(dir, "translate_*").Where(f => Path.GetExtension(f).Length == 0))
+            {
+                try { CbLocalization.LoadTranslationFile(file); }
+                catch (Exception ex) { LoadMessages.Add($"Could not read translations '{file}': {ex.Message}"); }
+            }
         foreach (var sub in new[] { "styles", "tools" })
         {
             var own = Path.Combine(SystemFolder, sub);

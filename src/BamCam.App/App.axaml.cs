@@ -15,6 +15,12 @@ public partial class App : Application
         {
             var window = new MainWindow();
             desktop.MainWindow = window;
+            // Report errors instead of terminating: the drawing stays open and can be saved.
+            Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+            {
+                window.ReportError(e.Exception);
+                e.Handled = true;
+            };
             var args = desktop.Args ?? [];
             var shot = Array.IndexOf(args, "--screenshot");
             string? screenshotPath = null;
@@ -27,7 +33,7 @@ public partial class App : Application
             // Diagnostic options with a value: --inspect <part/MOP name>, --filter <index>[,<z level>],
             // --drag-tab <fromX,fromY,toX,toY> (drawing coordinates).
             var options = new Dictionary<string, string>();
-            foreach (var name in new[] { "--inspect", "--filter", "--drag-tab", "--config" })
+            foreach (var name in new[] { "--inspect", "--filter", "--drag-tab", "--config", "--click" })
             {
                 var i = Array.IndexOf(args, name);
                 if (i < 0 || i + 1 >= args.Length) continue;

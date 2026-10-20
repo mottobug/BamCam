@@ -13,7 +13,9 @@ internal readonly record struct TabInterval(double Start, double End)
 /// </summary>
 internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
 {
-    private const double FitTolerance = 0.005;
+    // Offset points are accurate to ~1e-5 (fine flattening), so arcs can be fitted tightly; OffsetSnapper then
+    // makes them exact.
+    private const double FitTolerance = 0.003;
 
     public double TabTop { get; init; } = double.NegativeInfinity;
     public TabStyle TabStyle { get; init; } = TabStyle.Square;
@@ -29,6 +31,7 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
     /// </summary>
     public void Cut(Loop loop, double z, double prevZ, IReadOnlyList<TabInterval> tabs, double? linkFeed = null)
     {
+        _loop = loop;
         var start = loop.Start.ToPoint3(z);
         var leadInStart = TangentLeadStart(loop, LeadIn);
 
@@ -101,37 +104,48 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
         var angle = LeadIn.SpiralAngle;
         var rampLen = angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : len;
         var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
-        var pts = loop.Points;
+        _loop = loop;
+        // Ramp along the fitted (exact) geometry: lines and helical arcs, not the dense polygon.
+        var segments = Fitted(new List<Point2>(loop.Points) { loop.Points[0] }).Segments().ToList();
+        if (segments.Count == 0) return;
         double s = 0;
-        var i = 0;
-        var prev = pts[0];
-        while (s < rampLen - 1e-9)
+        double ZAt(double dist) => fromZ - (fromZ - toZ) * Math.Min(dist, rampLen) / rampLen;
+        for (var guard = 0; guard < 10000; guard++)
         {
-            var next = pts[(i + 1) % pts.Count];
-            var seg = Point2.Distance(prev, next);
-            if (s + seg >= rampLen)
+            foreach (var seg in segments)
             {
-                var p = Point2.Lerp(prev, next, (rampLen - s) / seg);
-                mb.Line(p.ToPoint3(toZ), feed);
-                // Finish the lap at depth back to the loop start is handled by the caller's
-                // full lap; return to the start along the loop for continuity.
-                var k = i + 1;
-                var guard = 0;
-                while (guard++ <= pts.Count)
+                var segLen = seg.Length;
+                if (s + segLen < rampLen - 1e-9)
                 {
-                    var q = pts[k % pts.Count];
-                    mb.Line(q.ToPoint3(toZ), ctx.CutFeed);
-                    if (k % pts.Count == 0) break;
-                    k++;
+                    s += segLen;
+                    mb.Segment(seg with { End = seg.End with { Z = ZAt(s) } }, feed);
+                    continue;
                 }
+                // The ramp reaches depth inside this segment: split it there, then finish the lap at depth.
+                var t = segLen < 1e-12 ? 1 : (rampLen - s) / segLen;
+                var (first, rest) = Split(seg, t);
+                mb.Segment(first with { End = first.End with { Z = toZ } }, feed);
+                if (rest is { } r) mb.Segment(r with { End = r.End with { Z = toZ } }, ctx.CutFeed);
+                var idx = segments.IndexOf(seg);
+                for (var k = idx + 1; k < segments.Count; k++)
+                    mb.Segment(segments[k] with { End = segments[k].End with { Z = toZ } }, ctx.CutFeed);
                 return;
             }
-            s += seg;
-            var z = fromZ - (fromZ - toZ) * s / rampLen;
-            mb.Line(next.ToPoint3(z), feed);
-            prev = next;
-            i++;
         }
+    }
+
+    /// <summary>Splits a line or arc segment at fraction <paramref name="t"/> of its length.</summary>
+    private static (Segment First, Segment? Remainder) Split(Segment seg, double t)
+    {
+        if (t >= 1 - 1e-12) return (seg, null);
+        if (!seg.IsArc)
+        {
+            var p = seg.Start + (seg.End - seg.Start) * t;
+            return (new Segment(seg.Start, p, 0), new Segment(p, seg.End, 0));
+        }
+        var arc = seg.ToArc();
+        var mid = arc.PointAt(t).ToPoint3(seg.Start.Z + (seg.End.Z - seg.Start.Z) * t);
+        return (new Segment(seg.Start, mid, Math.Tan(arc.Sweep * t / 4)), new Segment(mid, seg.End, Math.Tan(arc.Sweep * (1 - t) / 4)));
     }
 
     private readonly record struct LeadArc(Point2 Start, Point2 End, Point2 Center, bool Clockwise);
@@ -259,10 +273,23 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
         EmitRun(run, runZ);
     }
 
+    private Loop? _loop;
+    private readonly Dictionary<(Point2, Point2, Point2, Point2, int, double), Path2> _fitCache = [];
+
     private void EmitRun(List<Point2> run, double z)
     {
         if (run.Count < 2) return;
-        var path = ArcFitter.Fit(Path2.FromPoints(run, closed: false, z), FitTolerance);
-        mb.Follow(path, ctx.CutFeed);
+        mb.Follow(Fitted(run).WithZ(z), ctx.CutFeed);
+    }
+
+    /// <summary>Arc-fitted and snapped run at Z = 0. The same loop is cut at every level with the same start: cached.</summary>
+    private Path2 Fitted(List<Point2> run)
+    {
+        var key = (run[0], run[1], run[^2], run[^1], run.Count, _loop?.SnapOffset ?? 0);
+        if (_fitCache.TryGetValue(key, out var flat)) return flat;
+        flat = ArcFitter.Fit(Path2.FromPoints(run, closed: false, 0), FitTolerance);
+        if (_loop?.SnapSources is { Count: > 0 } sources) flat = OffsetSnapper.Snap(flat, sources, _loop.SnapOffset);
+        _fitCache[key] = flat;
+        return flat;
     }
 }

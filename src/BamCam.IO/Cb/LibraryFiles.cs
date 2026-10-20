@@ -96,7 +96,11 @@ public static class LibraryFiles
             param.BoxedValue = temp.BoxedValue;
             // Auto values in styles (e.g. stock surface from stock) stay computed by the generator.
             if (temp.State == ParamState.Auto) param.State = ParamState.Auto;
-            if (!Equals(before, param.BoxedValue)) changed.Add(name);
+            if (!Equals(before, param.BoxedValue))
+            {
+                changed.Add(name);
+                param.RawXml = null; // a preserved original text would no longer match the value
+            }
         }
         return changed;
     }

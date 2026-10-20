@@ -43,7 +43,6 @@ public sealed partial class GCodePoster
     private string? _spindleState;
     private string? _workplaneState;
     private string? _velocityState;
-    private string? _lastSpindleSpeed;
     private bool _cutting;
 
     private Job? _job;
@@ -362,10 +361,8 @@ public sealed partial class GCodePoster
     private string SpindleSpeed()
     {
         if (_job == null) return "";
-        var s = "S" + _job.Op.SpindleSpeed.Value.ToString("0.###", Inv);
-        if (s == _lastSpindleSpeed) return "";
-        _lastSpindleSpeed = s;
-        return s;
+        // Not modal: the reference output repeats the S word in every operation.
+        return "S" + _job.Op.SpindleSpeed.Value.ToString("0.###", Inv);
     }
 
     private double ClearanceZ() => (_job?.Op ?? _jobs.FirstOrDefault()?.Op)?.ClearancePlane.Value ?? 0;
@@ -382,7 +379,8 @@ public sealed partial class GCodePoster
         var job = first ? _jobs.FirstOrDefault() : _job;
         if (job == null) return "";
         var tool = ToolOf(job);
-        if (tool.Index <= 0 || tool.Index == _currentTool) return "";
+        // Tool 0 still gets the initial tool change (reference output: "T0 M6"); later a 0 means "no change".
+        if (tool.Index == _currentTool || tool.Index < 0 || (tool.Index == 0 && !first)) return "";
         _currentTool = tool.Index;
         _toolContext = tool;
         var saved = _job;
@@ -400,7 +398,7 @@ public sealed partial class GCodePoster
         foreach (var job in _jobs)
         {
             var t = ToolOf(job);
-            if (t.Index <= 0 || !seen.Add(t.Index)) continue;
+            if (t.Index < 0 || !seen.Add(t.Index)) continue;
             _toolContext = t;
             sb.Append(Expand(_post.ToolTableItem)).Append("\r\n");
         }

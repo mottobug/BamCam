@@ -21,12 +21,29 @@ internal static class ProfileGenerator
 
         var sources = ctx.SourcePaths().ToList();
 
+        // Raw offsets per (source index, extra distance), filled in one incremental series per source.
+        var offsetCache = new Dictionary<(int, double), List<Path2>>();
+        void PrepareOffsets(IEnumerable<double> extras)
+        {
+            var list = extras.Distinct().ToList();
+            for (var s = 0; s < sources.Count; s++)
+            {
+                var src = sources[s].Path;
+                if (!src.Closed || src.Count < 2) continue;
+                var missing = list.Where(e => !offsetCache.ContainsKey((s, e))).ToList();
+                if (missing.Count == 0) continue;
+                var series = Polygons.OffsetSeries([src], missing.Select(e => sign * (baseOffset + e)).ToList(), JoinStyle.Round, ToolpathGenerator.ChordTolerance);
+                for (var k = 0; k < missing.Count; k++) offsetCache[(s, missing[k])] = series[k];
+            }
+        }
+
         // Loops for all source shapes at one offset distance (beyond tool radius + clearance).
         List<Loop> BuildLoops(double extra)
         {
             var passLoops = new List<Loop>();
-            foreach (var (entity, src) in sources)
+            for (var si = 0; si < sources.Count; si++)
             {
+                var (entity, src) = sources[si];
                 if (src.Count < 2) continue;
                 var startTarget = op.StartPoint.Value.Point?.XY
                                   ?? (src.Closed ? DefaultStart(src, ccw, sign * (baseOffset + extra)) : src.StartPoint.XY);
@@ -36,17 +53,21 @@ internal static class ProfileGenerator
                     passLoops.Add(new Loop
                     {
                         Points = LoopTools.Clean(src.Flatten(ToolpathGenerator.ChordTolerance)),
-                        Closed = false, SourceId = entity.Id, Source = src,
+                        Closed = false, SourceId = entity.Id, Source = src, SnapSources = [src], SnapOffset = 0,
                     });
                     continue;
                 }
-                var offsets = Polygons.Offset([src], sign * (baseOffset + extra), JoinStyle.Round, ToolpathGenerator.ChordTolerance);
+                if (!offsetCache.TryGetValue((si, extra), out var offsets))
+                    offsets = offsetCache[(si, extra)] = Polygons.Offset([src], sign * (baseOffset + extra), JoinStyle.Round, ToolpathGenerator.ChordTolerance);
                 foreach (var o in offsets)
                 {
                     var pts = LoopTools.Clean(o.Flatten());
                     if (pts.Count < 3) continue;
-                    var loop = new Loop { Points = pts, SourceId = entity.Id, Source = src, IsOutside = outside }
-                        .Oriented(ccw).StartNearest(startTarget);
+                    var loop = LoopTools.StartAt(new Loop
+                    {
+                        Points = pts, SourceId = entity.Id, Source = src, IsOutside = outside,
+                        SnapSources = [src], SnapOffset = baseOffset + extra,
+                    }.Oriented(ccw), startTarget);
                     passLoops.Add(loop);
                 }
             }
@@ -75,15 +96,16 @@ internal static class ProfileGenerator
 
         if (op.SideProfile.Value.Method != SideProfileMethod.None)
         {
-            SideProfileCut(ctx, op, tp, mb, cutter, levels, BuildLoops, passes > 1 ? cutWidth - dia : 0, stepOver, mixed);
+            SideProfileCut(ctx, op, tp, mb, cutter, levels, BuildLoops, PrepareOffsets, passes > 1 ? cutWidth - dia : 0, stepOver, mixed);
             mb.Retract();
             ctx.Finish(tp);
             return;
         }
 
+        var passExtras = Enumerable.Range(0, passes).Select(pass => passes == 1 ? 0 : (cutWidth - dia) * (passes - 1 - pass) / (passes - 1)).ToList();
+        if (passes > 1) PrepareOffsets(passExtras);
         var loops = new List<Loop>();
-        for (var pass = 0; pass < passes; pass++)
-            loops.AddRange(BuildLoops(passes == 1 ? 0 : (cutWidth - dia) * (passes - 1 - pass) / (passes - 1)));
+        foreach (var extra in passExtras) loops.AddRange(BuildLoops(extra));
 
         if (loops.Count == 0)
         {
@@ -181,7 +203,8 @@ internal static class ProfileGenerator
     /// stock above the profile is cleared too (extra passes out to the widest offset).
     /// </summary>
     private static void SideProfileCut(GenContext ctx, ProfileOp op, Toolpath tp, MoveBuilder mb, LoopCutter cutter,
-        List<double> levels, Func<double, List<Loop>> buildLoops, double cutWidthExtra, double stepOver, bool mixed)
+        List<double> levels, Func<double, List<Loop>> buildLoops, Action<IEnumerable<double>> prepareOffsets,
+        double cutWidthExtra, double stepOver, bool mixed)
     {
         var sp = op.SideProfile.Value;
         var top = ctx.StockSurface;
@@ -206,6 +229,7 @@ internal static class ProfileGenerator
             return result;
         }
 
+        prepareOffsets(levels.SelectMany(OffsetsAt));
         // Group by source shape for depth-first cutting.
         var perLevel = levels.ToDictionary(z => z, z => OffsetsAt(z).SelectMany(buildLoops).ToList());
         var sourceIds = perLevel.Values.SelectMany(l => l).Select(l => l.SourceId).Distinct().ToList();
@@ -273,8 +297,11 @@ internal static class ProfileGenerator
             var pts = LoopTools.Clean(u.Flatten());
             // Keep the source of the original loop the merged outline starts closest to.
             var nearest = closed.OrderBy(l => u.DistanceTo(l.Start)).First();
-            result.Add(new Loop { Points = pts, IsOutside = nearest.IsOutside, SourceId = 0 }
-                .Oriented(ccw).StartNearest(nearest.Start));
+            result.Add(new Loop
+            {
+                Points = pts, IsOutside = nearest.IsOutside, SourceId = 0,
+                SnapSources = closed.Select(l => l.Source).OfType<Path2>().ToList(), SnapOffset = nearest.SnapOffset,
+            }.Oriented(ccw).StartNearest(nearest.Start));
         }
         return result;
     }
@@ -302,8 +329,12 @@ internal static class ProfileGenerator
         {
             var p = pts[i];
             result.Add(p);
-            var d1 = (p - pts[(i - 1 + n) % n]).Normalized();
-            var d2 = (pts[(i + 1) % n] - p).Normalized();
+            var prevPt = pts[(i - 1 + n) % n];
+            var nextPt = pts[(i + 1) % n];
+            // Micro segments have meaningless directions; they are not corners.
+            if (Point2.Distance(p, prevPt) < 1e-3 || Point2.Distance(p, nextPt) < 1e-3) continue;
+            var d1 = (p - prevPt).Normalized();
+            var d2 = (nextPt - p).Normalized();
             var cross = Point2.Cross(d1, d2);
             var turn = Math.Atan2(cross, Point2.Dot(d1, d2));
             if (Math.Abs(turn) < Angles.ToRadians(10) || Math.Sign(cross) == Math.Sign(area)) continue;
@@ -420,7 +451,7 @@ internal static class PocketGenerator
                         HatchSequence(region, step, style == RegionFillStyle.VerticalHatch, climb, wallStep),
                     RegionFillStyle.OutsideOffsets when region.Holes.Count > 0 => OutsideOffsetSequence(region, step, climb, wallStep),
                     RegionFillStyle.InsideOffsets when region.Holes.Count > 0 => InsideOffsetSequence(region, step, climb, wallStep),
-                    _ => OffsetSequence(region, step, climb, wallStep),
+                    _ => OffsetSequence(region, step, climb, wallStep, closed, r + op.RoughingClearance.Value),
                 };
                 var normal = Build(0);
                 var finish = finishStep > 0 ? Build(finishStep) : normal;
@@ -440,6 +471,8 @@ internal static class PocketGenerator
         var stepFeed = op.StepoverFeedrate.Value == StepoverFeedrate.CutFeedrate ? ctx.CutFeed : ctx.PlungeFeed;
         var mixed = op.MillingDirection.Value == MillingDirection.Mixed;
 
+        var firstPoint = op.StartPoint.Value.Point?.XY ?? closed[0].StartPoint.XY;
+
         List<Loop> SequenceFor((List<Loop> Normal, List<Loop> Finish) region, int levelIndex)
         {
             var useFinish = !finishOnlyAtBottom || levelIndex == levels.Count - 1;
@@ -454,7 +487,9 @@ internal static class PocketGenerator
             for (var i = 0; i < seq.Count; i++)
             {
                 var loop = seq[i];
-                if (mb.Position is { } p && loop.Closed) loop = loop.StartNearest(p.XY);
+                // First pass: start nearest the shape's first point (a circle starts at +X, like the reference);
+                // afterwards nearest the current position to keep stepovers short.
+                if (loop.Closed) loop = LoopTools.StartAt(loop, mb.Position?.XY ?? firstPoint);
                 double? link = null;
                 if (i > 0 && mb.Position is { } q && Math.Abs(q.Z - z) < 1e-9 && Point2.Distance(q.XY, loop.Start) <= maxCross + 1e-9)
                     link = stepFeed;
@@ -552,33 +587,48 @@ internal static class PocketGenerator
     }
 
     /// <summary>Concentric offsets from the centre outwards; the boundary (first inset) is cut last.</summary>
-    internal static List<Loop> OffsetSequence(Shape region, double step, bool climb, double wallStep = 0)
+    /// <param name="sources">Original pocket outlines, for exact snapping of the rings (optional).</param>
+    /// <param name="baseOffset">Distance of <paramref name="region"/> from <paramref name="sources"/>.</param>
+    internal static List<Loop> OffsetSequence(Shape region, double step, bool climb, double wallStep = 0,
+        IReadOnlyList<Path2>? sources = null, double baseOffset = 0, double tolerance = ToolpathGenerator.ChordTolerance)
     {
-        var rings = new List<List<Shape>> { new() { region } };
+        var rings = new List<(List<Shape> Shapes, double Offset)> { (new() { region }, baseOffset) };
         var current = new List<Shape> { region };
-        for (var guard = 0; guard < 10000 && current.Count > 0; guard++)
+        var distance = 0.0;
+        var previousArea = Math.Abs(region.Outer.SignedArea());
+        // Slivers with (almost) no area are not worth a pass.
+        var minArea = Math.Max(step * step * 1e-3, 1e-6);
+        for (var guard = 0; guard < 10000; guard++)
         {
             // The first ring after the wall uses the finish stepover when one is set.
             var d = guard == 0 && wallStep > 0 ? wallStep : step;
-            var next = current.SelectMany(s => Polygons.InsetShape(s, d, ToolpathGenerator.ChordTolerance)).ToList();
+            distance += d;
+            // Each ring is offset from the previous one (small offsets are fast; one large offset of a dense
+            // outline is quadratic). Simplifying within 1e-5 stops the vertex count from growing ring by ring;
+            // the cut geometry is made exact afterwards by OffsetSnapper.
+            var next = current.SelectMany(s => Polygons.InsetShape(s, d, tolerance, simplify: tolerance))
+                .Where(s => Math.Abs(s.Outer.SignedArea()) > minArea).ToList();
             if (next.Count == 0) break;
-            rings.Add(next);
+            var area = next.Sum(s => Math.Abs(s.Outer.SignedArea()));
+            if (area >= previousArea - 1e-9) break;
+            previousArea = area;
+            rings.Add((next, baseOffset + distance));
             current = next;
         }
         rings.Reverse();
         var loops = new List<Loop>();
-        foreach (var ring in rings)
+        foreach (var (ring, ringOffset) in rings)
         foreach (var shape in ring)
         {
             // Conventional (CW spindle): pocket walls clockwise, island walls counter-clockwise.
-            loops.Add(ToLoop(shape.Outer, ccw: climb, outside: false));
-            foreach (var h in shape.Holes) loops.Add(ToLoop(h, ccw: !climb, outside: true));
+            loops.Add(ToLoop(shape.Outer, ccw: climb, outside: false, sources, ringOffset));
+            foreach (var h in shape.Holes) loops.Add(ToLoop(h, ccw: !climb, outside: true, sources, ringOffset));
         }
         return loops;
     }
 
-    private static Loop ToLoop(Path2 p, bool ccw, bool outside) =>
-        new Loop { Points = LoopTools.Clean(p.Flatten()), IsOutside = outside }.Oriented(ccw);
+    private static Loop ToLoop(Path2 p, bool ccw, bool outside, IReadOnlyList<Path2>? sources = null, double offset = 0) =>
+        new Loop { Points = LoopTools.Clean(p.Flatten()), IsOutside = outside, SnapSources = sources, SnapOffset = offset }.Oriented(ccw);
 
     /// <summary>Zig-zag hatch lines clipped to the region, followed by a boundary pass.</summary>
     private static List<Loop> HatchSequence(Shape region, double step, bool vertical, bool climb, double wallStep = 0)

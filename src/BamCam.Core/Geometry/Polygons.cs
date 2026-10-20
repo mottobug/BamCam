@@ -55,11 +55,54 @@ public static class Polygons
     /// Input orientation is ignored (non-zero fill after normalisation by even-odd union).
     /// </summary>
     public static List<Path2> Offset(IEnumerable<Path2> paths, double delta, JoinStyle join = JoinStyle.Round,
-        double tolerance = Tolerance.Chord, double z = 0)
+        double tolerance = Tolerance.Chord, double z = 0, double simplify = 0)
     {
-        var src = Normalize(ToClipper(paths, tolerance));
-        var res = Clipper.InflatePaths(src, delta, Map(join), EndType.Polygon, 2.0, Precision, tolerance);
-        return res.Select(p => FromClipper(p, z)).ToList();
+        // Collinear vertices are kept: a vertex in the middle of a straight edge stays a vertex of the
+        // offset, as in the reference G-code (one G1 per source segment).
+        var scale = Math.Pow(10, Precision);
+        var src = Clipper.ScalePaths64(ToClipper(paths, tolerance), scale);
+        var normalized = new Paths64();
+        var union = new Clipper64 { PreserveCollinear = true };
+        union.AddSubject(src);
+        union.Execute(ClipType.Union, FillRule.EvenOdd, normalized);
+        // Round joins need less precision than the source flattening (exact corner arcs come from OffsetSnapper);
+        // a tiny arc tolerance would put many points into every micro corner at large offsets (very slow).
+        var co = new ClipperOffset(2.0, JoinArcTolerance(tolerance) * scale, preserveCollinear: true);
+        co.AddPaths(normalized, Map(join), EndType.Polygon);
+        var res = new Paths64();
+        co.Execute(delta * scale, res);
+        if (simplify > 0) res = Clipper.SimplifyPaths(res, simplify * scale, true);
+        return Clipper.ScalePathsD(res, 1 / scale).Select(p => FromClipper(p, z)).ToList();
+    }
+
+    /// <summary>
+    /// Offsets the same closed paths by several distances (all with the same sign). Computed incrementally from
+    /// the nearest smaller distance with light simplification: one large offset of a dense outline costs far
+    /// more than a chain of small ones. Results are returned in the order of <paramref name="deltas"/>.
+    /// </summary>
+    public static List<List<Path2>> OffsetSeries(IReadOnlyList<Path2> paths, IReadOnlyList<double> deltas,
+        JoinStyle join = JoinStyle.Round, double tolerance = Tolerance.Chord)
+    {
+        var results = new List<Path2>[deltas.Count];
+        var mixedSigns = deltas.Any(d => d > 0) && deltas.Any(d => d < 0);
+        var order = Enumerable.Range(0, deltas.Count).OrderBy(i => Math.Abs(deltas[i])).ToList();
+        List<Path2>? previous = null;
+        double previousDelta = 0;
+        foreach (var i in order)
+        {
+            var d = deltas[i];
+            if (previous != null && Math.Abs(d - previousDelta) < 1e-12)
+            {
+                results[i] = previous;
+                continue;
+            }
+            results[i] = previous == null || mixedSigns
+                ? Offset(paths, d, join, tolerance)
+                : Offset(previous, d - previousDelta, join, tolerance, simplify: tolerance);
+            previous = results[i];
+            previousDelta = d;
+        }
+        return results.ToList();
     }
 
     /// <summary>Offsets an open path into a closed outline (e.g. for slots and engraving widths).</summary>
@@ -134,13 +177,18 @@ public static class Polygons
     }
 
     /// <summary>Offsets a shape (outer + holes) inward by <paramref name="distance"/>.</summary>
-    public static List<Shape> InsetShape(Shape shape, double distance, double tolerance = Tolerance.Chord)
+    /// <param name="simplify">If > 0, vertices that deviate less than this are dropped from the result. Keeps point
+    /// counts stable when results are offset again (each offset adds join points at every vertex).</param>
+    public static List<Shape> InsetShape(Shape shape, double distance, double tolerance = Tolerance.Chord, double simplify = 0)
     {
         var src = new PathsD { ToClipper(EnsureOrientation(shape.Outer, true), tolerance) };
         foreach (var h in shape.Holes) src.Add(ToClipper(EnsureOrientation(h, false), tolerance));
-        var res = Clipper.InflatePaths(src, -distance, JoinType.Round, EndType.Polygon, 2.0, Precision, tolerance);
+        var res = Clipper.InflatePaths(src, -distance, JoinType.Round, EndType.Polygon, 2.0, Precision, JoinArcTolerance(tolerance));
+        if (simplify > 0) res = Clipper.SimplifyPaths(res, simplify, true);
         return BuildShapes(res);
     }
+
+    private static double JoinArcTolerance(double tolerance) => Math.Max(tolerance, 2e-4);
 
     public static Path2 EnsureOrientation(Path2 p, bool ccw) => p.IsClockwise == !ccw ? p : p.Reversed();
 }

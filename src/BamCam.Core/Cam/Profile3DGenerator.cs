@@ -291,7 +291,8 @@ internal static class Profile3DGenerator
             var free = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), Blocked(mesh, z, grow));
             foreach (var shape in Polygons.BuildShapes(free))
             {
-                var seq = PocketGenerator.OffsetSequence(shape, step, climb);
+                // Mesh outlines are faceted anyway: a coarse arc tolerance keeps point counts manageable.
+                var seq = PocketGenerator.OffsetSequence(shape, step, climb, tolerance: Tolerance.Chord);
                 for (var i = 0; i < seq.Count; i++)
                 {
                     var loop = seq[i];

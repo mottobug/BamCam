@@ -34,6 +34,8 @@ public sealed partial class DrawingView : Control, IToolHost
     {
         Focusable = true;
         ClipToBounds = true;
+        // The initial selection tool must be attached too, or the first click has no host.
+        _tool.Attach(this);
     }
 
     public ViewSettings Settings { get; } = new();
@@ -183,6 +185,27 @@ public sealed partial class DrawingView : Control, IToolHost
         var world = Snap(_view.ToWorld(pos), pos);
         _tool.PointerPressed(pos, world, props, e.KeyModifiers);
         e.Pointer.Capture(this);
+    }
+
+    /// <summary>
+    /// Diagnostics: runs a hover, left press and release at a drawing coordinate through the same code
+    /// paths as real mouse input (tab dragging, active tool, selection).
+    /// </summary>
+    public void SimulateClick(Point2 worldPoint, KeyModifiers mods = KeyModifiers.None)
+    {
+        var pos = _view.ToScreen(worldPoint);
+        _cursorScreen = pos;
+        UpdateHoverCursor(pos);
+        _tool.PointerMoved(pos, Snap(_view.ToWorld(pos), pos), mods);
+        if (BeginTabDrag(pos))
+        {
+            EndTabDrag();
+            return;
+        }
+        var props = new PointerPointProperties(RawInputModifiers.LeftMouseButton, PointerUpdateKind.LeftButtonPressed);
+        _tool.PointerPressed(pos, Snap(_view.ToWorld(pos), pos), props, mods);
+        _tool.PointerReleased(pos, Snap(_view.ToWorld(pos), pos), MouseButton.Left, mods);
+        InvalidateVisual();
     }
 
     private void BeginDrag(DragMode mode, Point pos, PointerPressedEventArgs e)

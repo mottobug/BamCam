@@ -46,7 +46,8 @@ internal sealed class MoveBuilder(Toolpath tp, double clearanceZ, double fastPlu
         {
             Rapid(target with { Z = ClearanceZ });
         }
-        else if (!Position.Value.XY.AlmostEquals(target.XY, 1e-7))
+        // Positions closer than 0.1 µm are the same point (rounding of snapped geometry); don't retract.
+        else if (!Position.Value.XY.AlmostEquals(target.XY, 1e-4))
         {
             Retract();
             Rapid(target with { Z = Position!.Value.Z });
@@ -63,7 +64,9 @@ internal sealed class MoveBuilder(Toolpath tp, double clearanceZ, double fastPlu
             return;
         }
         var fastZ = fastFromZ + FastPlungeHeight;
-        if (FastPlungeHeight > 0 && p.Z > fastZ + 1e-9 && fastZ > z) Rapid(p with { Z = fastZ });
+        // Rapid down only when that saves more than the fast plunge height itself (matches reference output:
+        // clearance 1.5 / height 1 feeds all the way, clearance 3 rapids to 1.0).
+        if (FastPlungeHeight > 0 && p.Z - fastZ > FastPlungeHeight + 1e-9 && fastZ > z) Rapid(p with { Z = fastZ });
         Line(Position!.Value with { Z = z }, plungeFeed);
     }
 
