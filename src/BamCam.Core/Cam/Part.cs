@@ -242,9 +242,20 @@ public abstract class MachineOp
     {
         if (ToolDiameter.Value > 0) return ToolDiameter.Value;
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(this));
+        var number = EffectiveToolNumber(doc);
+        if (CamLibraries.FindTool(doc, part, number) is { Diameter: > 0 } tool) return tool.Diameter;
         if (part is { ToolDiameter: > 0 }) return part.ToolDiameter;
         if (doc.Machining.ToolDiameter > 0) return doc.Machining.ToolDiameter;
-        return 3;
+        return doc.Units == DrawingUnits.Inches ? 0.125 : 3;
+    }
+
+    /// <summary>Tool number cascade: MOP (non-zero) → Part → Machining.</summary>
+    public int EffectiveToolNumber(CadDocument doc)
+    {
+        if (ToolNumber.Value > 0) return ToolNumber.Value;
+        var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(this));
+        if (part is { ToolNumber: > 0 }) return part.ToolNumber;
+        return doc.Machining.ToolNumber;
     }
 
     /// <summary>All parameters in canonical order. Name is the file element name.</summary>

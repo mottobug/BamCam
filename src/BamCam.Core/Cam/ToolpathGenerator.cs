@@ -21,6 +21,18 @@ public static class ToolpathGenerator
                 case PocketOp p: PocketGenerator.Generate(ctx, p, tp); break;
                 case EngraveOp e: EngraveGenerator.Generate(ctx, e, tp); break;
                 case DrillOp d: DrillGenerator.Generate(ctx, d, tp); break;
+                case NcFileOp nc:
+                {
+                    var path = ResolveNcPath(doc, nc);
+                    if (path == null) tp.Warnings.Add($"{op.Name}: G-code file '{nc.SourceFile.Value}' not found.");
+                    else
+                    {
+                        var parsed = GCodeParser.Parse(File.ReadAllText(path));
+                        tp.Moves.AddRange(parsed.Moves);
+                        tp.StartPosition = parsed.StartPosition;
+                    }
+                    break;
+                }
                 default: tp.Warnings.Add($"{op.Name}: toolpath generation for '{op.DisplayType}' is not supported yet."); break;
             }
         }
@@ -28,10 +40,24 @@ public static class ToolpathGenerator
         {
             tp.Warnings.Add($"{op.Name}: toolpath generation failed: {ex.Message}");
         }
-        tp.TrimTrailingRetracts();
+        if (op is not NcFileOp) tp.TrimTrailingRetracts();
         if (tp.Moves.Count == 0 && tp.Warnings.Count == 0)
             tp.Warnings.Add($"{op.Name}: no toolpath was generated (check the selected drawing objects).");
         return tp;
+    }
+
+    /// <summary>Resolves an NC file path (absolute, or relative to the drawing).</summary>
+    public static string? ResolveNcPath(CadDocument doc, NcFileOp op)
+    {
+        var src = op.SourceFile.Value;
+        if (string.IsNullOrWhiteSpace(src)) return null;
+        if (File.Exists(src)) return Path.GetFullPath(src);
+        if (doc.FilePath != null)
+        {
+            var rel = Path.Combine(Path.GetDirectoryName(doc.FilePath)!, src);
+            if (File.Exists(rel)) return rel;
+        }
+        return null;
     }
 }
 

@@ -446,6 +446,15 @@ public sealed partial class GCodePoster
 
     private string Blocks(Job job)
     {
+        if (job.Op is NcFileOp nc)
+        {
+            // NC file operations are copied verbatim; the controller state afterwards is unknown.
+            var path = ToolpathGenerator.ResolveNcPath(_doc, nc);
+            _last.Clear();
+            _posZ = double.NaN;
+            _lastG = null;
+            return path == null ? "" : File.ReadAllText(path).Replace("\r\n", "\n").TrimEnd('\n').Replace("\n", "\r\n") + "\r\n";
+        }
         var sb = new StringBuilder();
         var mirrored = job.Copy.DeterminantXY < 0;
         var stockSurface = job.Op.StockSurface.Value;

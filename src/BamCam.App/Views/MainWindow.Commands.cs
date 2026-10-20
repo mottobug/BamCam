@@ -401,11 +401,19 @@ public partial class MainWindow
         }
         op.Name = UniqueOpName(op.DisplayType.Replace(" ", ""));
         op.PrimitiveIds.AddRange(sel.Select(e => e.Id));
-        ApplyUnitDefaults(op);
-        if (op is DepthOp depth && depth.TargetDepth.Value >= 0) depth.TargetDepth.Value = -1;
-        if (op.ToolDiameter.Value <= 0) op.ToolDiameter.Value = _session.Document.Units == DrawingUnits.Inches ? 0.125 : 3;
-        var part = _session.Document.ActivePart;
-        _session.Execute($"Insert {op.DisplayType}", () => part.Operations.Add(op));
+        var doc = _session.Document;
+        var part = doc.ActivePart;
+        _session.Execute($"Insert {op.DisplayType}", () =>
+        {
+            part.Operations.Add(op);
+            if (CamLibraries.FindStyleLibrary(doc, part) != null) LibraryFiles.ApplyStyle(doc, op);
+            else ApplyUnitDefaults(op);
+            var stockEmpty = (part.Stock.IsEmpty ? doc.Machining.Stock : part.Stock).IsEmpty;
+            if (op is DepthOp depth && (depth.TargetDepth.Value >= depth.StockSurface.Value && (stockEmpty || depth.TargetDepth.State != ParamState.Auto)))
+                depth.TargetDepth.Set(doc.Units == DrawingUnits.Inches ? -0.04 : -1);
+            if (op.ToolDiameter.Value <= 0 && CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc)) == null)
+                op.ToolDiameter.Set(doc.Units == DrawingUnits.Inches ? 0.125 : 3);
+        });
         _session.Inspect(op);
         Log($"{op.Name} added to {part.Name} ({sel.Count} object(s)). Set Target Depth and tool, then generate toolpaths.");
     }

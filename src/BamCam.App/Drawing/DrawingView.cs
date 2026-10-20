@@ -76,6 +76,9 @@ public sealed class DrawingView : Control, IToolHost
     /// <summary>Raised when the active tool changes its prompt text.</summary>
     public event EventHandler<string?>? PromptChanged;
 
+    /// <summary>Raised when an object is double-clicked with the selection tool.</summary>
+    public event EventHandler<Entity>? EntityDoubleClicked;
+
     /// <summary>Raised on right-click without drag, so the window can show a context menu.</summary>
     public event EventHandler<Point>? ContextMenuRequested;
 
@@ -163,6 +166,12 @@ public sealed class DrawingView : Control, IToolHost
             return;
         }
         if (props.IsRightButtonPressed) return;
+
+        if (props.IsLeftButtonPressed && e.ClickCount == 2 && _tool is SelectTool && HitTest(pos).FirstOrDefault() is { } hit)
+        {
+            EntityDoubleClicked?.Invoke(this, hit);
+            return;
+        }
 
         var world = Snap(_view.ToWorld(pos), pos);
         _tool.PointerPressed(pos, world, props, e.KeyModifiers);

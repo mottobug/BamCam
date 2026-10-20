@@ -1,3 +1,4 @@
+using BamCam.Core.Cam;
 using BamCam.Core.Post;
 using BamCam.IO.Cb;
 
@@ -35,11 +36,58 @@ public sealed class SystemLibrary
 
     public List<string> LoadMessages { get; } = [];
 
+    /// <summary>Data folders of a local CamBam installation with the given sub-folder (read-only).</summary>
+    private static IEnumerable<string> CamBamFolders(string sub)
+    {
+        var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        if (!Directory.Exists(common)) yield break;
+        foreach (var dir in Directory.GetDirectories(common, "CamBam*"))
+        {
+            var p = Path.Combine(dir, sub);
+            if (Directory.Exists(p)) yield return p;
+        }
+    }
+
+    private void LoadLibraries()
+    {
+        CamLibraries.StyleLibraries.Clear();
+        CamLibraries.ToolLibraries.Clear();
+        foreach (var sub in new[] { "styles", "tools" })
+        {
+            var own = Path.Combine(SystemFolder, sub);
+            Directory.CreateDirectory(own);
+            foreach (var folder in CamBamFolders(sub).Prepend(own))
+            foreach (var file in Directory.GetFiles(folder, "*.xml"))
+            {
+                try
+                {
+                    if (sub == "styles")
+                    {
+                        var lib = LibraryFiles.LoadStyles(file);
+                        if (CamLibraries.StyleLibraries.All(l => !l.Name.Equals(lib.Name, StringComparison.OrdinalIgnoreCase)))
+                            CamLibraries.StyleLibraries.Add(lib);
+                    }
+                    else
+                    {
+                        var lib = LibraryFiles.LoadTools(file);
+                        if (CamLibraries.ToolLibraries.All(l => !l.Name.Equals(lib.Name, StringComparison.OrdinalIgnoreCase)))
+                            CamLibraries.ToolLibraries.Add(lib);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LoadMessages.Add($"Could not load library '{file}': {ex.Message}");
+                }
+            }
+        }
+    }
+
     public void Reload()
     {
         Posts.Clear();
         PostSources.Clear();
         LoadMessages.Clear();
+        LoadLibraries();
         foreach (var p in PostProcessorDefinition.BuiltIn()) Add(p, null);
 
         Directory.CreateDirectory(PostFolder);

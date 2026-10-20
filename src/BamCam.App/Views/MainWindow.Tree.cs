@@ -461,10 +461,32 @@ public partial class MainWindow
             posts.Items.Add(item);
         }
         SystemTree.Items.Add(posts);
-        SystemTree.SelectionChanged += (_, _) =>
+
+        var styles = new TreeViewItem { Header = "CAM Styles", IsExpanded = true };
+        foreach (var lib in CamLibraries.StyleLibraries)
         {
-            if ((SystemTree.SelectedItem as TreeViewItem)?.Tag is PostProcessorDefinition def) Properties.SelectedObject = def;
-        };
+            var li = new TreeViewItem { Header = lib.Name, Tag = lib };
+            ToolTip.SetTip(li, lib.SourcePath);
+            foreach (var s in lib.Styles) li.Items.Add(new TreeViewItem { Header = s.ToString() + (s.ParentStyle.Length > 0 ? $"  ← {s.ParentStyle}" : ""), Tag = s });
+            styles.Items.Add(li);
+        }
+        SystemTree.Items.Add(styles);
+
+        var tools = new TreeViewItem { Header = "Tools", IsExpanded = true };
+        foreach (var lib in CamLibraries.ToolLibraries)
+        {
+            var li = new TreeViewItem { Header = lib.Name, Tag = lib };
+            ToolTip.SetTip(li, lib.SourcePath);
+            foreach (var t in lib.Tools.OrderBy(t => t.Index)) li.Items.Add(new TreeViewItem { Header = t.ToString(), Tag = t });
+            tools.Items.Add(li);
+        }
+        SystemTree.Items.Add(tools);
+    }
+
+    private void OnSystemTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        var tag = (SystemTree.SelectedItem as TreeViewItem)?.Tag;
+        if (tag is PostProcessorDefinition or ToolDefinition) Properties.SelectedObject = tag;
     }
 
     private void ShowViewContextMenu(Point p)

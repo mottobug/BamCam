@@ -42,6 +42,11 @@ public partial class MainWindow : Window
             PromptBar.IsVisible = !string.IsNullOrEmpty(text);
         };
         View.ContextMenuRequested += (_, p) => ShowViewContextMenu(p);
+        View.EntityDoubleClicked += (_, ent) =>
+        {
+            if (ent is TextEntity t) _ = EditTextEntity(t);
+            else View.SetTool(new EditPointsTool(ent));
+        };
 
         Properties.ValueChanging += (_, _) => _session.BeginEdit();
         Properties.ValueChanged += (_, _) => OnPropertyEdited();
@@ -49,6 +54,7 @@ public partial class MainWindow : Window
         DrawingTree.SelectionChanged += OnTreeSelectionChanged;
         DrawingTree.KeyDown += OnTreeKeyDown;
         DrawingTree.DoubleTapped += OnTreeDoubleTapped;
+        SystemTree.SelectionChanged += OnSystemTreeSelectionChanged;
 
         BuildMenu();
         BuildToolbar();
@@ -107,6 +113,11 @@ public partial class MainWindow : Window
     private void OnPropertyEdited()
     {
         if (_session.Inspected is TextEntity t) t.InvalidateOutlines();
+        if (_session.Inspected is Core.Cam.MachineOp op)
+        {
+            var changed = LibraryFiles.ApplyStyle(_session.Document, op);
+            if (changed.Count > 0) Log($"{op.Name}: style values updated ({string.Join(", ", changed)}).");
+        }
         if (_session.Inspected is CadDocument)
             OnDocumentReplacedSettingsOnly();
         _session.NotifyChanged();
@@ -139,7 +150,7 @@ public partial class MainWindow : Window
             await Task.Delay(1200);
             if (generate)
             {
-                _session.SelectAll();
+                View.Settings.ToolpathVisibilitySelectedOnly = false;
                 GenerateToolpaths();
                 _session.ClearSelection();
                 View.ZoomToFit();
@@ -178,7 +189,8 @@ public partial class MainWindow : Window
         {
             Title = "Open",
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Drawings") { Patterns = ["*.cb", "*.dxf"] }, CbType, DxfType, AllType],
+            FileTypeFilter = [new FilePickerFileType("Drawings") { Patterns = ["*.cb", "*.dxf"] }, CbType, DxfType,
+                new FilePickerFileType("STL mesh") { Patterns = ["*.stl"] }, NcType, AllType],
         });
         if (files.Count == 0) return;
         if (files[0].TryGetLocalPath() is { } path) OpenPath(path);
@@ -190,6 +202,26 @@ public partial class MainWindow : Window
         {
             CadDocument doc;
             var ext = Path.GetExtension(path).ToLowerInvariant();
+            if (ext == ".stl")
+            {
+                var surface = IO.Stl.StlReader.Load(path);
+                _session.Execute("Insert surface", () => _session.Document.AddEntity(surface));
+                _session.Select([surface]);
+                Log($"Inserted {path}: {surface.Faces.Count / 3} triangles.");
+                View.ZoomToFit();
+                return;
+            }
+            if (ext is not (".cb" or ".dxf"))
+            {
+                // Anything else is treated as G-code and back-plotted as an NC File operation.
+                var nc = new Core.Cam.NcFileOp { Name = Path.GetFileNameWithoutExtension(path) };
+                nc.SourceFile.Set(path);
+                var part = _session.Document.ActivePart;
+                _session.Execute("Insert NC file", () => part.Operations.Add(nc));
+                GenerateToolpaths(new Core.Post.PostScope(Operation: nc));
+                View.ZoomToFit();
+                return;
+            }
             if (ext == ".dxf")
             {
                 doc = DxfReader.Load(path, out var warnings);
