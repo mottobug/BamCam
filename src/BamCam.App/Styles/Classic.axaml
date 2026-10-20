@@ -1,0 +1,90 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- Compact, classic desktop look: grey chrome, small fonts, square corners. -->
+  <Styles.Resources>
+    <SolidColorBrush x:Key="ChromeBrush" Color="#F0F0F0" />
+    <SolidColorBrush x:Key="ChromeBorderBrush" Color="#A0A0A0" />
+    <SolidColorBrush x:Key="PanelHeaderBrush" Color="#DCDCDC" />
+    <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
+    <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+  </Styles.Resources>
+
+  <Style Selector="Window">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Background" Value="{StaticResource ChromeBrush}" />
+  </Style>
+
+  <Style Selector="Menu">
+    <Setter Property="Background" Value="{StaticResource ChromeBrush}" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Menu > MenuItem">
+    <Setter Property="Padding" Value="8,3" />
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style Selector="Border.toolbar">
+    <Setter Property="Background" Value="{StaticResource ChromeBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ChromeBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="2" />
+  </Style>
+  <Style Selector="Border.toolbar Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="Margin" Value="1,0" />
+    <Setter Property="MinWidth" Value="24" />
+    <Setter Property="MinHeight" Value="24" />
+  </Style>
+  <Style Selector="Border.toolbar Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#CCE4F7" />
+    <Setter Property="BorderBrush" Value="#3399FF" />
+  </Style>
+  <Style Selector="Border.toolbar ToggleButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="MinWidth" Value="24" />
+    <Setter Property="MinHeight" Value="24" />
+  </Style>
+  <Style Selector="Border.toolbar ComboBox">
+    <Setter Property="MinHeight" Value="22" />
+    <Setter Property="Padding" Value="4,0" />
+  </Style>
+
+  <Style Selector="Border.panelHeader">
+    <Setter Property="Background" Value="{StaticResource PanelHeaderBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ChromeBorderBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="4,2" />
+  </Style>
+  <Style Selector="Border.panelHeader TextBlock">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style Selector="TreeViewItem">
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style Selector="GridSplitter">
+    <Setter Property="Background" Value="{StaticResource ChromeBrush}" />
+  </Style>
+
+  <Style Selector="TabItem">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="8,2" />
+  </Style>
+
+  <Style Selector="TextBox.cell">
+    <Setter Property="MinHeight" Value="20" />
+    <Setter Property="Padding" Value="2,0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="White" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+</Styles>
