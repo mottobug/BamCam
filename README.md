@@ -57,6 +57,11 @@ Punkte teilen/Zentren, Ausschneiden/Kopieren/Einfügen (auch zwischen Instanzen)
 - **Tasche:** Offset- und Schraffur-Füllung, Inseln.
 - **Bohren:** Bohrzyklen G81/G82/G83 und Spiralfräsen.
 - **Gravieren** und **NC-Datei** (G-Code-Rückplot).
+- **3D-Profil** auf Dreiecksnetzen (STL):
+  - Scanline horizontal/vertikal, als Schruppen in Ebenen oder als Schlichten, mit exaktem Drop-Cutter für Schaft- und Kugelfräser.
+  - Waterline-Schruppen und -Schlichten.
+  - Begrenzung über Umriss, Bounding Box, ausgewählte Objekte, Clip-Bereich, Rand und Konizität.
+  - Rückseite und Form (Mold).
 - Weiteres: Tiefenebenen und Schnittreihenfolge, CAM-Stile mit Vererbung, Werkzeugbibliotheken,
   Werkzeugweg-Anzeige mit Eilgängen und Schnittbreiten, Werkzeugwege in Geometrie umwandeln.
 
