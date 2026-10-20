@@ -15,7 +15,18 @@ public partial class App : Application
         {
             var window = new MainWindow();
             desktop.MainWindow = window;
-            if (desktop.Args is { Length: > 0 } args) window.OpenFileOnStartup(args[0]);
+            var args = desktop.Args ?? [];
+            var shot = Array.IndexOf(args, "--screenshot");
+            string? screenshotPath = null;
+            if (shot >= 0 && shot + 1 < args.Length)
+            {
+                screenshotPath = args[shot + 1];
+                args = args.Where((_, i) => i != shot && i != shot + 1).ToArray();
+            }
+            var generate = args.Contains("--generate");
+            var files = args.Where(a => !a.StartsWith("--")).ToArray();
+            if (files.Length > 0) window.OpenFileOnStartup(files[0]);
+            if (screenshotPath != null) window.CaptureScreenshotAndExit(screenshotPath, generate);
         }
         base.OnFrameworkInitializationCompleted();
     }

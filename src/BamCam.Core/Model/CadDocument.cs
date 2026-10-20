@@ -116,6 +116,7 @@ public sealed class CadDocument
     /// <summary>Raised after any structural or geometric modification.</summary>
     public event EventHandler? Changed;
 
+    [Browsable(false)]
     public bool IsModified { get; set; }
 
     public void NotifyChanged()

@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/BamCam.App/BamCam.App.csproj" />
     <Project Path="src/BamCam.Core/BamCam.Core.csproj" />
     <Project Path="src/BamCam.IO/BamCam.IO.csproj" />
   </Folder>
