@@ -143,6 +143,13 @@ public class WorkflowTests
             op.Style = "cutout+tabs";
             LibraryFiles.ApplyStyle(doc, op);
             Assert.NotEqual(TabMethod.None, op.HoldingTabs.Value.TabMethod);
+
+            // A style that is not installed here keeps the values stored in the drawing.
+            op.Style = "Style that does not exist";
+            op.CutFeedrate.BoxedValue = 150.0;
+            op.CutFeedrate.State = ParamState.Default;
+            Assert.Empty(LibraryFiles.ApplyStyle(doc, op));
+            Assert.Equal(150, op.CutFeedrate.Value);
         }
         finally
         {

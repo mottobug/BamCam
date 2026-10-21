@@ -81,6 +81,15 @@ public static class LibraryFiles
         var styleName = !string.IsNullOrEmpty(op.Style) ? op.Style
             : !string.IsNullOrEmpty(part?.Style) ? part!.Style
             : doc.Machining.Style;
+        if (!string.IsNullOrEmpty(styleName) && lib.Find(styleName) == null)
+        {
+            // The style may live in another library; if it is unknown on this computer (e.g. a drawing from
+            // someone else's CamBam), keep the values stored in the drawing instead of silently using the
+            // defaults of the root style (that changed feed rates and depths of edited operations).
+            var other = CamLibraries.StyleLibraries.FirstOrDefault(l => l.Find(styleName) != null);
+            if (other == null) return changed;
+            lib = other;
+        }
 
         var resolved = new Dictionary<string, XElement>();
         foreach (var style in lib.Chain(styleName))

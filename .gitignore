@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Drawing backups written when saving (name.cb.b1 ... name.cb.bN)
+*.cb.b[0-9]*

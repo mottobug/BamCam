@@ -4,29 +4,34 @@
     <layer name="0" color="255,255,255">
       <ModificationCount>0</ModificationCount>
       <objects>
-        <arc id="5" p="4.00000000000001,59,0" r="3.000000000000007" s="390" w="300">
+        <arc id="5" p="4.00000000000001,59,0" r="3.0000000000000071" s="390" w="300">
+          <ModificationCount>60</ModificationCount>
           <mat m="Identity" />
         </arc>
-        <circle id="6" c="4,4,0" d="5.999999999999998">
+        <circle id="6" c="4,4,0" d="5.9999999999999982">
+          <ModificationCount>60</ModificationCount>
           <mat m="Identity" />
         </circle>
-        <circle id="9" c="4,4,0" d="3.000000000000002">
+        <circle id="9" c="4,4,0" d="3.0000000000000022">
+          <ModificationCount>60</ModificationCount>
           <mat m="Identity" />
         </circle>
         <circle id="13" c="4.00000011645796,59.0000000270508,0" d="6">
+          <ModificationCount>61</ModificationCount>
           <mat m="Identity" />
         </circle>
         <pline id="14" Closed="true">
+          <ModificationCount>59</ModificationCount>
           <mat m="Identity" />
           <pts>
             <p>8.00000000000001,57.5,0</p>
             <p>6.5980762113,57.5,0</p>
-            <p b="-0.9999999999999999">4.00000000000001,57.5,0</p>
+            <p b="-0.99999999999999989">4.00000000000001,57.5,0</p>
             <p>4.00000000000001,60.5,0</p>
             <p>6.5980762113,60.5,0</p>
-            <p b="0.8241582288022301">7.70809924354894,60.4999999999973,0</p>
+            <p b="0.82415822880223011">7.70809924354894,60.4999999999973,0</p>
             <p>7.105427357601E-15,59,0</p>
-            <p b="0.9999999999999999">0,4,0</p>
+            <p b="0.99999999999999989">0,4,0</p>
             <p>8,4,0</p>
           </pts>
         </pline>
@@ -34,15 +39,11 @@
     </layer>
   </layers>
   <MachiningOptions>
-    <OutFile></OutFile>
-    <FastPlungeHeight>-1</FastPlungeHeight>
     <Stock>
       <PMin>0,0</PMin>
       <PMax>0,0</PMax>
       <Color>255,165,0</Color>
     </Stock>
-    <ToolDiameter>0</ToolDiameter>
-    <ToolNumber>0</ToolNumber>
     <ToolProfile>Unspecified</ToolProfile>
   </MachiningOptions>
   <parts>
@@ -53,29 +54,27 @@
           <WorkPlane state="Default">XY</WorkPlane>
           <OptimisationMode state="Default">Experimental</OptimisationMode>
           <RoughingFinishing state="Default">Roughing</RoughingFinishing>
-          <ToolDiameter state="Value">1</ToolDiameter>
-          <ToolNumber state="Auto">0</ToolNumber>
-          <ToolProfile state="Auto">Unspecified</ToolProfile>
-          <PlungeFeedrate state="Default">300</PlungeFeedrate>
-          <CutFeedrate state="Default">800</CutFeedrate>
+          <ToolDiameter state="Value">2</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">Unspecified</ToolProfile>
+          <PlungeFeedrate state="Default">150</PlungeFeedrate>
+          <CutFeedrate state="Default">400</CutFeedrate>
           <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
           <CustomMOPHeader state="Default" />
           <CustomMOPFooter state="Default" />
           <Name>Tasche1</Name>
-          <StockSurface state="Auto">0</StockSurface>
+          <StockSurface state="Default">0</StockSurface>
           <RoughingClearance state="Default">0</RoughingClearance>
-          <ClearancePlane state="Default">3</ClearancePlane>
+          <ClearancePlane state="Default">1.5</ClearancePlane>
           <SpindleDirection state="Default">CW</SpindleDirection>
           <SpindleSpeed state="Default">1000</SpindleSpeed>
           <SpindleRange state="Default">0</SpindleRange>
           <VelocityMode state="Default">Undefined</VelocityMode>
           <primitive>
             <prim>6</prim>
-            <prim>9</prim>
-            <prim>13</prim>
           </primitive>
           <TargetDepth state="Value">-0.7</TargetDepth>
-          <DepthIncrement state="Default">0.4</DepthIncrement>
+          <DepthIncrement state="Default">2</DepthIncrement>
           <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
           <CutOrdering state="Default">DepthFirst</CutOrdering>
           <StepOver state="Default">0.4</StepOver>
@@ -87,7 +86,6 @@
           <RegionFillStyle state="Default">InsideOutsideOffsets</RegionFillStyle>
           <FinishStepover state="Default">0</FinishStepover>
           <FinishStepoverAtTargetDepth state="Default">False</FinishStepoverAtTargetDepth>
-          <StartPoint state="Default" />
         </pocket>
         <pocket>
           <Style>GFK1.5</Style>
@@ -126,7 +124,6 @@
           <RegionFillStyle state="Default">InsideOutsideOffsets</RegionFillStyle>
           <FinishStepover state="Default">0</FinishStepover>
           <FinishStepoverAtTargetDepth state="Default">False</FinishStepoverAtTargetDepth>
-          <StartPoint state="Default" />
         </pocket>
         <profile>
           <Style>GFK1.5</Style>
@@ -177,7 +174,6 @@
             <TabStyle>Triangle</TabStyle>
           </HoldingTabs>
           <SideProfile state="Default" />
-          <StartPoint state="Default" />
         </profile>
         <profile>
           <Style>GFK1.5</Style>
@@ -228,7 +224,6 @@
             <TabStyle>Triangle</TabStyle>
           </HoldingTabs>
           <SideProfile state="Default" />
-          <StartPoint state="Default" />
         </profile>
       </machineops>
       <Stock>
@@ -239,6 +234,7 @@
       <ToolProfile>Unspecified</ToolProfile>
       <Nesting>
         <BasePoint>0,0</BasePoint>
+        <NestMethod>None</NestMethod>
       </Nesting>
     </part>
   </parts>
