@@ -40,7 +40,7 @@ jobs:
           path: "**/TestResults/*.trx"
 
   package:
-    name: package (${{ matrix.rid }})
+    name: package (${{ matrix.name }})
     needs: test
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ${{ matrix.os }}
@@ -48,11 +48,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { rid: win-x64, os: windows-latest }
-          - { rid: linux-x64, os: ubuntu-latest }
-          - { rid: linux-arm64, os: ubuntu-latest }
-          - { rid: osx-x64, os: macos-latest }
-          - { rid: osx-arm64, os: macos-latest }
+          - { name: win-x64, rids: "win-x64", os: windows-latest }
+          - { name: linux, rids: "linux-x64 linux-arm64", os: ubuntu-latest }
+          # Both Mac builds on one runner: hosted macOS runners are scarce and a job can wait long for one.
+          - { name: macos, rids: "osx-x64 osx-arm64", os: macos-latest }
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-dotnet@v5
@@ -66,10 +65,14 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
       - name: Package
         shell: pwsh
-        run: ./build/package.ps1 -Rid ${{ matrix.rid }} -Version ${{ steps.version.outputs.version }}
+        run: |
+          foreach ($rid in "${{ matrix.rids }}".Split(" ")) {
+            ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }}
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
       - uses: actions/upload-artifact@v5
         with:
-          name: BamCam-${{ matrix.rid }}
+          name: BamCam-${{ matrix.name }}
           path: |
             artifacts/*.zip
             artifacts/*.tar.gz
