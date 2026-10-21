@@ -7,6 +7,21 @@ BamCam liest und schreibt CamBam-kompatible Zeichnungen (`.cb`) und Postprozesso
 importiert DXF, STL und G-Code und erzeugt G-Code über eine Template-Engine mit der
 `{$makro}`-Sprache der `.cbpp`-Dateien.
 
+![BamCam unter Windows: T-Bar mit Werkzeugwegen der beiden Profile](docs/screenshots/t-bar-werkzeugwege.png)
+
+<table>
+  <tr>
+    <td width="33%"><a href="docs/screenshots/akkubruecke-werkzeugwege.png"><img src="docs/screenshots/akkubruecke-werkzeugwege.png" alt="Akkubrücke mit Taschen und Profilen"></a></td>
+    <td width="33%"><a href="docs/screenshots/polylinie-punkte.png"><img src="docs/screenshots/polylinie-punkte.png" alt="Ausgewählte Polylinie mit Punktliste in den Eigenschaften"></a></td>
+    <td width="33%"><a href="docs/screenshots/konfiguration.png"><img src="docs/screenshots/konfiguration.png" alt="Konfiguration mit Sprachauswahl und Postprozessoren"></a></td>
+  </tr>
+  <tr>
+    <td>Akkubrücke: Taschen und Profile mit Werkzeugwegen, Eigenschaften der Bearbeitung mit Primitive IDs</td>
+    <td>Ausgewählte Polylinie: Punkte über <b>[...]</b> bearbeiten</td>
+    <td>Konfiguration mit Sprachauswahl und Postprozessoren</td>
+  </tr>
+</table>
+
 ## Bauen und starten
 
 Voraussetzung: .NET SDK 10.
