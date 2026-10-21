@@ -189,6 +189,25 @@ public static class CbReader
                 e = t;
                 break;
             }
+            case "spline":
+            {
+                // <spline id deg flags(1 = closed) ktol cptol ftol> <knots><k/></knots> <weights><w/></weights>
+                // <ctrl><p>x,y[,z]</p></ctrl> <fit><p/></fit>
+                var ctrl = el.Element("ctrl")?.Elements("p").Select(p => CbFormat.ParsePoint3(p.Value)).ToList() ?? [];
+                var knots = el.Element("knots")?.Elements("k").Select(k => CbFormat.ParseDouble(k.Value)).ToList() ?? [];
+                var weights = el.Element("weights")?.Elements("w").Select(w => CbFormat.ParseDouble(w.Value, 1)).ToList() ?? [];
+                var s = new SplineEntity(CbFormat.ParseInt((string?)el.Attribute("deg"), 3), ctrl, knots,
+                    weights.Count == ctrl.Count ? weights : null, (CbFormat.ParseInt((string?)el.Attribute("flags")) & 1) != 0)
+                {
+                    KnotTolerance = CbFormat.ParseDouble((string?)el.Attribute("ktol")),
+                    ControlPointTolerance = CbFormat.ParseDouble((string?)el.Attribute("cptol")),
+                    FitTolerance = CbFormat.ParseDouble((string?)el.Attribute("ftol")),
+                };
+                foreach (var p in el.Element("fit")?.Elements("p") ?? []) s.FitPoints.Add(CbFormat.ParsePoint3(p.Value));
+                known.UnionWith(["knots", "weights", "ctrl", "fit"]);
+                e = s;
+                break;
+            }
             case "surface":
             {
                 var s = new SurfaceEntity();

@@ -132,6 +132,140 @@ public sealed class LineEntity : Entity
     }
 }
 
+/// <summary>
+/// Spline (NURBS): degree, control points, optional weights and knots, e.g. from a DXF SPLINE.
+/// For display and machining it is converted into lines and arcs within <see cref="Tolerance"/>.
+/// </summary>
+public sealed class SplineEntity : Entity
+{
+    public override string TypeName => "Spline";
+
+    /// <summary>Maximum deviation of the lines/arcs used for display and toolpaths from the exact curve.</summary>
+    public static double Tolerance { get; set; } = 0.001;
+
+    [Category("Spline"), Description("Polynomial degree of the curve (3 = cubic).")]
+    public int Degree { get; private set; } = 3;
+
+    [Category("Spline"), Description("Whether the curve ends where it starts.")]
+    public bool Closed { get; set; }
+
+    [Category("Spline"), DisplayName("Control Points"),
+     Description("Control points of the spline (the curve is pulled towards them). Click [...] to edit.")]
+    public List<Point3> ControlPoints { get; } = [];
+
+    /// <summary>Weight per control point (rational spline); empty = all 1.</summary>
+    [Browsable(false)]
+    public List<double> Weights { get; } = [];
+
+    [Browsable(false)]
+    public List<double> Knots { get; } = [];
+
+    /// <summary>Fit points (DXF code 11 / .cb &lt;fit&gt;); informational, the curve is defined by the control points.</summary>
+    [Browsable(false)]
+    public List<Point3> FitPoints { get; } = [];
+
+    /// <summary>Knot, control point and fit tolerances as stored in files (.cb ktol/cptol/ftol, DXF 42/43/44).</summary>
+    [Browsable(false)]
+    public double KnotTolerance { get; set; }
+
+    [Browsable(false)]
+    public double ControlPointTolerance { get; set; }
+
+    [Browsable(false)]
+    public double FitTolerance { get; set; }
+
+    private Path2? _cache;
+    private int _cacheKey;
+
+    public SplineEntity() { }
+
+    public SplineEntity(int degree, IEnumerable<Point3> controlPoints, IEnumerable<double>? knots = null, IEnumerable<double>? weights = null, bool closed = false)
+    {
+        Degree = Math.Max(1, degree);
+        ControlPoints.AddRange(controlPoints);
+        if (knots != null) Knots.AddRange(knots);
+        if (weights != null) Weights.AddRange(weights);
+        Closed = closed;
+        Normalize();
+    }
+
+    /// <summary>Replaces the control points; knots and weights are rebuilt when the count changes.</summary>
+    public void SetControlPoints(IEnumerable<Point3> points)
+    {
+        var list = points.ToList();
+        var countChanged = list.Count != ControlPoints.Count;
+        ControlPoints.Clear();
+        ControlPoints.AddRange(list);
+        if (countChanged)
+        {
+            Knots.Clear();
+            Weights.Clear();
+        }
+        Normalize();
+    }
+
+    /// <summary>Repairs inconsistent data: lowers the degree for few points, creates clamped knots, drops bad weights.</summary>
+    private void Normalize()
+    {
+        if (ControlPoints.Count >= 2 && Degree >= ControlPoints.Count) Degree = ControlPoints.Count - 1;
+        if (Weights.Count != 0 && (Weights.Count != ControlPoints.Count || Weights.All(w => Math.Abs(w - 1) < 1e-12))) Weights.Clear();
+        if (ControlPoints.Count > Degree && Knots.Count != ControlPoints.Count + Degree + 1)
+        {
+            Knots.Clear();
+            Knots.AddRange(Nurbs.ClampedKnots(ControlPoints.Count, Degree));
+        }
+    }
+
+    /// <summary>The curve as lines and arcs in local coordinates.</summary>
+    public Path2 LocalPath
+    {
+        get
+        {
+            var key = HashCode.Combine(Degree, Closed, Tolerance, ControlPoints.Count, Sum(ControlPoints.Select(p => p.X * 3 + p.Y * 7 + p.Z * 11)),
+                Sum(Knots), Sum(Weights));
+            if (_cache != null && key == _cacheKey) return _cache;
+            var pts = Nurbs.Flatten(Degree, ControlPoints, Weights, Knots, Tolerance / 2);
+            var closed = Closed || pts.Count > 2 && pts[0].XY.AlmostEquals(pts[^1].XY, 1e-9);
+            if (closed && pts.Count > 2 && pts[0].XY.AlmostEquals(pts[^1].XY, 1e-9)) pts.RemoveAt(pts.Count - 1);
+            var path = new Path2(pts.Select(p => new Vertex(p)), closed);
+            _cache = pts.Count >= 4 ? ArcFitter.Fit(path, Tolerance / 2) : path;
+            _cacheKey = key;
+            return _cache;
+        }
+    }
+
+    private static double Sum(IEnumerable<double> values)
+    {
+        var s = 0.0;
+        var i = 1;
+        foreach (var v in values) s += v * i++;
+        return s;
+    }
+
+    public override IEnumerable<Path2> ToPaths()
+    {
+        yield return Transform.IsIdentity ? LocalPath : LocalPath.Transformed(Transform);
+    }
+
+    public override void ApplyTransform(Matrix4 m)
+    {
+        // Affine maps keep a NURBS curve a NURBS curve with transformed control points.
+        var t = Transform * m;
+        for (var i = 0; i < ControlPoints.Count; i++) ControlPoints[i] = t.Transform(ControlPoints[i]);
+        Transform = Matrix4.Identity;
+    }
+
+    public override Entity CloneEntity()
+    {
+        var e = CopyBase(new SplineEntity(Degree, ControlPoints, Knots, Weights, Closed)
+        {
+            KnotTolerance = KnotTolerance, ControlPointTolerance = ControlPointTolerance, FitTolerance = FitTolerance,
+        });
+        e.FitPoints.AddRange(FitPoints);
+        return e;
+    }
+}
+
 public sealed class CircleEntity : Entity
 {
     public override string TypeName => "Circle";

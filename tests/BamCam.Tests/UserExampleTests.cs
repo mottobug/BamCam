@@ -161,6 +161,6 @@ public class UserExampleTests(ITestOutputHelper output)
         var doc = DxfReader.Load(dxf, out var warnings);
         Assert.Empty(warnings);
         Assert.Equal(6, doc.AllEntities().OfType<Core.Model.CircleEntity>().Count());
-        Assert.Equal(26, doc.AllEntities().Count(e => e is Core.Model.PolylineEntity or Core.Model.LineEntity));
+        Assert.Equal(26, doc.AllEntities().Count(e => e is Core.Model.PolylineEntity or Core.Model.LineEntity or Core.Model.SplineEntity));
     }
 }

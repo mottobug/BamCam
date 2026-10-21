@@ -284,51 +284,40 @@ public sealed class DxfReader
         doc.AddEntity(result, layer);
     }
 
-    private static PolylineEntity? Spline(RawEntity e)
+    /// <summary>
+    /// SPLINE: kept as a <see cref="SplineEntity"/> (control points 10/20/30, knots 40, weights 41, degree 71,
+    /// flags 70: 1 = closed). Splines defined only by fit points become a polyline through those points.
+    /// </summary>
+    private static Entity? Spline(RawEntity e)
     {
         var degree = Math.Max(e.I(71), 1);
         var knots = e.All(40).ToList();
+        var weights = e.All(41).ToList();
         var cx = e.All(10).ToList();
         var cy = e.All(20).ToList();
+        var cz = e.All(30).ToList();
+        var closed = (e.I(70) & 1) != 0;
+        if (cx.Count >= 2 && cy.Count == cx.Count)
+        {
+            var ctrl = cx.Select((x, i) => new Point3(x, cy[i], i < cz.Count ? cz[i] : 0)).ToList();
+            if (knots.Count != ctrl.Count + Math.Min(degree, ctrl.Count - 1) + 1) knots = [];
+            var s = new SplineEntity(degree, ctrl, knots, weights.Count == ctrl.Count ? weights : null, closed)
+            {
+                KnotTolerance = e.D(42), ControlPointTolerance = e.D(43), FitTolerance = e.D(44),
+            };
+            var fx = e.All(11).ToList();
+            var fy = e.All(21).ToList();
+            var fz = e.All(31).ToList();
+            for (var i = 0; i < fx.Count && i < fy.Count; i++) s.FitPoints.Add(new Point3(fx[i], fy[i], i < fz.Count ? fz[i] : 0));
+            return s;
+        }
         var fitX = e.All(11).ToList();
         var fitY = e.All(21).ToList();
-        var pts = new List<Point2>();
-        if (cx.Count >= 2 && knots.Count >= cx.Count + degree + 1)
-        {
-            var ctrl = cx.Zip(cy, (x, y) => new Point2(x, y)).ToList();
-            var u0 = knots[degree];
-            var u1 = knots[ctrl.Count];
-            var steps = Math.Max(16, ctrl.Count * 12);
-            for (var i = 0; i <= steps; i++) pts.Add(DeBoor(ctrl, knots, degree, u0 + (u1 - u0) * i / steps));
-        }
-        else if (fitX.Count >= 2)
-        {
-            pts.AddRange(fitX.Zip(fitY, (x, y) => new Point2(x, y)));
-        }
-        if (pts.Count < 2) return null;
-        var closed = (e.I(70) & 1) != 0;
+        if (fitX.Count < 2) return null;
+        var pts = fitX.Zip(fitY, (x, y) => new Point2(x, y)).ToList();
         if (closed && pts[0].AlmostEquals(pts[^1], 1e-9)) pts.RemoveAt(pts.Count - 1);
         return new PolylineEntity(ArcFitter.Fit(Path2.FromPoints(pts, closed), 0.005));
     }
-
-    private static Point2 DeBoor(List<Point2> ctrl, List<double> knots, int p, double u)
-    {
-        var n = ctrl.Count - 1;
-        var k = p;
-        while (k < n && u >= knots[k + 1]) k++;
-        var d = new Point2[p + 1];
-        for (var j = 0; j <= p; j++) d[j] = ctrl[Math.Clamp(j + k - p, 0, n)];
-        for (var r = 1; r <= p; r++)
-        for (var j = p; j >= r; j--)
-        {
-            var i = j + k - p;
-            var denom = knots[i + p - r + 1] - knots[i];
-            var alpha = denom < 1e-12 ? 0 : (u - knots[i]) / denom;
-            d[j] = Point2.Lerp(d[j - 1], d[j], alpha);
-        }
-        return d[p];
-    }
-
     private static PolylineEntity Ellipse(RawEntity e)
     {
         var c = new Point2(e.D(10), e.D(20));

@@ -204,6 +204,23 @@ public static class CbWriter
                 el.Add(new XText(t.Text));
                 return [el];
             }
+            case SplineEntity sp:
+            {
+                var el = new XElement("spline", new XAttribute("id", sp.Id),
+                    new XAttribute("deg", sp.Degree),
+                    new XAttribute("flags", sp.Closed ? 1 : 0),
+                    new XAttribute("ktol", CbFormat.Double(sp.KnotTolerance)),
+                    new XAttribute("cptol", CbFormat.Double(sp.ControlPointTolerance)),
+                    new XAttribute("ftol", CbFormat.Double(sp.FitTolerance)),
+                    Mat(sp.Transform),
+                    new XElement("knots", sp.Knots.Select(k => new XElement("k", CbFormat.Double(k)))),
+                    // CamBam always writes one weight per control point (1 = not rational).
+                    new XElement("weights", sp.ControlPoints.Select((_, i) => new XElement("w", CbFormat.Double(sp.Weights.Count > 0 ? sp.Weights[i] : 1)))),
+                    new XElement("ctrl", sp.ControlPoints.Select(p => new XElement("p", CbFormat.Pt3OmitZ(p)))),
+                    new XElement("fit", sp.FitPoints.Select(p => new XElement("p", CbFormat.Pt3OmitZ(p)))));
+                AddCommon(el, e);
+                return [el];
+            }
             case SurfaceEntity s:
             {
                 var faces = new XElement("faces");

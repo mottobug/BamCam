@@ -882,6 +882,13 @@
   "{0}: objects {1} do not exist in the drawing.": "{0}: Die Objekte {1} existieren nicht in der Zeichnung.",
   "{0}: {1} object(s) selected. Click / Ctrl+click / window to change, Enter or middle click = apply, Esc = cancel": "{0}: {1} Objekt(e) ausgewählt. Klick / Strg+Klick / Rahmen ändern die Auswahl, Enter oder Mittelklick = übernehmen, Esc = abbrechen",
 
+  "Spline": "Spline",
+  "Degree": "Grad",
+  "Control Points": "Kontrollpunkte",
+  "Polynomial degree of the curve (3 = cubic).": "Polynomgrad der Kurve (3 = kubisch).",
+  "Whether the curve ends where it starts.": "Ob die Kurve dort endet, wo sie beginnt.",
+  "Control points of the spline (the curve is pulled towards them). Click [...] to edit.": "Kontrollpunkte des Splines (die Kurve wird zu ihnen hingezogen). Zum Bearbeiten [...] klicken.",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",
