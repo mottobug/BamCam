@@ -89,6 +89,8 @@ jobs:
     steps:
       - uses: actions/download-artifact@v5
         with:
+          # Only the packages, not the test results.
+          pattern: BamCam-*
           path: dist
           merge-multiple: true
       - name: Create GitHub release
