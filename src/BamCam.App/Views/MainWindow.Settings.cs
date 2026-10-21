@@ -21,10 +21,31 @@ public partial class MainWindow
 
         Width = _settings.WindowWidth;
         Height = _settings.WindowHeight;
-        if (_settings.WindowMaximized) WindowState = WindowState.Maximized;
+        if (_settings.WindowMaximized || !FitsOnScreen()) WindowState = WindowState.Maximized;
         MainGrid.ColumnDefinitions[0].Width = new GridLength(_settings.LeftColumnWidth);
         RightGrid.RowDefinitions[3].Height = new GridLength(_settings.MessagesHeight);
         ApplySettings();
+    }
+
+    /// <summary>
+    /// True when the window (size in device independent units) fits the work area of the primary screen.
+    /// Small or highly scaled displays (e.g. 1280x800 at 150 % = 853x501) would otherwise push the
+    /// title bar with minimise/maximise/close off the top of the screen; such windows start maximised.
+    /// </summary>
+    private bool FitsOnScreen()
+    {
+        if (Screens.Primary is not { } screen) return true;
+        var area = screen.WorkingArea;
+        var scaling = screen.Scaling > 0 ? screen.Scaling : 1;
+        // Leave room for the window frame and title bar.
+        const double frame = 48;
+        var fits = Width + 16 <= area.Width / scaling && Height + frame <= area.Height / scaling;
+        if (!fits)
+        {
+            Width = Math.Max(MinWidth, Math.Min(Width, area.Width / scaling - 16));
+            Height = Math.Max(MinHeight, Math.Min(Height, area.Height / scaling - frame));
+        }
+        return fits;
     }
 
     /// <summary>Messages produced before the message window exists.</summary>

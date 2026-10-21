@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using BamCam.App.Views;
@@ -11,6 +12,9 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Every window (main window and dialogs) is kept on screen when it opens.
+        Window.WindowOpenedEvent.AddClassHandler<Window>((w, _) => WindowFit.KeepOnScreen(w));
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var window = new MainWindow();
