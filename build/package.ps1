@@ -1,11 +1,11 @@
-﻿<#
+<#
 .SYNOPSIS
   Publishes BamCam self-contained for one runtime and packages it for that platform.
 
 .DESCRIPTION
   win-*   : BamCam-<version>-<rid>.zip, plus a setup .exe when Inno Setup (iscc) is available
   linux-* : BamCam-<version>-<rid>.tar.gz with a .desktop entry, icon and install.sh
-  osx-*   : BamCam-<version>-<rid>.zip containing an (unsigned) BamCam.app bundle
+  osx-*   : BamCam-<version>-<rid>.zip containing a BamCam.app bundle (ad-hoc signed when built on macOS)
 
   Works with Windows PowerShell 5.1 and PowerShell 7 (pwsh) on Windows, Linux and macOS.
   The .app bundle and the Linux archive keep executable permissions only when built on macOS/Linux.
@@ -159,11 +159,26 @@ elseif ($Rid -like "osx-*") {
         '  <key>CFBundleIdentifier</key>', '  <string>org.bamcam.BamCam</string>',
         '  <key>CFBundleExecutable</key>', '  <string>BamCam</string>',
         '  <key>CFBundlePackageType</key>', '  <string>APPL</string>',
+        '  <key>CFBundleInfoDictionaryVersion</key>', '  <string>6.0</string>',
+        '  <key>CFBundleSignature</key>', '  <string>????</string>',
+        '  <key>NSPrincipalClass</key>', '  <string>NSApplication</string>',
         "  <key>CFBundleVersion</key>", "  <string>$Version</string>",
         "  <key>CFBundleShortVersionString</key>", "  <string>$Version</string>",
         '  <key>LSMinimumSystemVersion</key>', '  <string>12.0</string>',
         '  <key>NSHighResolutionCapable</key>', '  <true/>'
     ) + $iconEntry + @('</dict>', '</plist>'))
+
+    if (Get-Command codesign -ErrorAction SilentlyContinue) {
+        # Ad-hoc signature of the whole bundle (macOS only). Without it Finder refuses to start the app on
+        # Apple Silicon ("damaged" / nothing happens) although the executable runs from a terminal.
+        & codesign --force --deep --sign - $app
+        if ($LASTEXITCODE -ne 0) { throw "codesign failed" }
+        & codesign --verify --deep --strict $app
+        if ($LASTEXITCODE -ne 0) { throw "codesign verification failed" }
+    }
+    else {
+        Write-Host "codesign not found (not on macOS): the bundle is not signed and will not start from Finder on Apple Silicon."
+    }
 
     $zip = Join-Path $OutDir "$name.zip"
     if (Test-Path $zip) { Remove-Item $zip }

@@ -44,7 +44,8 @@ public partial class App : Application
                 options[name] = args[i + 1];
                 args = args.Where((_, k) => k != i && k != i + 1).ToArray();
             }
-            var files = args.Where(a => !a.StartsWith("--")).ToArray();
+            // "-psn_..." is passed by older macOS versions when started from Finder.
+            var files = args.Where(a => !a.StartsWith("--") && !a.StartsWith("-psn_")).ToArray();
             if (files.Length > 0) window.OpenFileOnStartup(files[0]);
             if (screenshotPath != null) window.CaptureScreenshotAndExit(screenshotPath, generate, options);
         }
