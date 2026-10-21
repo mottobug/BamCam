@@ -19,6 +19,7 @@ UninstallDisplayIcon={app}\BamCam.exe
 OutputDir={#OutputDir}
 OutputBaseFilename={#OutputName}
 SetupIconFile={#IconFile}
+LicenseFile={#SourcePath}\..\..\LICENSE
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

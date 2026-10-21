@@ -185,6 +185,13 @@ Files (`.cb`, G-code, DXF) are language neutral.
 | Shift + arrow keys | Move the selection by one grid step |
 | Space (in the tree) | Show/hide layer, enable/disable part or machining operation |
 
+## License
+
+BamCam is released under the [MIT License](LICENSE).
+
+Third-party components keep their own licenses: Avalonia, SkiaSharp, HarfBuzzSharp and CommunityToolkit.Mvvm
+(MIT), Clipper2 (Boost Software License 1.0) and the Inter font (SIL Open Font License 1.1).
+
 ## Legal notice
 
 BamCam is an independent implementation. No CamBam program code was decompiled or analysed. It is based
