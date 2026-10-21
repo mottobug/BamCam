@@ -1,5 +1,6 @@
 using System.Xml.Linq;
 using BamCam.Core.Cam;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.IO.Cb;
@@ -9,7 +10,7 @@ public static class LibraryFiles
 {
     public static CamStyleLibrary LoadStyles(string path)
     {
-        var root = XDocument.Load(path).Root ?? throw new InvalidDataException("Empty style library");
+        var root = XDocument.Load(path).Root ?? throw new InvalidDataException(Tr.T("Empty style library"));
         var lib = new CamStyleLibrary { Name = Path.GetFileNameWithoutExtension(path), SourcePath = path };
         foreach (var s in root.Elements("CAMStyle"))
         {
@@ -26,7 +27,7 @@ public static class LibraryFiles
 
     public static ToolLibrary LoadTools(string path)
     {
-        var root = XDocument.Load(path).Root ?? throw new InvalidDataException("Empty tool library");
+        var root = XDocument.Load(path).Root ?? throw new InvalidDataException(Tr.T("Empty tool library"));
         var lib = new ToolLibrary
         {
             Name = Path.GetFileNameWithoutExtension(path),

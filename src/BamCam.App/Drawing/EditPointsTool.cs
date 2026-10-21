@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Drawing;
 
@@ -16,7 +17,7 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
     private int _dragIndex = -1;
     private bool _recorded;
 
-    public override string Prompt => "Edit: drag the handles  [Enter / Esc = finish]";
+    public override string Prompt => T("Edit: drag the handles  [Enter / Esc = finish]");
 
     private List<Point2> Handles()
     {
@@ -57,7 +58,7 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
         // Point lists: clicking empty space adds a point.
         if (entity is PointListEntity pl)
         {
-            Host.Session.Execute("Add point", () => pl.Points.Add(world.ToPoint3()));
+            Host.Session.Execute(T("Add point"), () => pl.Points.Add(world.ToPoint3()));
             Host.Invalidate();
             return;
         }

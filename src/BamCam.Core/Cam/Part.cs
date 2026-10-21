@@ -225,7 +225,7 @@ public abstract class MachineOp
     [Browsable(false)]
     public List<XElement> Extensions { get; } = [];
 
-    // ---- Common parameters (Â§6.2.1) -----------------------------------------------------
+    // ---- Common parameters (§6.2.1) -----------------------------------------------------
 
     [Param(10, "Tool")] public CamParam<WorkPlane> WorkPlane { get; set; } = new(Cam.WorkPlane.XY);
     [Param(11, "Tool")] public CamParam<OptimisationMode> OptimisationMode { get; set; } = new(Cam.OptimisationMode.Experimental);

@@ -1,4 +1,5 @@
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.Core.Cam;
@@ -423,7 +424,7 @@ internal static class PocketGenerator
         var closed = ctx.SourcePaths().Where(s => s.Path.Closed && s.Path.Count >= 2).Select(s => s.Path).ToList();
         if (closed.Count == 0)
         {
-            ctx.Warnings.Add($"{op.Name}: pockets need closed shapes.");
+            ctx.Warnings.Add(Tr.F("{0}: pockets need closed shapes.", op.Name));
             ctx.Finish(tp);
             return;
         }
@@ -440,7 +441,7 @@ internal static class PocketGenerator
             var first = Polygons.InsetShape(shape, r + op.RoughingClearance.Value, ToolpathGenerator.ChordTolerance);
             if (first.Count == 0)
             {
-                ctx.Warnings.Add($"{op.Name}: tool is too large for the pocket.");
+                ctx.Warnings.Add(Tr.F("{0}: tool is too large for the pocket.", op.Name));
                 continue;
             }
             foreach (var region in first)
@@ -724,7 +725,7 @@ internal static class DrillGenerator
                     if (!b.IsEmpty) holes.Add((b.Center.XY, Math.Min(b.Width, b.Height)));
                     break;
                 default:
-                    ctx.Warnings.Add($"{op.Name}: drawing object {id} not found.");
+                    ctx.Warnings.Add(Tr.F("{0}: drawing object {1} not found.", op.Name, id));
                     break;
             }
         }
@@ -766,7 +767,7 @@ internal static class DrillGenerator
         var radius = (holeDia - ctx.ToolDiameter) / 2;
         if (radius <= 1e-6)
         {
-            ctx.Warnings.Add($"{op.Name}: hole diameter must be larger than the tool for spiral milling.");
+            ctx.Warnings.Add(Tr.F("{0}: hole diameter must be larger than the tool for spiral milling.", op.Name));
             return;
         }
         var pitch = op.DepthIncrement.Value > 0 ? op.DepthIncrement.Value : 1;

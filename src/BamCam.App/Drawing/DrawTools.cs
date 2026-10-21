@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Drawing;
 
@@ -63,8 +64,8 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
     private readonly List<Point2> _pts = [];
 
     public override string Prompt => _pts.Count == 0
-        ? (linesOnly ? "Line: select first point" : "Polyline: select first point")
-        : "Select next point  [Enter / middle click = finish, C = close, Esc = cancel]";
+        ? (linesOnly ? T("Line: select first point") : T("Polyline: select first point"))
+        : T("Select next point  [Enter / middle click = finish, C = close, Esc = cancel]");
 
     protected override bool HasPendingInput => _pts.Count > 0;
     protected override void Reset() => _pts.Clear();
@@ -129,7 +130,7 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
         {
             e = new PolylineEntity(path);
         }
-        Commit(linesOnly ? "Draw line" : "Draw polyline", e);
+        Commit(linesOnly ? T("Draw line") : T("Draw polyline"), e);
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
@@ -143,7 +144,7 @@ public sealed class CircleTool : DrawTool
 {
     private Point2? _center;
 
-    public override string Prompt => _center == null ? "Circle: select center point" : "Select radius";
+    public override string Prompt => _center == null ? T("Circle: select center point") : T("Select radius");
     protected override bool HasPendingInput => _center != null;
     protected override void Reset() => _center = null;
 
@@ -158,7 +159,7 @@ public sealed class CircleTool : DrawTool
         }
         var r = Point2.Distance(c, world);
         if (r < Tolerance.Point) return;
-        Commit("Draw circle", new CircleEntity { Center = c.ToPoint3(), Diameter = 2 * r });
+        Commit(T("Draw circle"), new CircleEntity { Center = c.ToPoint3(), Diameter = 2 * r });
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
@@ -175,7 +176,7 @@ public sealed class RectangleTool : DrawTool
 {
     private Point2? _corner;
 
-    public override string Prompt => _corner == null ? "Rectangle: select first corner" : "Select opposite corner";
+    public override string Prompt => _corner == null ? T("Rectangle: select first corner") : T("Select opposite corner");
     protected override bool HasPendingInput => _corner != null;
     protected override void Reset() => _corner = null;
 
@@ -191,7 +192,7 @@ public sealed class RectangleTool : DrawTool
             return;
         }
         if (Math.Abs(a.X - world.X) < Tolerance.Point || Math.Abs(a.Y - world.Y) < Tolerance.Point) return;
-        Commit("Draw rectangle", RectEntity.FromCorners(a, world, CornerRadius));
+        Commit(T("Draw rectangle"), RectEntity.FromCorners(a, world, CornerRadius));
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
@@ -208,9 +209,9 @@ public sealed class ArcTool : DrawTool
 
     public override string Prompt => _pts.Count switch
     {
-        0 => "Arc: select start point",
-        1 => "Select end point",
-        _ => "Select a point on the arc",
+        0 => T("Arc: select start point"),
+        1 => T("Select end point"),
+        _ => T("Select a point on the arc"),
     };
 
     protected override bool HasPendingInput => _pts.Count > 0;
@@ -226,7 +227,7 @@ public sealed class ArcTool : DrawTool
             Host.SetPrompt(Prompt);
             return;
         }
-        if (Build(world) is { } arc) Commit("Draw arc", arc);
+        if (Build(world) is { } arc) Commit(T("Draw arc"), arc);
     }
 
     private ArcEntity? Build(Point2 through)
@@ -255,7 +256,7 @@ public sealed class PointListTool : DrawTool
 {
     private readonly List<Point2> _pts = [];
 
-    public override string Prompt => "Point list: select points  [Enter / middle click = finish]";
+    public override string Prompt => T("Point list: select points  [Enter / middle click = finish]");
     protected override bool HasPendingInput => _pts.Count > 0;
     protected override void Reset() => _pts.Clear();
 
@@ -286,7 +287,7 @@ public sealed class PointListTool : DrawTool
     {
         var e = new PointListEntity();
         e.Points.AddRange(_pts.Select(p => p.ToPoint3()));
-        Commit("Draw points", e);
+        Commit(T("Draw points"), e);
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
@@ -303,7 +304,7 @@ public sealed class PointListTool : DrawTool
 /// <summary>Places a text entity at the clicked point (text supplied by a dialog beforehand).</summary>
 public sealed class TextTool(string text, double height) : DrawTool
 {
-    public override string Prompt => "Text: select location";
+    public override string Prompt => T("Text: select location");
     protected override bool HasPendingInput => false;
     protected override void Reset() { }
 
@@ -312,7 +313,7 @@ public sealed class TextTool(string text, double height) : DrawTool
         if (!props.IsLeftButtonPressed) return;
         var saved = RepeatCommands;
         RepeatCommands = false;
-        Commit("Draw text", new TextEntity { Text = text, Height = height, Position = world.ToPoint3() });
+        Commit(T("Draw text"), new TextEntity { Text = text, Height = height, Position = world.ToPoint3() });
         RepeatCommands = saved;
     }
 }
@@ -322,7 +323,7 @@ public sealed class MeasureTool(Action<Point2, Point2> report) : DrawTool
 {
     private Point2? _first;
 
-    public override string Prompt => _first == null ? "Measure: select first point" : "Select second point";
+    public override string Prompt => _first == null ? T("Measure: select first point") : T("Select second point");
     protected override bool HasPendingInput => _first != null;
     protected override void Reset() => _first = null;
 

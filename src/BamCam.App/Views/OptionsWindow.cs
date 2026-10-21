@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using BamCam.App.Controls;
 using BamCam.App.Services;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -15,7 +16,7 @@ public sealed class OptionsWindow : Window
 
     public OptionsWindow(AppSettings current, IEnumerable<string> postNames)
     {
-        Title = "Options";
+        Title = T("Options");
         Width = 560;
         Height = 640;
         MinWidth = 420;
@@ -27,13 +28,13 @@ public sealed class OptionsWindow : Window
 
         var posts = new TextBlock
         {
-            Text = "Available post processors: " + string.Join(", ", postNames),
+            Text = F("Available post processors: {0}", string.Join(", ", postNames)),
             TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(8, 4), FontSize = 11,
         };
 
-        var ok = new Button { Content = "OK", IsDefault = true, MinWidth = 80 };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 80 };
-        var defaults = new Button { Content = "Reset to defaults", MinWidth = 120 };
+        var ok = new Button { Content = T("OK"), IsDefault = true, MinWidth = 80 };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true, MinWidth = 80 };
+        var defaults = new Button { Content = T("Reset to defaults"), MinWidth = 120 };
         ok.Click += (_, _) =>
         {
             _edited.Sanitize();

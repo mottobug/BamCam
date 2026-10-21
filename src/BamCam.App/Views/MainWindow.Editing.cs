@@ -2,6 +2,7 @@ using System.Reflection;
 using BamCam.App.Drawing;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -18,16 +19,17 @@ public partial class MainWindow
             PointListEntity pl => pl.Points.Select(pt => new Vertex(pt)).ToList(),
             _ => null,
         };
+        var label = F("{0} ({1})", T(entity.TypeName), entity.Id);
         if (vertices == null)
         {
-            Log($"{entity} has no editable point list. Use double-click to edit it in the drawing.");
+            Log(F("{0} has no editable point list. Use double-click to edit it in the drawing.", label));
             return;
         }
-        var editor = new PointsEditorWindow($"Points - {entity}", vertices, withBulge: entity is PolylineEntity,
+        var editor = new PointsEditorWindow(F("Points - {0}", label), vertices, withBulge: entity is PolylineEntity,
             closed: entity is PolylineEntity poly ? poly.Closed : null);
         var result = await editor.ShowFor(this);
         if (result is not { } r) return;
-        _session.Execute("Edit points", () =>
+        _session.Execute(T("Edit points"), () =>
         {
             switch (entity)
             {
@@ -48,7 +50,7 @@ public partial class MainWindow
         });
         // Undo snapshots replace the document; re-inspect the (possibly new) entity with the same id.
         if (_session.Document.FindEntity(entity.Id) is { } updated) _session.Select([updated]);
-        Log($"{entity}: {r.Points.Count} points.");
+        Log(F("{0}: {1} points.", label, r.Points.Count));
     }
 
     /// <summary>Interactive edit mode for one object (same as double-click).</summary>

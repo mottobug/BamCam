@@ -10,6 +10,7 @@ using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 using BamCam.Core.Post;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -61,21 +62,21 @@ public partial class MainWindow
         var doc = _session.Document;
         var root = Node(doc, doc.Name, bold: true, expandable: true);
 
-        var layers = Node("Layers", "Layers", expandable: true);
+        var layers = Node("Layers", T("Layers"), expandable: true);
         foreach (var layer in doc.Layers)
         {
             var active = layer.Name == doc.ActiveLayerName;
-            var text = layer.Name + (active ? "  ◄" : "") + (layer.Locked ? "  (locked)" : "");
+            var text = layer.Name + (active ? "  ◄" : "") + (layer.Locked ? "  " + T("(locked)") : "");
             var c = layer.Color;
             var ln = Node(layer, text, new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)), dimmed: !layer.Visible, expandable: true);
             // Large layers: avoid building thousands of nodes.
-            foreach (var e in layer.Entities.Take(2000)) ln.Items.Add(Node(e, $"{e.TypeName} ({e.Id})"));
-            if (layer.Entities.Count > 2000) ln.Items.Add(new TreeViewItem { Header = $"… {layer.Entities.Count - 2000} more" });
+            foreach (var e in layer.Entities.Take(2000)) ln.Items.Add(Node(e, F("{0} ({1})", T(e.TypeName), e.Id)));
+            if (layer.Entities.Count > 2000) ln.Items.Add(new TreeViewItem { Header = F("… {0} more", layer.Entities.Count - 2000) });
             layers.Items.Add(ln);
         }
         root.Items.Add(layers);
 
-        var machining = Node(doc.Machining, "Machining", expandable: true);
+        var machining = Node(doc.Machining, T("Machining"), expandable: true);
         foreach (var part in doc.Parts)
         {
             var active = part.Name == doc.ActivePartName;
@@ -168,7 +169,7 @@ public partial class MainWindow
                 e.Handled = true;
                 break;
             case Key.Space:
-                _session.Execute("Toggle", () =>
+                _session.Execute(T("Toggle"), () =>
                 {
                     foreach (var t in SelectedTags())
                     {
@@ -196,9 +197,9 @@ public partial class MainWindow
 
     private async Task EditTextEntity(TextEntity t)
     {
-        var text = await Dialogs.EditText(this, "Text", t.Text);
+        var text = await Dialogs.EditText(this, T("Text"), t.Text);
         if (text == null) return;
-        _session.Execute("Edit text", () =>
+        _session.Execute(T("Edit text"), () =>
         {
             t.Text = text;
             t.InvalidateOutlines();
@@ -211,7 +212,7 @@ public partial class MainWindow
         var tags = SelectedTags().ToList();
         if (!tags.Any(t => t is Layer or Part or MachineOp)) return false;
         var doc = _session.Document;
-        _session.Execute("Delete", () =>
+        _session.Execute(T("Delete"), () =>
         {
             foreach (var t in tags)
             {
@@ -248,10 +249,10 @@ public partial class MainWindow
             _ => null,
         };
         if (current == null) return;
-        var name = await Dialogs.Prompt(this, "Rename", "New name:", current);
+        var name = await Dialogs.Prompt(this, T("Rename"), T("New name:"), current);
         if (string.IsNullOrWhiteSpace(name) || name == current) return;
         var doc = _session.Document;
-        _session.Execute("Rename", () =>
+        _session.Execute(T("Rename"), () =>
         {
             switch (tag)
             {
@@ -286,92 +287,92 @@ public partial class MainWindow
             case "Layers":
             case Layer:
                 var layer = tag as Layer;
-                Add("New Layer", () =>
+                Add(T("New Layer"), () =>
                 {
                     var l = new Layer(doc.UniqueLayerName()) { Color = _settings.DefaultLayerColor };
-                    _session.Execute("New layer", () =>
+                    _session.Execute(T("New layer"), () =>
                     {
                         doc.Layers.Add(l);
                         doc.ActiveLayerName = l.Name;
                     });
                 });
                 if (layer == null) break;
-                Add("Set As Active Layer", () => { doc.ActiveLayerName = layer.Name; _session.NotifyChanged(); });
+                Add(T("Set As Active Layer"), () => { doc.ActiveLayerName = layer.Name; _session.NotifyChanged(); });
                 Sep();
-                Add(layer.Visible ? "Hide" : "Show", () => _session.Execute("Toggle layer", () => layer.Visible = !layer.Visible));
-                Add("Hide All But This", () => _session.Execute("Hide layers", () => { foreach (var l in doc.Layers) l.Visible = l == layer; }));
-                Add("Show All", () => _session.Execute("Show layers", () => { foreach (var l in doc.Layers) l.Visible = true; }));
-                Add(layer.Locked ? "Unlock" : "Lock", () => _session.Execute("Lock layer", () => layer.Locked = !layer.Locked));
+                Add(layer.Visible ? T("Hide") : T("Show"), () => _session.Execute(T("Toggle layer"), () => layer.Visible = !layer.Visible));
+                Add(T("Hide All But This"), () => _session.Execute(T("Hide layers"), () => { foreach (var l in doc.Layers) l.Visible = l == layer; }));
+                Add(T("Show All"), () => _session.Execute(T("Show layers"), () => { foreach (var l in doc.Layers) l.Visible = true; }));
+                Add(layer.Locked ? T("Unlock") : T("Lock"), () => _session.Execute(T("Lock layer"), () => layer.Locked = !layer.Locked));
                 Sep();
-                Add("Select All On Layer", () => _session.Select(layer.Entities));
-                Add("Clear", () => _session.Execute("Clear layer", () => { foreach (var e in layer.Entities.ToList()) doc.RemoveEntity(e); }));
-                Add("Paste", () => _ = Paste());
-                Add("Rename", () => _ = RenameSelected());
-                Add("Delete", () => { if (doc.Layers.Count > 1) _session.Execute("Delete layer", () => doc.Layers.Remove(layer)); });
+                Add(T("Select All On Layer"), () => _session.Select(layer.Entities));
+                Add(T("Clear"), () => _session.Execute(T("Clear layer"), () => { foreach (var e in layer.Entities.ToList()) doc.RemoveEntity(e); }));
+                Add(T("Paste"), () => _ = Paste());
+                Add(T("Rename"), () => _ = RenameSelected());
+                Add(T("Delete"), () => { if (doc.Layers.Count > 1) _session.Execute(T("Delete layer"), () => doc.Layers.Remove(layer)); });
                 break;
 
             case MachiningOptions:
-                Add("Generate Toolpaths", () => GenerateToolpaths());
-                Add("Produce Gcode", () => _ = ProduceGCode(PostScope.All));
-                Add("Edit Gcode", EditGCode);
+                Add(T("Generate Toolpaths"), () => GenerateToolpaths());
+                Add(T("Produce Gcode"), () => _ = ProduceGCode(PostScope.All));
+                Add(T("Edit Gcode"), EditGCode);
                 Sep();
-                Add("New Part", NewPart);
-                Add("Set Machining Origin", () => View.SetTool(new PickPointTool("Select machining origin",
-                    p => _session.Execute("Set origin", () => doc.Machining.MachiningOrigin = new OptionalPoint(p.ToPoint3())))));
+                Add(T("New Part"), NewPart);
+                Add(T("Set Machining Origin"), () => View.SetTool(new PickPointTool(T("Select machining origin"),
+                    p => _session.Execute(T("Set origin"), () => doc.Machining.MachiningOrigin = new OptionalPoint(p.ToPoint3())))));
                 break;
 
             case Part part:
-                Add("Generate Toolpaths", () => GenerateToolpaths(new PostScope(part)));
-                Add("Produce Gcode", () => _ = ProduceGCode(new PostScope(part)));
+                Add(T("Generate Toolpaths"), () => GenerateToolpaths(new PostScope(part)));
+                Add(T("Produce Gcode"), () => _ = ProduceGCode(new PostScope(part)));
                 Sep();
-                Add(part.Enabled ? "Disable" : "Enable", () => _session.Execute("Toggle part", () => part.Enabled = !part.Enabled));
-                Add("Set As Active Part", () => { doc.ActivePartName = part.Name; _session.NotifyChanged(); });
-                Add("Rename", () => _ = RenameSelected());
-                Add("Delete", () => _session.Execute("Delete part", () => doc.Parts.Remove(part)));
+                Add(part.Enabled ? T("Disable") : T("Enable"), () => _session.Execute(T("Toggle part"), () => part.Enabled = !part.Enabled));
+                Add(T("Set As Active Part"), () => { doc.ActivePartName = part.Name; _session.NotifyChanged(); });
+                Add(T("Rename"), () => _ = RenameSelected());
+                Add(T("Delete"), () => _session.Execute(T("Delete part"), () => doc.Parts.Remove(part)));
                 break;
 
             case MachineOp op:
-                Add("Generate Toolpaths", () => GenerateToolpaths(new PostScope(Operation: op)));
-                Add("Produce Gcode", () => _ = ProduceGCode(new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)));
+                Add(T("Generate Toolpaths"), () => GenerateToolpaths(new PostScope(Operation: op)));
+                Add(T("Produce Gcode"), () => _ = ProduceGCode(new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)));
                 Sep();
-                Add(op.Enabled ? "Disable MOP" : "Enable MOP", () => _session.Execute("Toggle MOP", () => op.Enabled = !op.Enabled));
-                Add("Select Drawing Objects", () =>
+                Add(op.Enabled ? T("Disable MOP") : T("Enable MOP"), () => _session.Execute(T("Toggle MOP"), () => op.Enabled = !op.Enabled));
+                Add(T("Select Drawing Objects"), () =>
                 {
                     if (_session.Selection.Count == 0)
                     {
                         _session.Select(op.PrimitiveIds.Select(doc.FindEntity).OfType<Entity>());
-                        Log("Source objects selected. Change the selection, then use 'Select Drawing Objects' again to apply.");
+                        Log(T("Source objects selected. Change the selection, then use 'Select Drawing Objects' again to apply."));
                     }
                     else
                     {
                         var ids = _session.Selection.Select(e => e.Id).ToList();
-                        _session.Execute("Set MOP objects", () =>
+                        _session.Execute(T("Set MOP objects"), () =>
                         {
                             op.PrimitiveIds.Clear();
                             op.PrimitiveIds.AddRange(ids);
                         });
                         _session.Inspect(op);
-                        Log($"{op.Name}: {ids.Count} drawing object(s).");
+                        Log(F("{0}: {1} drawing object(s).", op.Name, ids.Count));
                     }
                 });
-                Add("Set Start Point", () => View.SetTool(new PickPointTool("Select start point",
-                    p => _session.Execute("Set start point", () => op.StartPoint.Set(new OptionalPoint(p.ToPoint3()))))));
-                Add("Copy", () => _clipboardOp = op.CloneOp());
-                Add("Paste Format", () => { _session.Inspect(op); PasteFormat(); });
-                Add("Duplicate", () =>
+                Add(T("Set Start Point"), () => View.SetTool(new PickPointTool(T("Select start point"),
+                    p => _session.Execute(T("Set start point"), () => op.StartPoint.Set(new OptionalPoint(p.ToPoint3()))))));
+                Add(T("Copy"), () => _clipboardOp = op.CloneOp());
+                Add(T("Paste Format"), () => { _session.Inspect(op); PasteFormat(); });
+                Add(T("Duplicate"), () =>
                 {
                     var part = doc.Parts.First(p => p.Operations.Contains(op));
                     var clone = op.CloneOp();
                     clone.Name = UniqueOpName(op.DisplayType.Replace(" ", ""));
-                    _session.Execute("Duplicate MOP", () => part.Operations.Insert(part.Operations.IndexOf(op) + 1, clone));
+                    _session.Execute(T("Duplicate MOP"), () => part.Operations.Insert(part.Operations.IndexOf(op) + 1, clone));
                 });
-                Add("Move Up", () => MoveOp(op, -1));
-                Add("Move Down", () => MoveOp(op, 1));
-                Add("Reset To Defaults", () => _session.Execute("Reset MOP", op.ResetToDefaults));
-                Add("Toolpaths To Geometry", () => ToolpathToGeometry(op));
+                Add(T("Move Up"), () => MoveOp(op, -1));
+                Add(T("Move Down"), () => MoveOp(op, 1));
+                Add(T("Reset To Defaults"), () => _session.Execute(T("Reset MOP"), op.ResetToDefaults));
+                Add(T("Toolpaths To Geometry"), () => ToolpathToGeometry(op));
                 Sep();
-                Add("Rename", () => _ = RenameSelected());
-                Add("Delete", () => _session.Execute("Delete MOP", () => { foreach (var p in doc.Parts) p.Operations.Remove(op); }));
+                Add(T("Rename"), () => _ = RenameSelected());
+                Add(T("Delete"), () => _session.Execute(T("Delete MOP"), () => { foreach (var p in doc.Parts) p.Operations.Remove(op); }));
                 break;
 
             case Entity e:
@@ -398,14 +399,14 @@ public partial class MainWindow
         var i = part.Operations.IndexOf(op);
         var j = Math.Clamp(i + delta, 0, part.Operations.Count - 1);
         if (i == j) return;
-        _session.Execute("Move MOP", () => part.Operations.Move(i, j));
+        _session.Execute(T("Move MOP"), () => part.Operations.Move(i, j));
     }
 
     private void ToolpathToGeometry(MachineOp op)
     {
         if (!_session.Toolpaths.TryGetValue(op, out var tp))
         {
-            Log("Generate toolpaths first.");
+            Log(T("Generate toolpaths first."));
             return;
         }
         var verts = new List<Vertex>();
@@ -442,26 +443,26 @@ public partial class MainWindow
             pos = m.To;
         }
         Flush();
-        _session.Execute("Toolpaths to geometry", () => { foreach (var c in created) _session.Document.AddEntity(c); });
-        Log($"{created.Count} polyline(s) created from {op.Name}.");
+        _session.Execute(T("Toolpaths to geometry"), () => { foreach (var c in created) _session.Document.AddEntity(c); });
+        Log(F("{0} polyline(s) created from {1}.", created.Count, op.Name));
     }
 
     private void BuildSystemTree()
     {
         SystemTree.Items.Clear();
-        SystemTree.Items.Add(new TreeViewItem { Header = "Configuration", Tag = _settings });
-        var posts = new TreeViewItem { Header = "Post Processors", IsExpanded = true };
+        SystemTree.Items.Add(new TreeViewItem { Header = T("Configuration"), Tag = _settings });
+        var posts = new TreeViewItem { Header = T("Post Processors"), IsExpanded = true };
         foreach (var p in _system.Posts)
         {
             var src = _system.PostSources.GetValueOrDefault(p);
             var item = new TreeViewItem
             {
-                Header = p.Name + (p.Name == _system.DefaultPostName ? "  ◄" : "") + (src == null ? "  (built-in)" : ""),
+                Header = p.Name + (p.Name == _system.DefaultPostName ? "  ◄" : "") + (src == null ? "  " + T("(built-in)") : ""),
                 Tag = p,
             };
-            ToolTip.SetTip(item, src ?? "Built into BamCam");
+            ToolTip.SetTip(item, src ?? T("Built into BamCam"));
             var menu = new ContextMenu();
-            var setDefault = new MenuItem { Header = "Set As Default" };
+            var setDefault = new MenuItem { Header = T("Set As Default") };
             setDefault.Click += (_, _) =>
             {
                 _system.DefaultPostName = p.Name;
@@ -475,7 +476,7 @@ public partial class MainWindow
         }
         SystemTree.Items.Add(posts);
 
-        var styles = new TreeViewItem { Header = "CAM Styles", IsExpanded = true };
+        var styles = new TreeViewItem { Header = T("CAM Styles"), IsExpanded = true };
         foreach (var lib in CamLibraries.StyleLibraries)
         {
             var li = new TreeViewItem { Header = lib.Name, Tag = lib };
@@ -485,7 +486,7 @@ public partial class MainWindow
         }
         SystemTree.Items.Add(styles);
 
-        var tools = new TreeViewItem { Header = "Tools", IsExpanded = true };
+        var tools = new TreeViewItem { Header = T("Tools"), IsExpanded = true };
         foreach (var lib in CamLibraries.ToolLibraries)
         {
             var li = new TreeViewItem { Header = lib.Name, Tag = lib };
@@ -530,7 +531,7 @@ public partial class MainWindow
         if (_session.Inspected is ProfileOp)
         {
             Add("-");
-            var remove = new MenuItem { Header = "Remove Tab", IsEnabled = View.TabAt(p) != null };
+            var remove = new MenuItem { Header = T("Remove Tab"), IsEnabled = View.TabAt(p) != null };
             remove.Click += (_, _) => View.RemoveTabAt(p);
             Add(Sub("Holding Tabs",
                 Item("Autocalc", View.AutocalcTabs),

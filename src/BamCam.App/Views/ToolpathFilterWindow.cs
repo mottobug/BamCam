@@ -5,6 +5,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using BamCam.App.Drawing;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -15,14 +16,14 @@ public sealed class ToolpathFilterWindow : Window
 {
     private readonly DrawingView _view;
     private readonly ToolpathFilterSettings _f;
-    private readonly CheckBox _indexCheck = new() { Content = "Toolpath index" };
+    private readonly CheckBox _indexCheck = new() { Content = T("Toolpath index") };
     private readonly NumericUpDown _index = new() { Minimum = 1, Increment = 1, FormatString = "0", Width = 120 };
     private readonly TextBlock _indexInfo = new() { VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.Gray };
-    private readonly CheckBox _zCheck = new() { Content = "Z depth index" };
+    private readonly CheckBox _zCheck = new() { Content = T("Z depth index") };
     private readonly NumericUpDown _z = new() { Minimum = 1, Increment = 1, FormatString = "0", Width = 120 };
     private readonly TextBlock _zInfo = new() { VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.Gray };
-    private readonly CheckBox _cutCheck = new() { Content = "Cut toolpath color" };
-    private readonly CheckBox _highlightCheck = new() { Content = "Toolpath color" };
+    private readonly CheckBox _cutCheck = new() { Content = T("Cut toolpath color") };
+    private readonly CheckBox _highlightCheck = new() { Content = T("Toolpath color") };
     private readonly Slider _width = new() { Minimum = 0.5, Maximum = 6, Width = 150 };
     private readonly Slider _alpha = new() { Minimum = 0.1, Maximum = 1, Width = 150 };
     private bool _updating;
@@ -31,7 +32,7 @@ public sealed class ToolpathFilterWindow : Window
     {
         _view = view;
         _f = view.Settings.Filter;
-        Title = "Toolpath View Filter";
+        Title = T("Toolpath View Filter");
         Width = 440;
         SizeToContent = SizeToContent.Height;
         CanResize = false;
@@ -56,8 +57,8 @@ public sealed class ToolpathFilterWindow : Window
         Add(_zCheck, 1, 0); Add(_z, 1, 1); Add(_zInfo, 1, 2);
         Add(_cutCheck, 2, 0); Add(Swatch(_f.CutColor), 2, 1);
         Add(_highlightCheck, 3, 0); Add(Swatch(_f.HighlightColor), 3, 1);
-        Add(new TextBlock { Text = "Line width" }, 4, 0); Add(_width, 4, 1);
-        Add(new TextBlock { Text = "Alpha" }, 5, 0); Add(_alpha, 5, 1);
+        Add(new TextBlock { Text = T("Line width") }, 4, 0); Add(_width, 4, 1);
+        Add(new TextBlock { Text = T("Alpha") }, 5, 0); Add(_alpha, 5, 1);
         Content = grid;
 
         _indexCheck.IsCheckedChanged += (_, _) => Apply();
@@ -117,9 +118,9 @@ public sealed class ToolpathFilterWindow : Window
         var (paths, levels) = _view.FilterPaths();
         _index.Maximum = Math.Max(1, paths.Count);
         _z.Maximum = Math.Max(1, levels.Count);
-        _indexInfo.Text = $"of {paths.Count}";
+        _indexInfo.Text = F("of {0}", paths.Count);
         var zi = Math.Clamp(_f.ZIndex, 1, Math.Max(1, levels.Count));
-        _zInfo.Text = levels.Count == 0 ? "of 0"
-            : $"of {levels.Count}  (Z {levels[zi - 1].ToString("0.###", CultureInfo.InvariantCulture)})";
+        _zInfo.Text = levels.Count == 0 ? F("of {0}", 0)
+            : F("of {0}  (Z {1})", levels.Count, levels[zi - 1].ToString("0.###", CultureInfo.InvariantCulture));
     }
 }

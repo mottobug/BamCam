@@ -58,10 +58,10 @@
       <!-- Left column: Drawing / System tabs with tree and property grid -->
       <Grid Grid.Column="0" RowDefinitions="*,4,1.2*">
         <TabControl Grid.Row="0" x:Name="LeftTabs" Padding="0" Margin="0">
-          <TabItem Header="Drawing">
+          <TabItem Header="Drawing" x:Name="DrawingTab">
             <TreeView x:Name="DrawingTree" SelectionMode="Multiple" />
           </TabItem>
-          <TabItem Header="System">
+          <TabItem Header="System" x:Name="SystemTab">
             <TreeView x:Name="SystemTree" />
           </TabItem>
         </TabControl>
@@ -79,7 +79,7 @@
         <d:DrawingView Grid.Row="1" x:Name="View" />
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
         <DockPanel Grid.Row="3">
-          <Border DockPanel.Dock="Top" Classes="panelHeader"><TextBlock Text="Messages" /></Border>
+          <Border DockPanel.Dock="Top" Classes="panelHeader"><TextBlock Text="Messages" x:Name="MessagesHeader" /></Border>
           <TextBox x:Name="Messages" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
                    FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" BorderThickness="0"
                    ScrollViewer.VerticalScrollBarVisibility="Auto" />

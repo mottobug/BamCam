@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using System.Xml;
 using System.Xml.Linq;
+using BamCam.Core.Localization;
 using BamCam.Core.Post;
 
 namespace BamCam.IO.Cb;
@@ -24,7 +25,7 @@ public static class CbppFile
     public static PostProcessorDefinition Parse(string xml)
     {
         var root = XDocument.Parse(xml, LoadOptions.PreserveWhitespace).Root
-                   ?? throw new InvalidDataException("Empty post processor file");
+                   ?? throw new InvalidDataException(Tr.T("Empty post processor file"));
         var def = new PostProcessorDefinition();
         foreach (var el in root.Elements())
         {

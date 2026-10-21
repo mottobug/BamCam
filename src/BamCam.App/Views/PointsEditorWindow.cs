@@ -8,6 +8,7 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Layout;
 using BamCam.Core.Geometry;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -76,7 +77,7 @@ public sealed class PointsEditorWindow : Window
         foreach (var name in withBulge ? new[] { "X", "Y", "Z", "Bulge" } : ["X", "Y", "Z"])
             _grid.Columns.Add(new DataGridTextColumn
             {
-                Header = name,
+                Header = name == "Bulge" ? T("Bulge") : name,
                 Binding = new Binding(name) { StringFormat = "0.######" },
                 Width = new DataGridLength(1, DataGridLengthUnitType.Star),
             });
@@ -93,11 +94,11 @@ public sealed class PointsEditorWindow : Window
         var tools = new WrapPanel { Margin = new Thickness(6, 6, 6, 0) };
         foreach (var b in new[]
                  {
-                     B("Add", AddRow, "Append a point after the last one"),
-                     B("Insert", InsertRow, "Insert a point before the selected one"),
-                     B("Delete", DeleteRows, "Delete the selected points (Del)"),
-                     B("Copy", () => _ = CopyRows(), "Copy all points as tab-separated text"),
-                     B("Paste", () => _ = PasteRows(), "Replace the selection (or append) with points from the clipboard: one point per line, x y [z] [bulge]"),
+                     B(T("Add"), AddRow, T("Append a point after the last one")),
+                     B(T("Insert"), InsertRow, T("Insert a point before the selected one")),
+                     B(T("Delete"), DeleteRows, T("Delete the selected points (Del)")),
+                     B(T("Copy"), () => _ = CopyRows(), T("Copy all points as tab-separated text")),
+                     B(T("Paste"), () => _ = PasteRows(), T("Replace the selection (or append) with points from the clipboard: one point per line, x y [z] [bulge]")),
                  })
         {
             b.Margin = new Thickness(0, 0, 4, 4);
@@ -105,12 +106,12 @@ public sealed class PointsEditorWindow : Window
         }
         if (closed is { } c)
         {
-            _closed = new CheckBox { Content = "Closed", IsChecked = c, Margin = new Thickness(8, 0, 0, 4), VerticalAlignment = VerticalAlignment.Center };
+            _closed = new CheckBox { Content = T("Closed"), IsChecked = c, Margin = new Thickness(8, 0, 0, 4), VerticalAlignment = VerticalAlignment.Center };
             tools.Children.Add(_closed);
         }
 
-        var ok = new Button { Content = "OK", IsDefault = true, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
-        var cancel = new Button { Content = "Cancel", IsCancel = true, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var ok = new Button { Content = T("OK"), IsDefault = true, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true, MinWidth = 80, HorizontalContentAlignment = HorizontalAlignment.Center };
         ok.Click += (_, _) =>
         {
             _grid.CommitEdit();
@@ -124,7 +125,7 @@ public sealed class PointsEditorWindow : Window
 
         var hint = new TextBlock
         {
-            Text = withBulge ? "Bulge = tan(arc angle / 4) of the segment to the next point: 0 straight, 1 half circle counter-clockwise, -1 clockwise." : "",
+            Text = withBulge ? T("Bulge = tan(arc angle / 4) of the segment to the next point: 0 straight, 1 half circle counter-clockwise, -1 clockwise.") : "",
             Margin = new Thickness(8, 0), FontSize = 11, TextWrapping = Avalonia.Media.TextWrapping.Wrap,
         };
 

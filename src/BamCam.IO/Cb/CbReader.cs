@@ -1,6 +1,7 @@
 using System.Xml.Linq;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.IO.Cb;
@@ -23,8 +24,8 @@ public static class CbReader
 
     public static CadDocument Read(XDocument xdoc)
     {
-        var root = xdoc.Root ?? throw new InvalidDataException("Empty document");
-        if (root.Name.LocalName != "CADFile") throw new InvalidDataException($"Not a CamBam drawing (root '{root.Name.LocalName}').");
+        var root = xdoc.Root ?? throw new InvalidDataException(Tr.T("Empty document"));
+        if (root.Name.LocalName != "CADFile") throw new InvalidDataException(Tr.F("Not a CamBam drawing (root '{0}').", root.Name.LocalName));
 
         var doc = new CadDocument
         {

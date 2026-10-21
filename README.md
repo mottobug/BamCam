@@ -116,6 +116,25 @@ Tools ▸ Options (oder System ▸ Configuration) bearbeitet die Programmeinstel
 Gespeichert wird in `settings.json` im Systemordner (`%APPDATA%/BamCam` bzw. `~/.config/BamCam`), zusammen mit
 Fenstergröße, Spaltenbreiten und den zuletzt geöffneten Dateien. Mit der Umgebungsvariable `BAMCAM_SETTINGS`
 kann eine andere Datei verwendet werden.
+
+## Sprachen
+
+Die Oberfläche gibt es auf Englisch und Deutsch. Voreingestellt ist die Sprache des Betriebssystems (sonst Englisch);
+umstellen lässt sie sich unter Tools ▸ Options ▸ Allgemein ▸ Sprache, die Änderung wirkt sofort.
+
+Englisch ist die Ausgangssprache im Code. Jede weitere Sprache ist eine JSON-Datei, die den englischen Text auf
+die Übersetzung abbildet, z. B. `"Generate Toolpaths": "Werkzeugwege erzeugen"`; `"_language"` enthält den Namen der
+Sprache in der Sprache selbst. Fehlende Einträge erscheinen auf Englisch.
+- Eingebaut: `src/BamCam.Core/Localization/lang/*.json` (z. B. `de.json`).
+- Ohne neuen Build: eine Datei `<code>.json` (z. B. `fr.json`) in den Ordner `lang` neben dem Programm oder im
+  Systemordner legen. Einzelne Einträge einer eingebauten Sprache lassen sich dort ebenso überschreiben.
+- Neue Sprache anlegen: `de.json` kopieren, `"_language"` und alle Werte übersetzen. Ein Unterstrich in Menütexten
+  markiert die Zugriffstaste (genau einer pro Text), Platzhalter wie `{0}` oder `{0:0.###}` bleiben erhalten.
+- Der Test `LocalizationTests` sammelt alle Texte der Oberfläche und meldet fehlende Übersetzungen; die Liste der
+  fehlenden Einträge landet in `%TEMP%/bamcam-missing-<code>.json`.
+
+Dateien (`.cb`, G-Code, DXF) sind sprachunabhängig.
+
 ## Bedienung (Auszug)
 
 | Eingabe | Wirkung |

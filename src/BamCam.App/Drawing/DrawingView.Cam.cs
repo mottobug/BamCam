@@ -5,6 +5,7 @@ using Avalonia.Media;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Drawing;
 
@@ -68,7 +69,7 @@ public sealed partial class DrawingView
         if (op == null) return;
         if (Settings.TabDragToolpathRefresh) RegenerateTabs(op, notify: false);
         _session!.NotifyChanged();
-        _session.Log($"{op.Name}: holding tab moved (Tab Method = Manual).");
+        _session.Log(F("{0}: holding tab moved (Tab Method = Manual).", op.Name));
     }
 
     /// <summary>Diagnostics: drags the tab under <paramref name="from"/> to <paramref name="to"/> (drawing coordinates).</summary>
@@ -92,14 +93,14 @@ public sealed partial class DrawingView
     public void AutocalcTabs()
     {
         if (InspectedProfile is not { } op) return;
-        _session!.Execute("Autocalc tabs", () =>
+        _session!.Execute(T("Autocalc tabs"), () =>
         {
             op.Tabs.Clear();
             var s = op.HoldingTabs.Value;
             op.HoldingTabs.Set(s with { TabMethod = s.TabMethod is TabMethod.AutomaticInner or TabMethod.AutomaticOuter ? s.TabMethod : TabMethod.Automatic });
         });
         RegenerateTabs(op, notify: true);
-        _session.Log($"{op.Name}: {ToolpathOf(op)?.TabPlacements.Count ?? 0} holding tab(s) calculated.");
+        _session.Log(F("{0}: {1} holding tab(s) calculated.", op.Name, ToolpathOf(op)?.TabPlacements.Count ?? 0));
     }
 
     /// <summary>Holding Tabs ▸ Add Tab at the source shape point nearest to <paramref name="screen"/>.</summary>
@@ -109,10 +110,10 @@ public sealed partial class DrawingView
         var w = _view.ToWorld(screen);
         if (HoldingTabTools.NearestShape(_session!.Document, op, w) is not { } shape)
         {
-            _session.Log($"{op.Name}: no closed shape to put a tab on.");
+            _session.Log(F("{0}: no closed shape to put a tab on.", op.Name));
             return;
         }
-        _session.Execute("Add tab", () =>
+        _session.Execute(T("Add tab"), () =>
         {
             HoldingTabTools.MakeManual(op, ToolpathOf(op));
             op.Tabs.Add(HoldingTabTools.CreateTab(shape.Id, shape.Path, w));
@@ -126,7 +127,7 @@ public sealed partial class DrawingView
     {
         if (InspectedProfile is not { } op || TabAt(screen) is not { } marker) return false;
         var key = (marker.Tab.ParentEntityID, marker.Tab.ParametricPoint);
-        _session!.Execute("Remove tab", () =>
+        _session!.Execute(T("Remove tab"), () =>
         {
             HoldingTabTools.MakeManual(op, ToolpathOf(op));
             op.Tabs.RemoveAll(t => t.ParentEntityID == key.ParentEntityID && Math.Abs(t.ParametricPoint - key.ParametricPoint) < 1e-9);

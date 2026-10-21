@@ -1,8 +1,10 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using BamCam.App.Controls;
 using BamCam.App.Drawing;
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.App.Services;
@@ -29,6 +31,16 @@ public sealed class AppSettings
     public const int CurrentVersion = 1;
 
     [Browsable(false)] public int Version { get; set; } = CurrentVersion;
+
+    // ---- General ----
+    [Category("General"), DisplayName("Language"), Choices(nameof(LanguageChoices)),
+     Description("User interface language. Automatic = language of the operating system (English if there is no translation for it). Further languages: put a {code}.json file into the lang folder of the system folder.")]
+    public string Language { get; set; } = "";
+
+    /// <summary>Entries of the language list: automatic, then every available translation in its own name.</summary>
+    public static IEnumerable<KeyValuePair<string, string>> LanguageChoices() =>
+        new[] { new KeyValuePair<string, string>("", Tr.T("Automatic (system language)")) }
+            .Concat(Tr.Available().Select(l => new KeyValuePair<string, string>(l.Code, l.Name)));
 
     // ---- Display ----
     [Category("Display"), DisplayName("Show Grid")] public bool ShowGrid { get; set; } = true;
@@ -143,7 +155,7 @@ public sealed class AppSettings
         }
         catch (Exception ex)
         {
-            error = $"Settings file '{path}' could not be read ({ex.Message}); using defaults.";
+            error = Tr.F("Settings file '{0}' could not be read ({1}); using defaults.", path, ex.Message);
             return new AppSettings();
         }
     }
@@ -169,6 +181,7 @@ public sealed class AppSettings
             if (g.MajorScale < g.MinorScale) g.MajorScale = g.MinorScale * 10;
         }
         RecentFiles ??= [];
+        Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);
         if (WindowWidth < 400) WindowWidth = 1366;

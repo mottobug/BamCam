@@ -1,4 +1,5 @@
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.Core.Cam;
@@ -10,7 +11,7 @@ internal static class Profile3DGenerator
         if (op.Additive.Value)
         {
             // Additive (bottom-up extrusion) is a different kind of toolpath; don't silently substitute a mill path.
-            ctx.Warnings.Add($"{op.Name}: additive (experimental) toolpaths are not supported; no toolpath generated.");
+            ctx.Warnings.Add(Tr.F("{0}: additive (experimental) toolpaths are not supported; no toolpath generated.", op.Name));
             ctx.Finish(tp);
             return;
         }
@@ -18,7 +19,7 @@ internal static class Profile3DGenerator
         var triangles = CollectTriangles(ctx, op, op.PrimitiveIds).ToList();
         if (triangles.Count == 0)
         {
-            ctx.Warnings.Add($"{op.Name}: 3D profiles need surface (mesh) objects.");
+            ctx.Warnings.Add(Tr.F("{0}: 3D profiles need surface (mesh) objects.", op.Name));
             ctx.Finish(tp);
             return;
         }
@@ -29,7 +30,7 @@ internal static class Profile3DGenerator
         var boundary = Boundary(ctx, op, mesh);
         if (boundary.Count == 0)
         {
-            ctx.Warnings.Add($"{op.Name}: the machining boundary is empty.");
+            ctx.Warnings.Add(Tr.F("{0}: the machining boundary is empty.", op.Name));
             ctx.Finish(tp);
             return;
         }

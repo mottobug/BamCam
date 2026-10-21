@@ -1,3 +1,5 @@
+using BamCam.Core.Localization;
+using static BamCam.Core.Localization.Tr;
 using Avalonia.Controls;
 using BamCam.App.Drawing;
 using BamCam.App.Services;
@@ -16,7 +18,12 @@ public partial class MainWindow
     private void LoadSettings()
     {
         _settingsPath = Environment.GetEnvironmentVariable("BAMCAM_SETTINGS") is { Length: > 0 } p ? p : AppSettings.DefaultPath;
+        // Additional or corrected translations: next to the program and in the user's system folder.
+        Tr.SearchFolders.Clear();
+        Tr.SearchFolders.Add(Path.Combine(AppContext.BaseDirectory, "lang"));
+        Tr.SearchFolders.Add(Path.Combine(SystemLibrary.SystemFolder, "lang"));
         _settings = AppSettings.Load(_settingsPath, out var error);
+        Tr.SetLanguage(_settings.Language);
         if (error != null) _pendingLogs.Add(error);
 
         Width = _settings.WindowWidth;
@@ -48,12 +55,35 @@ public partial class MainWindow
         return fits;
     }
 
+    /// <summary>Texts of the window itself (the menus, trees and property grid translate while being built).</summary>
+    private void ApplyLanguage()
+    {
+        DrawingTab.Header = T("Drawing");
+        SystemTab.Header = T("System");
+        MessagesHeader.Text = T("Messages");
+        StatusText.Text = T("Ready");
+    }
+
+    /// <summary>The language was switched (Options): rebuild everything that shows text.</summary>
+    private void OnLanguageChanged()
+    {
+        ApplyLanguage();
+        BuildMenu();
+        BuildToolbar();
+        BuildSystemTree();
+        RebuildTree();
+        Properties.Refresh();
+        UpdateTitle();
+        Log(F("Language: {0}", Tr.Available().FirstOrDefault(l => l.Code == Tr.Language)?.Name ?? Tr.Language));
+    }
+
     /// <summary>Messages produced before the message window exists.</summary>
     private readonly List<string> _pendingLogs = [];
 
     /// <summary>Pushes the configuration into the view, tools and libraries.</summary>
     private void ApplySettings()
     {
+        Tr.SetLanguage(_settings.Language);
         var oldFont = TextOutlines.DefaultFont;
         _settings.ApplyTo(View.Settings, _session?.Document.Units ?? _settings.DrawingUnits);
         DrawTool.RepeatCommands = _settings.RepeatCommands;
@@ -84,7 +114,7 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            Log($"Could not save settings to {_settingsPath}: {ex.Message}");
+            Log(F("Could not save settings to {0}: {1}", _settingsPath, ex.Message));
         }
     }
 
@@ -109,7 +139,7 @@ public partial class MainWindow
         BuildSystemTree();
         UpdateTitle();
         SaveSettings();
-        Log("Options saved.");
+        Log(T("Options saved."));
     }
 
     /// <summary>Called when the configuration is edited in the main property grid (System ▸ Configuration).</summary>
@@ -135,7 +165,7 @@ public partial class MainWindow
         _recentMenu.Items.Clear();
         if (_settings.RecentFiles.Count == 0)
         {
-            _recentMenu.Items.Add(new MenuItem { Header = "(empty)", IsEnabled = false });
+            _recentMenu.Items.Add(new MenuItem { Header = T("(empty)"), IsEnabled = false });
             return;
         }
         var i = 1;
@@ -149,7 +179,7 @@ public partial class MainWindow
             _recentMenu.Items.Add(item);
         }
         _recentMenu.Items.Add(new Separator());
-        var clear = new MenuItem { Header = "Clear List" };
+        var clear = new MenuItem { Header = T("Clear List") };
         clear.Click += (_, _) =>
         {
             _settings.RecentFiles.Clear();

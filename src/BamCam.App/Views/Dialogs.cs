@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -39,8 +40,8 @@ public static class Dialogs
     {
         var key = title + "|" + label;
         var box = new TextBox { Text = LastValues.GetValueOrDefault(key, defaultValue ?? "") };
-        var ok = new Button { Content = "OK", IsDefault = true };
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var ok = new Button { Content = T("OK"), IsDefault = true };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true };
         var panel = new StackPanel { Spacing = 6 };
         panel.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(box);
@@ -65,7 +66,7 @@ public static class Dialogs
 
     public static async Task Message(Window owner, string title, string message)
     {
-        var ok = new Button { Content = "OK", IsDefault = true, IsCancel = true };
+        var ok = new Button { Content = T("OK"), IsDefault = true, IsCancel = true };
         var panel = new StackPanel { Spacing = 6 };
         panel.Children.Add(new SelectableTextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(Buttons(ok));
@@ -77,9 +78,9 @@ public static class Dialogs
     /// <summary>Yes / No / Cancel question. Returns true, false or null (cancel).</summary>
     public static async Task<bool?> Ask(Window owner, string title, string message, bool withCancel = true)
     {
-        var yes = new Button { Content = "Yes", IsDefault = true };
-        var no = new Button { Content = "No" };
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var yes = new Button { Content = T("Yes"), IsDefault = true };
+        var no = new Button { Content = T("No") };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true };
         var panel = new StackPanel { Spacing = 6 };
         panel.Children.Add(new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(withCancel ? Buttons(yes, no, cancel) : Buttons(yes, no));
@@ -96,8 +97,8 @@ public static class Dialogs
     public static async Task<string?> EditText(Window owner, string title, string text)
     {
         var box = new TextBox { Text = text, AcceptsReturn = true, Height = 120, TextWrapping = TextWrapping.Wrap };
-        var ok = new Button { Content = "OK" };
-        var cancel = new Button { Content = "Cancel", IsCancel = true };
+        var ok = new Button { Content = T("OK") };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true };
         var panel = new StackPanel { Spacing = 6 };
         panel.Children.Add(box);
         panel.Children.Add(Buttons(ok, cancel));
@@ -120,7 +121,7 @@ public sealed class GCodeWindow : Window
     public GCodeWindow(string path)
     {
         _path = path;
-        Title = "G-Code - " + Path.GetFileName(path);
+        Title = F("G-Code - {0}", Path.GetFileName(path));
         Width = 720;
         Height = 640;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -130,9 +131,9 @@ public sealed class GCodeWindow : Window
             FontFamily = new FontFamily("Consolas,Menlo,DejaVu Sans Mono,monospace"), FontSize = 12,
             Text = File.Exists(path) ? File.ReadAllText(path) : "",
         };
-        var save = new Button { Content = "Save" };
+        var save = new Button { Content = T("Save") };
         save.Click += (_, _) => File.WriteAllText(_path, _editor.Text ?? "");
-        var close = new Button { Content = "Close" };
+        var close = new Button { Content = T("Close") };
         close.Click += (_, _) => Close();
         var bar = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(6) };
         bar.Children.Add(save);

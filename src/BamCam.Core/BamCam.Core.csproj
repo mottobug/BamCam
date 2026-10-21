@@ -13,4 +13,9 @@
   <ItemGroup>
     <InternalsVisibleTo Include="BamCam.Tests" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Built-in translations (English is the source language and needs no file). -->
+    <EmbeddedResource Include="Localization\lang\*.json" LogicalName="BamCam.Core.Localization.lang.%(Filename).json" />
+  </ItemGroup>
 </Project>

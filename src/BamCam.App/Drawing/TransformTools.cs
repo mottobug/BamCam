@@ -4,6 +4,7 @@ using Avalonia.Media;
 using BamCam.Core.Cad;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Drawing;
 
@@ -19,7 +20,7 @@ public abstract class SelectionTransformTool : ViewTool
         Targets = Host.Session.Selection.ToList();
         if (Targets.Count == 0)
         {
-            Host.SetPrompt("Select objects first");
+            Host.SetPrompt(T("Select objects first"));
             Host.EndTool();
         }
     }
@@ -90,9 +91,9 @@ public abstract class SelectionTransformTool : ViewTool
 
 public sealed class MoveTool : SelectionTransformTool
 {
-    public override string Prompt => Picks.Count == 0 ? "Move: select base point" : "Select destination point";
+    public override string Prompt => Picks.Count == 0 ? T("Move: select base point") : T("Select destination point");
     protected override int PickCount => 2;
-    protected override string Description => "Move";
+    protected override string Description => T("Move");
 
     protected override Matrix4 Build(IReadOnlyList<Point2> picks, Point2 cursor, KeyModifiers mods)
     {
@@ -105,12 +106,12 @@ public sealed class RotateTool : SelectionTransformTool
 {
     public override string Prompt => Picks.Count switch
     {
-        0 => "Rotate: select center of rotation",
-        1 => "Select reference angle point",
-        _ => "Select new angle",
+        0 => T("Rotate: select center of rotation"),
+        1 => T("Select reference angle point"),
+        _ => T("Select new angle"),
     };
     protected override int PickCount => 3;
-    protected override string Description => "Rotate";
+    protected override string Description => T("Rotate");
 
     protected override Matrix4 Build(IReadOnlyList<Point2> picks, Point2 cursor, KeyModifiers mods)
     {
@@ -126,10 +127,10 @@ public sealed class RotateTool : SelectionTransformTool
 
 public sealed class MirrorTool : SelectionTransformTool
 {
-    public override string Prompt => Picks.Count == 0 ? "Mirror: select first point of mirror line" : "Select second point (Shift = constrain angle)";
+    public override string Prompt => Picks.Count == 0 ? T("Mirror: select first point of mirror line") : T("Select second point (Shift = constrain angle)");
     protected override int PickCount => 2;
     protected override bool Copy => true;
-    protected override string Description => "Mirror";
+    protected override string Description => T("Mirror");
 
     protected override Matrix4 Build(IReadOnlyList<Point2> picks, Point2 cursor, KeyModifiers mods)
     {

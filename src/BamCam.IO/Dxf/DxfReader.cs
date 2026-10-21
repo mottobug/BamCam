@@ -1,5 +1,6 @@
 using System.Globalization;
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.IO.Dxf;
@@ -242,7 +243,7 @@ public sealed class DxfReader
                 var flags = e.I(70);
                 if ((flags & (16 | 64)) != 0)
                 {
-                    Warnings.Add("Polygon meshes in DXF are not supported and were skipped.");
+                    Warnings.Add(Tr.T("Polygon meshes in DXF are not supported and were skipped."));
                     break;
                 }
                 var pl = new PolylineEntity { Closed = (flags & 1) != 0 };
@@ -262,7 +263,7 @@ public sealed class DxfReader
                 var name = e.Get(2)?.Trim() ?? "";
                 if (depth > 8 || !_blocks.TryGetValue(name, out var block))
                 {
-                    Warnings.Add($"Block '{name}' not found.");
+                    Warnings.Add(Tr.F("Block '{0}' not found.", name));
                     break;
                 }
                 var sx = e.D(41, 1);
@@ -275,7 +276,7 @@ public sealed class DxfReader
             case "TEXT" or "MTEXT" or "DIMENSION" or "HATCH" or "SOLID" or "3DFACE" or "VIEWPORT" or "ATTDEF" or "ATTRIB":
                 break;
             default:
-                Warnings.Add($"DXF entity type {e.Type} is not supported.");
+                Warnings.Add(Tr.F("DXF entity type {0} is not supported.", e.Type));
                 break;
         }
         if (result == null) return;

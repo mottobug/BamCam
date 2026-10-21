@@ -1,4 +1,5 @@
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.Core.Cam;
@@ -30,7 +31,7 @@ public static class ToolpathGenerator
                 case NcFileOp nc:
                 {
                     var path = ResolveNcPath(doc, nc);
-                    if (path == null) tp.Warnings.Add($"{op.Name}: G-code file '{nc.SourceFile.Value}' not found.");
+                    if (path == null) tp.Warnings.Add(Tr.F("{0}: G-code file '{1}' not found.", op.Name, nc.SourceFile.Value));
                     else
                     {
                         var parsed = GCodeParser.Parse(File.ReadAllText(path));
@@ -39,16 +40,16 @@ public static class ToolpathGenerator
                     }
                     break;
                 }
-                default: tp.Warnings.Add($"{op.Name}: toolpath generation for '{op.DisplayType}' is not supported yet."); break;
+                default: tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType))); break;
             }
         }
         catch (Exception ex)
         {
-            tp.Warnings.Add($"{op.Name}: toolpath generation failed: {ex.Message}");
+            tp.Warnings.Add(Tr.F("{0}: toolpath generation failed: {1}", op.Name, ex.Message));
         }
         if (op is not NcFileOp) tp.TrimTrailingRetracts();
         if (tp.Moves.Count == 0 && tp.Warnings.Count == 0)
-            tp.Warnings.Add($"{op.Name}: no toolpath was generated (check the selected drawing objects).");
+            tp.Warnings.Add(Tr.F("{0}: no toolpath was generated (check the selected drawing objects).", op.Name));
         return tp;
     }
 
@@ -85,7 +86,7 @@ internal sealed class GenContext
             TargetDepth = d.TargetDepth.State == ParamState.Auto && !stock.IsEmpty ? stock.PMin.Z : d.TargetDepth.Value;
             if (TargetDepth > StockSurface)
             {
-                Warnings.Add($"{op.Name}: Target Depth is above Stock Surface; using Stock Surface.");
+                Warnings.Add(Tr.F("{0}: Target Depth is above Stock Surface; using Stock Surface.", op.Name));
                 TargetDepth = StockSurface;
             }
         }
@@ -118,7 +119,7 @@ internal sealed class GenContext
             var e = Doc.FindEntity(id);
             if (e == null)
             {
-                Warnings.Add($"{Op.Name}: drawing object {id} not found.");
+                Warnings.Add(Tr.F("{0}: drawing object {1} not found.", Op.Name, id));
                 continue;
             }
             foreach (var p in e.ToPaths())

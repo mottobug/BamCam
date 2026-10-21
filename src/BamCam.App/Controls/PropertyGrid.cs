@@ -10,6 +10,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.App.Controls;
@@ -93,17 +94,28 @@ public sealed partial class PropertyGrid : DockPanel
         public Action<object?>? Set { get; init; }
         public ICamParam? Param { get; init; }
         public int Depth { get; init; }
+        /// <summary>Fixed list of (value, display text) for a string property, see <see cref="ChoicesAttribute"/>.</summary>
+        public IReadOnlyList<KeyValuePair<string, string>>? Choices { get; init; }
         public bool IsComposite => IsCompositeType(Type);
     }
 
-    private static bool IsCompositeType(Type t) =>
+    public static bool IsCompositeType(Type t) =>
         t == typeof(Stock) || t == typeof(NestingSettings) || t == typeof(LeadMove) ||
         t == typeof(HoldingTabSettings) || t == typeof(SideProfile) || t == typeof(Services.GridInfo);
 
     [GeneratedRegex("(?<=[a-z0-9])(?=[A-Z])")]
     private static partial Regex WordBoundary();
 
-    private static string Humanize(string name) => WordBoundary().Replace(name, " ");
+    /// <summary>"StepOver" → "Step Over": display text (and translation key) of property and enum names.</summary>
+    public static string Humanize(string name) => WordBoundary().Replace(name.Replace('_', ' '), " ").Replace("  ", " ");
+
+    /// <summary>English display name of a property (the translation key).</summary>
+    public static string DisplayNameOf(PropertyInfo prop) =>
+        prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? Humanize(prop.GetCustomAttribute<ParamAttribute>()?.XmlName ?? prop.Name);
+
+    /// <summary>English category of a property (the translation key).</summary>
+    public static string CategoryOf(PropertyInfo prop) =>
+        prop.GetCustomAttribute<ParamAttribute>()?.Category ?? prop.GetCustomAttribute<CategoryAttribute>()?.Category ?? "Misc";
 
     private IEnumerable<Node> NodesFor(object target, int depth, string prefix, Action<object>? replaceTarget)
     {
@@ -113,10 +125,10 @@ public sealed partial class PropertyGrid : DockPanel
             if (prop.GetCustomAttribute<BrowsableAttribute>() is { Browsable: false }) continue;
             if (prop.Name is "EqualityContract") continue;
 
-            var paramAttr = prop.GetCustomAttribute<ParamAttribute>();
-            var category = paramAttr?.Category ?? prop.GetCustomAttribute<CategoryAttribute>()?.Category ?? "Misc";
-            var display = prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? Humanize(paramAttr?.XmlName ?? prop.Name);
-            var desc = prop.GetCustomAttribute<DescriptionAttribute>()?.Description;
+            var category = Tr.T(CategoryOf(prop));
+            var display = Tr.T(DisplayNameOf(prop));
+            var desc = prop.GetCustomAttribute<DescriptionAttribute>()?.Description is { } d ? Tr.T(d) : null;
+            var choices = prop.GetCustomAttribute<ChoicesAttribute>();
             var key = prefix + prop.Name;
 
             if (typeof(ICamParam).IsAssignableFrom(prop.PropertyType))
@@ -172,6 +184,7 @@ public sealed partial class PropertyGrid : DockPanel
             {
                 Key = key, Display = display, Category = category, Description = desc, Type = prop.PropertyType,
                 Get = () => prop.GetValue(target), Set = setter, Depth = depth,
+                Choices = choices?.GetChoices(target.GetType()),
             };
         }
     }
@@ -180,7 +193,7 @@ public sealed partial class PropertyGrid : DockPanel
 
     private static object CloneRecord(object r) => r.GetType().GetMethod("<Clone>$")!.Invoke(r, null)!;
 
-    private static bool IsEditableType(Type t) =>
+    public static bool IsEditableType(Type t) =>
         t == typeof(string) || t == typeof(double) || t == typeof(int) || t == typeof(bool) || t.IsEnum ||
         t == typeof(Point3) || t == typeof(Point2) || t == typeof(RgbColor) || t == typeof(OptionalPoint) ||
         t == typeof(Matrix4) || Nullable.GetUnderlyingType(t) == typeof(string);
@@ -198,13 +211,13 @@ public sealed partial class PropertyGrid : DockPanel
         }
         _title.Text = _target switch
         {
-            Entity e => e.ToString(),
-            MachineOp op => $"{op.DisplayType}: {op.Name}",
-            Layer l => $"Layer: {l.Name}",
-            Part p => $"Part: {p.Name}",
-            CadDocument d => $"Drawing: {d.Name}",
-            MachiningOptions => "Machining",
-            Services.AppSettings => "Configuration",
+            Entity e => Tr.F("{0} ({1})", Tr.T(e.TypeName), e.Id),
+            MachineOp op => $"{Tr.T(op.DisplayType)}: {op.Name}",
+            Layer l => Tr.F("Layer: {0}", l.Name),
+            Part p => Tr.F("Part: {0}", p.Name),
+            CadDocument d => Tr.F("Drawing: {0}", d.Name),
+            MachiningOptions => Tr.T("Machining"),
+            Services.AppSettings => Tr.T("Configuration"),
             _ => _target.GetType().Name,
         };
 
@@ -309,11 +322,11 @@ public sealed partial class PropertyGrid : DockPanel
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
             Foreground = p.State == ParamState.Value ? Brushes.Black : Brushes.Gray,
         };
-        ToolTip.SetTip(b, "Default = inherited from style, Value = explicit, Auto = calculated");
+        ToolTip.SetTip(b, Tr.T("Default = inherited from style, Value = explicit, Auto = calculated"));
         var menu = new ContextMenu();
         foreach (var s in Enum.GetValues<ParamState>())
         {
-            var item = new MenuItem { Header = s.ToString(), IsChecked = p.State == s, ToggleType = MenuItemToggleType.Radio };
+            var item = new MenuItem { Header = Tr.T(s.ToString()), IsChecked = p.State == s, ToggleType = MenuItemToggleType.Radio };
             item.Click += (_, _) =>
             {
                 ValueChanging?.Invoke(this, EventArgs.Empty);
@@ -338,7 +351,7 @@ public sealed partial class PropertyGrid : DockPanel
         }
         catch (Exception ex)
         {
-            _help.Text = "Invalid value: " + (ex.InnerException?.Message ?? ex.Message);
+            _help.Text = Tr.F("Invalid value: {0}", ex.InnerException?.Message ?? ex.Message);
             return;
         }
         ValueChanged?.Invoke(this, node.Key);
@@ -361,16 +374,17 @@ public sealed partial class PropertyGrid : DockPanel
             var count = (value as System.Collections.ICollection)?.Count ?? 0;
             var panel = new DockPanel();
             var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
-            ToolTip.SetTip(button, "Edit points");
+            ToolTip.SetTip(button, Tr.T("Edit points"));
             button.Click += (_, _) => node.Set?.Invoke(null);
             DockPanel.SetDock(button, Dock.Right);
             panel.Children.Add(button);
-            panel.Children.Add(new TextBlock { Text = $"({count} points)", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center });
+            panel.Children.Add(new TextBlock { Text = Tr.F("({0} points)", count), Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center });
             return panel;
         }
 
         if (node.IsComposite)
-            return new TextBlock { Text = value?.ToString() ?? "", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray };
+            // Summaries are enum names ("None", "Automatic") or values ("10 x 20 x 5", "(none)").
+            return new TextBlock { Text = value?.ToString() is { } summary ? Tr.T(Humanize(summary)) : "", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray };
 
         if (t == typeof(bool))
         {
@@ -379,19 +393,25 @@ public sealed partial class PropertyGrid : DockPanel
             return cb;
         }
 
-        if (t.IsEnum)
+        if (t.IsEnum || node.Choices != null)
         {
-            var names = Enum.GetNames(t);
+            // (value, display text): enum members are shown humanized and translated ("DepthFirst" → "Depth First").
+            var choices = node.Choices ?? Enum.GetNames(t)
+                .Select(n => new KeyValuePair<string, string>(n, Tr.T(Humanize(n)))).ToList();
+            var current = value?.ToString() ?? "";
             var combo = new ComboBox
             {
-                ItemsSource = names, SelectedItem = value?.ToString(), IsEnabled = !readOnly,
+                ItemsSource = choices.Select(c => c.Value).ToList(),
+                SelectedIndex = choices.ToList().FindIndex(c => c.Key == current), IsEnabled = !readOnly,
                 HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 20, Padding = new Thickness(4, 0),
                 BorderThickness = new Thickness(0), FontStyle = isDefault ? FontStyle.Italic : FontStyle.Normal,
                 Foreground = isDefault ? Brushes.Gray : Brushes.Black,
             };
             combo.SelectionChanged += (_, _) =>
             {
-                if (combo.SelectedItem is string s && s != value?.ToString()) Apply(node, Enum.Parse(t, s));
+                if (combo.SelectedIndex < 0) return;
+                var selected = choices[combo.SelectedIndex].Key;
+                if (selected != current) Apply(node, t.IsEnum ? Enum.Parse(t, selected) : selected);
             };
             return combo;
         }
@@ -409,7 +429,7 @@ public sealed partial class PropertyGrid : DockPanel
             panel.Children.Add(TextEditor(node, color.ToString(), readOnly, isDefault, s =>
             {
                 var parts = s.Split(',');
-                if (parts.Length < 3) throw new FormatException("Expected r,g,b");
+                if (parts.Length < 3) throw new FormatException(Tr.T("Expected r,g,b"));
                 return new RgbColor(byte.Parse(parts[0].Trim(), Inv), byte.Parse(parts[1].Trim(), Inv), byte.Parse(parts[2].Trim(), Inv));
             }));
             return panel;
@@ -422,7 +442,7 @@ public sealed partial class PropertyGrid : DockPanel
             Point3 p => $"{F(p.X)},{F(p.Y)},{F(p.Z)}",
             Point2 p => $"{F(p.X)},{F(p.Y)}",
             OptionalPoint op => op.Point is { } pp ? $"{F(pp.X)},{F(pp.Y)},{F(pp.Z)}" : "",
-            Matrix4 m => m.IsIdentity ? "Identity" : string.Join(" ", m.ToArray().Select(F)),
+            Matrix4 m => m.IsIdentity ? Tr.T("Identity") : string.Join(" ", m.ToArray().Select(F)),
             _ => Convert.ToString(value, Inv) ?? "",
         };
 
@@ -446,7 +466,7 @@ public sealed partial class PropertyGrid : DockPanel
     {
         var parts = s.Split(',', ';');
         double P(int i) => i < parts.Length && parts[i].Trim().Length > 0 ? double.Parse(parts[i].Trim(), NumberStyles.Float, Inv) : 0;
-        if (parts.Length < 2) throw new FormatException("Expected x,y[,z]");
+        if (parts.Length < 2) throw new FormatException(Tr.T("Expected x,y[,z]"));
         return new Point3(P(0), P(1), P(2));
     }
 
@@ -467,7 +487,7 @@ public sealed partial class PropertyGrid : DockPanel
             }
             catch (Exception ex)
             {
-                _help.Text = $"Invalid value for {node.Display}: {ex.Message}";
+                _help.Text = Tr.F("Invalid value for {0}: {1}", node.Display, ex.Message);
                 box.Text = text;
             }
         }

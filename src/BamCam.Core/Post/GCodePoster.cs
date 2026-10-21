@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
+using BamCam.Core.Localization;
 using BamCam.Core.Model;
 
 namespace BamCam.Core.Post;
@@ -95,7 +96,7 @@ public sealed partial class GCodePoster
         var eol = post.EndOfLineText;
         var result = new PostResult { Text = string.Join(eol, lines) + eol, LineCount = lines.Count };
         result.Warnings.AddRange(poster._warnings);
-        if (jobs.Count == 0) result.Warnings.Add("No toolpaths to post. Generate toolpaths first.");
+        if (jobs.Count == 0) result.Warnings.Add(Tr.T("No toolpaths to post. Generate toolpaths first."));
         return result;
     }
 
@@ -275,7 +276,7 @@ public sealed partial class GCodePoster
 
         if (_userMacros.TryGetValue(name, out var user)) return Expand(user);
 
-        if (!_post.SuppressParserErrors) _warnings.Add($"Unknown post processor macro: {{${name}}}");
+        if (!_post.SuppressParserErrors) _warnings.Add(Tr.F("Unknown post processor macro: {{${0}}}", name));
         return "";
     }
 

@@ -1,6 +1,7 @@
 using BamCam.Core.Cam;
 using BamCam.Core.Post;
 using BamCam.IO.Cb;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Services;
 
@@ -60,7 +61,7 @@ public sealed class SystemLibrary
             foreach (var file in Directory.GetFiles(dir, "translate_*").Where(f => Path.GetExtension(f).Length == 0))
             {
                 try { CbLocalization.LoadTranslationFile(file); }
-                catch (Exception ex) { LoadMessages.Add($"Could not read translations '{file}': {ex.Message}"); }
+                catch (Exception ex) { LoadMessages.Add(F("Could not read translations '{0}': {1}", file, ex.Message)); }
             }
         foreach (var sub in new[] { "styles", "tools" })
         {
@@ -86,7 +87,7 @@ public sealed class SystemLibrary
                 }
                 catch (Exception ex)
                 {
-                    LoadMessages.Add($"Could not load library '{file}': {ex.Message}");
+                    LoadMessages.Add(F("Could not load library '{0}': {1}", file, ex.Message));
                 }
             }
         }
@@ -120,7 +121,7 @@ public sealed class SystemLibrary
                 }
                 catch (Exception ex)
                 {
-                    LoadMessages.Add($"Could not load post processor '{file}': {ex.Message}");
+                    LoadMessages.Add(F("Could not load post processor '{0}': {1}", file, ex.Message));
                 }
             }
         }

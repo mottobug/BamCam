@@ -6,6 +6,7 @@ using Avalonia.Media;
 using BamCam.App.Drawing;
 using BamCam.Core.Cam;
 using BamCam.Core.Post;
+using static BamCam.Core.Localization.Tr;
 using Path = Avalonia.Controls.Shapes.Path;
 
 namespace BamCam.App.Views;
@@ -21,7 +22,7 @@ public partial class MainWindow
 
     private MenuItem Item(string header, Action action, string? gesture = null)
     {
-        var item = new MenuItem { Header = header };
+        var item = new MenuItem { Header = T(header) };
         item.Click += (_, _) => action();
         if (gesture != null)
         {
@@ -57,8 +58,8 @@ public partial class MainWindow
 
     private MenuItem RecentMenu()
     {
-        _recentMenu = new MenuItem { Header = "_Recent Files" };
-        _recentMenu.Items.Add(new MenuItem { Header = "(empty)", IsEnabled = false });
+        _recentMenu = new MenuItem { Header = T("_Recent Files") };
+        _recentMenu.Items.Add(new MenuItem { Header = T("(empty)"), IsEnabled = false });
         _recentMenu.SubmenuOpened += (_, _) => FillRecentMenu();
         return _recentMenu;
     }
@@ -70,7 +71,7 @@ public partial class MainWindow
 
     private static MenuItem Sub(string header, params object[] items)
     {
-        var m = new MenuItem { Header = header };
+        var m = new MenuItem { Header = T(header) };
         foreach (var i in items) m.Items.Add(i is string s && s == "-" ? new Separator() : i);
         return m;
     }
@@ -78,6 +79,8 @@ public partial class MainWindow
     private void BuildMenu()
     {
         _registering = true;
+        _shortcuts.Clear();
+        _checkItems.Clear();
         MainMenu.Items.Clear();
 
         MainMenu.Items.Add(Sub("_File",
@@ -104,13 +107,13 @@ public partial class MainWindow
             Item("_Options...", ShowOptions),
             Item("_Clear Messages", () => Messages.Text = ""),
             "-",
-            Item("Reload Post Processors", () => { _system.Reload(); BuildSystemTree(); Log($"{_system.Posts.Count} post processors loaded."); }),
+            Item("Reload Post Processors", () => { _system.Reload(); BuildSystemTree(); Log(F("{0} post processors loaded.", _system.Posts.Count)); }),
             Item("Browse System Folder", () => OpenFolder(Services.SystemLibrary.SystemFolder))));
 
         MainMenu.Items.Add(Sub("_Help",
-            Item("_About BamCam", () => _ = Dialogs.Message(this, "About BamCam",
-                "BamCam – cross-platform 2.5D CAD/CAM\n\nAvalonia " + typeof(Avalonia.Application).Assembly.GetName().Version +
-                ", .NET " + Environment.Version + "\nReads and writes .cb drawings and .cbpp post processors."))));
+            Item("_About BamCam", () => _ = Dialogs.Message(this, T("About BamCam"),
+                F("BamCam – cross-platform 2.5D CAD/CAM\n\nAvalonia {0}, .NET {1}\nReads and writes .cb drawings and .cbpp post processors.",
+                    typeof(Avalonia.Application).Assembly.GetName().Version, Environment.Version)))));
 
         // Single-key draw shortcuts (active when no text field has focus).
         _shortcuts[(Key.P, KeyModifiers.None)] = () => View.SetTool(new PolylineTool());
@@ -250,7 +253,7 @@ public partial class MainWindow
         if (_postMenu == null) return;
         _postMenu.Items.Clear();
         var current = _session.Document.Machining.PostProcessor;
-        var def = new MenuItem { Header = $"(Default: {_system.DefaultPostName})", ToggleType = MenuItemToggleType.Radio, IsChecked = string.IsNullOrEmpty(current) };
+        var def = new MenuItem { Header = F("(Default: {0})", _system.DefaultPostName), ToggleType = MenuItemToggleType.Radio, IsChecked = string.IsNullOrEmpty(current) };
         def.Click += (_, _) => SetPost("");
         _postMenu.Items.Add(def);
         foreach (var p in _system.Posts)
@@ -263,8 +266,8 @@ public partial class MainWindow
 
     private void SetPost(string name)
     {
-        _session.Execute("Set post processor", () => _session.Document.Machining.PostProcessor = name);
-        Log($"Post processor: {(name.Length == 0 ? "(default)" : name)}");
+        _session.Execute(T("Set post processor"), () => _session.Document.Machining.PostProcessor = name);
+        Log(F("Post processor: {0}", name.Length == 0 ? T("(default)") : name));
     }
 
     // ------------------------------------------------------------------ toolbar
@@ -280,7 +283,7 @@ public partial class MainWindow
                 StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
             },
         };
-        ToolTip.SetTip(b, tip);
+        ToolTip.SetTip(b, T(tip));
         b.Click += (_, _) =>
         {
             action();
@@ -288,6 +291,9 @@ public partial class MainWindow
         };
         return b;
     }
+
+    private ComboBox? _unitsCombo;
+    private bool _unitsHooked;
 
     private static Control ToolSeparator() => new Rectangle { Width = 1, Height = 20, Fill = Brushes.Gray, Margin = new Thickness(4, 2) };
 
@@ -305,19 +311,25 @@ public partial class MainWindow
 
         var units = new ComboBox
         {
-            ItemsSource = new[] { "Millimeters", "Inches" }, SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0, Width = 110, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            ItemsSource = new[] { T("Millimeters"), T("Inches") }, SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0, Width = 110, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
         };
-        ToolTip.SetTip(units, "Drawing units");
+        ToolTip.SetTip(units, T("Drawing units"));
         units.SelectionChanged += (_, _) =>
         {
             var u = units.SelectedIndex == 1 ? Core.Model.DrawingUnits.Inches : Core.Model.DrawingUnits.Millimeters;
             if (_session.Document.Units == u) return;
-            _session.Execute("Change units", () => _session.Document.Units = u);
+            _session.Execute(T("Change units"), () => _session.Document.Units = u);
             _settings.ApplyGrid(View.Settings, u);
             View.Invalidate();
             UpdateTitle();
         };
-        _session.DocumentReplaced += (_, _) => units.SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0;
+        // The toolbar is rebuilt when the language changes: subscribe once and update the current combo box.
+        _unitsCombo = units;
+        if (!_unitsHooked)
+        {
+            _unitsHooked = true;
+            _session.DocumentReplaced += (_, _) => _unitsCombo!.SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0;
+        }
         p.Children.Add(units);
         p.Children.Add(ToolButton("IconAxis", "Show axis", () => { View.Settings.ShowAxis = !View.Settings.ShowAxis; RefreshChecks(); View.Invalidate(); }));
         p.Children.Add(ToolButton("IconGrid", "Show grid", () => { View.Settings.ShowGrid = !View.Settings.ShowGrid; RefreshChecks(); View.Invalidate(); }));

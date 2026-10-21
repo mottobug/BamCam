@@ -9,6 +9,7 @@ using BamCam.App.Services;
 using BamCam.Core.Model;
 using BamCam.IO.Cb;
 using BamCam.IO.Dxf;
+using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Views;
 
@@ -70,8 +71,11 @@ public partial class MainWindow : Window
         _system.DefaultPostName = _settings.DefaultPostProcessor;
         foreach (var m in _pendingLogs.Concat(_system.LoadMessages)) Log(m);
         if (_system.Posts.All(p => !p.Name.Equals(_settings.DefaultPostProcessor, StringComparison.OrdinalIgnoreCase)))
-            Log($"Default post processor '{_settings.DefaultPostProcessor}' not found; using '{_system.Resolve(null).Name}'.");
+            Log(F("Default post processor '{0}' not found; using '{1}'.", _settings.DefaultPostProcessor, _system.Resolve(null).Name));
         BuildSystemTree();
+        ApplyLanguage();
+        Core.Localization.Tr.Changed += OnLanguageChanged;
+        Closed += (_, _) => Core.Localization.Tr.Changed -= OnLanguageChanged;
 
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, OnDrop);
@@ -80,7 +84,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => SaveSettings();
 
         OnDocumentReplaced();
-        Log("BamCam ready. Draw or open a drawing (.cb / .dxf).");
+        Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf)."));
     }
 
     // ------------------------------------------------------------------ messages / status
@@ -96,7 +100,7 @@ public partial class MainWindow : Window
     /// <summary>Logs an unexpected error with its stack trace (message window and crash.log in the system folder).</summary>
     public void ReportError(Exception ex)
     {
-        Log("Internal error: " + ex.Message + " (details in crash.log)");
+        Log(F("Internal error: {0} (details in crash.log)", ex.Message));
         try
         {
             Directory.CreateDirectory(SystemLibrary.SystemFolder);
@@ -114,8 +118,8 @@ public partial class MainWindow : Window
         var doc = _session.Document;
         var name = doc.FilePath != null ? Path.GetFileName(doc.FilePath) : doc.Name;
         Title = $"BamCam - {name}{(doc.IsModified ? " *" : "")}";
-        UnitsText.Text = doc.Units.ToString();
-        SnapText.Text = (View.Settings.SnapToGrid ? "Grid " : "") + (View.Settings.SnapToObjects ? "Points" : "");
+        UnitsText.Text = T(doc.Units.ToString());
+        SnapText.Text = string.Join(" ", new[] { View.Settings.SnapToGrid ? T("Grid") : "", View.Settings.SnapToObjects ? T("Points") : "" }.Where(s => s.Length > 0));
     }
 
     private void OnDocumentChanged()
@@ -143,7 +147,7 @@ public partial class MainWindow : Window
         if (_session.Inspected is Core.Cam.MachineOp op)
         {
             var changed = LibraryFiles.ApplyStyle(_session.Document, op);
-            if (changed.Count > 0) Log($"{op.Name}: style values updated ({string.Join(", ", changed)}).");
+            if (changed.Count > 0) Log(F("{0}: style values updated ({1}).", op.Name, string.Join(", ", changed)));
         }
         if (_session.Inspected is CadDocument)
             OnDocumentReplacedSettingsOnly();
@@ -163,10 +167,10 @@ public partial class MainWindow : Window
 
     // ------------------------------------------------------------------ files
 
-    private static readonly FilePickerFileType CbType = new("BamCam / CamBam drawing") { Patterns = ["*.cb"] };
-    private static readonly FilePickerFileType DxfType = new("DXF drawing") { Patterns = ["*.dxf"] };
+    private static FilePickerFileType CbType => new(T("BamCam / CamBam drawing")) { Patterns = ["*.cb"] };
+    private static FilePickerFileType DxfType => new(T("DXF drawing")) { Patterns = ["*.dxf"] };
     private static readonly FilePickerFileType NcType = new("G-code") { Patterns = ["*.nc", "*.tap", "*.gcode", "*.ngc", "*.cnc"] };
-    private static readonly FilePickerFileType AllType = new("All files") { Patterns = ["*"] };
+    private static FilePickerFileType AllType => new(T("All files")) { Patterns = ["*"] };
 
     public void OpenFileOnStartup(string path) => Dispatcher.UIThread.Post(() => OpenPath(path));
 
@@ -282,7 +286,7 @@ public partial class MainWindow : Window
     private async Task<bool> ConfirmDiscard()
     {
         if (!_session.Document.IsModified) return true;
-        var answer = await Dialogs.Ask(this, "BamCam", $"Save changes to {_session.Document.Name}?");
+        var answer = await Dialogs.Ask(this, "BamCam", F("Save changes to {0}?", _session.Document.Name));
         if (answer == null) return false;
         if (answer == true) return await Save();
         return true;
@@ -293,7 +297,7 @@ public partial class MainWindow : Window
         if (!await ConfirmDiscard()) return;
         var doc = NewDocument();
         _session.Replace(doc);
-        Log("New drawing.");
+        Log(T("New drawing."));
     }
 
     private async void OpenDialog()
@@ -301,10 +305,10 @@ public partial class MainWindow : Window
         if (!await ConfirmDiscard()) return;
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Open",
+            Title = T("Open"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Drawings") { Patterns = ["*.cb", "*.dxf"] }, CbType, DxfType,
-                new FilePickerFileType("STL mesh") { Patterns = ["*.stl"] }, NcType, AllType],
+            FileTypeFilter = [new FilePickerFileType(T("Drawings")) { Patterns = ["*.cb", "*.dxf"] }, CbType, DxfType,
+                new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }, NcType, AllType],
         });
         if (files.Count == 0) return;
         if (files[0].TryGetLocalPath() is { } path) OpenPath(path);
@@ -319,9 +323,9 @@ public partial class MainWindow : Window
             if (ext == ".stl")
             {
                 var surface = IO.Stl.StlReader.Load(path);
-                _session.Execute("Insert surface", () => _session.Document.AddEntity(surface));
+                _session.Execute(T("Insert surface"), () => _session.Document.AddEntity(surface));
                 _session.Select([surface]);
-                Log($"Inserted {path}: {surface.Faces.Count / 3} triangles.");
+                Log(F("Inserted {0}: {1} triangles.", path, surface.Faces.Count / 3));
                 View.ZoomToFit();
                 return;
             }
@@ -331,7 +335,7 @@ public partial class MainWindow : Window
                 var nc = new Core.Cam.NcFileOp { Name = Path.GetFileNameWithoutExtension(path) };
                 nc.SourceFile.Set(path);
                 var part = _session.Document.ActivePart;
-                _session.Execute("Insert NC file", () => part.Operations.Add(nc));
+                _session.Execute(T("Insert NC file"), () => part.Operations.Add(nc));
                 GenerateToolpaths(new Core.Post.PostScope(Operation: nc));
                 View.ZoomToFit();
                 return;
@@ -339,7 +343,7 @@ public partial class MainWindow : Window
             if (ext == ".dxf")
             {
                 doc = DxfReader.Load(path, out var warnings);
-                foreach (var w in warnings.Distinct()) Log("DXF: " + w);
+                foreach (var w in warnings.Distinct()) Log(F("DXF: {0}", w));
             }
             else
             {
@@ -348,13 +352,13 @@ public partial class MainWindow : Window
             _session.Replace(doc);
             AddRecentFile(path);
             var ops = doc.Parts.Sum(p => p.Operations.Count);
-            Log($"Opened {path}: {doc.AllEntities().Count()} objects, {doc.Layers.Count} layers, {ops} machining operations.");
+            Log(F("Opened {0}: {1} objects, {2} layers, {3} machining operations.", path, doc.AllEntities().Count(), doc.Layers.Count, ops));
             foreach (var op in doc.Parts.SelectMany(p => p.Operations).OfType<Core.Cam.UnsupportedOp>())
-                Log($"Note: operation '{op.Name}' ({op.XmlName}) is kept in the file but cannot be machined by this version.");
+                Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
         }
         catch (Exception ex)
         {
-            Log($"Error opening {path}: {ex.Message}");
+            Log(F("Error opening {0}: {1}", path, ex.Message));
         }
     }
 
@@ -369,7 +373,7 @@ public partial class MainWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save As",
+            Title = T("Save As"),
             SuggestedFileName = _session.Document.Name + ".cb",
             DefaultExtension = "cb",
             FileTypeChoices = [CbType],
@@ -385,13 +389,13 @@ public partial class MainWindow : Window
         {
             CbWriter.Save(_session.Document, path, backups: _settings.FileBackups);
             AddRecentFile(path);
-            Log($"Saved {path}");
+            Log(F("Saved {0}", path));
             UpdateTitle();
             return true;
         }
         catch (Exception ex)
         {
-            Log($"Error saving {path}: {ex.Message}");
+            Log(F("Error saving {0}: {1}", path, ex.Message));
             return false;
         }
     }
@@ -400,7 +404,7 @@ public partial class MainWindow : Window
     {
         var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Export DXF",
+            Title = T("Export DXF"),
             SuggestedFileName = _session.Document.Name + ".dxf",
             DefaultExtension = "dxf",
             FileTypeChoices = [DxfType],
@@ -409,11 +413,11 @@ public partial class MainWindow : Window
         try
         {
             DxfWriter.Save(_session.Document, path);
-            Log($"Exported {path}");
+            Log(F("Exported {0}", path));
         }
         catch (Exception ex)
         {
-            Log($"DXF export failed: {ex.Message}");
+            Log(F("DXF export failed: {0}", ex.Message));
         }
     }
 
