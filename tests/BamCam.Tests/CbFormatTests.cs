@@ -12,11 +12,14 @@ public class CbFormatTests
 {
     private static readonly string SampleDir = @"C:\ProgramData\CamBam plus 1.0";
 
+    /// <summary>The user's examples in the repository, so the theory has data on machines without CamBam (CI).</summary>
+    private static readonly string ExampleDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test"));
+
     public static IEnumerable<object[]> SampleFiles()
     {
-        if (!Directory.Exists(SampleDir)) yield break;
-        foreach (var f in Directory.GetFiles(SampleDir, "*.cb", SearchOption.AllDirectories))
-            yield return [f];
+        foreach (var dir in new[] { SampleDir, ExampleDir }.Where(Directory.Exists))
+            foreach (var f in Directory.GetFiles(dir, "*.cb", SearchOption.AllDirectories))
+                yield return [f];
     }
 
     [Theory]
