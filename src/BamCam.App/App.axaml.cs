@@ -37,7 +37,7 @@ public partial class App : Application
             // Diagnostic options with a value: --inspect <part/MOP name>, --filter <index>[,<z level>],
             // --drag-tab <fromX,fromY,toX,toY> (drawing coordinates).
             var options = new Dictionary<string, string>();
-            foreach (var name in new[] { "--inspect", "--filter", "--drag-tab", "--config", "--click", "--context" })
+            foreach (var name in new[] { "--inspect", "--filter", "--drag-tab", "--config", "--click", "--context", "--pick" })
             {
                 var i = Array.IndexOf(args, name);
                 if (i < 0 || i + 1 >= args.Length) continue;

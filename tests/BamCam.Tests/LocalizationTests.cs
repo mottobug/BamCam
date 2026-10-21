@@ -55,7 +55,7 @@ public partial class LocalizationTests(ITestOutputHelper output)
                     ? prop.PropertyType.GetGenericArguments()[0]
                     : prop.PropertyType;
                 var shown = PropertyGrid.IsEditableType(valueType) || PropertyGrid.IsCompositeType(valueType) ||
-                            valueType == typeof(List<Vertex>) || valueType == typeof(List<Point3>);
+                            valueType == typeof(List<Vertex>) || valueType == typeof(List<Point3>) || valueType == typeof(List<int>);
                 if (!shown) continue;
                 keys.Add(PropertyGrid.DisplayNameOf(prop));
                 keys.Add(PropertyGrid.CategoryOf(prop));

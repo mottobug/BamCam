@@ -871,6 +871,17 @@
   "Automatic Inner": "Automatisch innen",
   "Automatic Outer": "Automatisch außen",
 
+  "Primitive IDs": "Primitive IDs",
+  "Drawing objects this operation machines, by their ID (shown in brackets in the drawing tree), e.g. 6, 9, 13. Edit the list or click [...] to change the objects in the drawing.": "Zeichnungsobjekte, die diese Bearbeitung bearbeitet, über ihre ID (im Zeichnungsbaum in Klammern angezeigt), z. B. 6, 9, 13. Liste bearbeiten oder [...] klicken, um die Objekte in der Zeichnung zu wählen.",
+  "Boundary Shapes": "Begrenzungsformen",
+  "Drawing objects (IDs) whose outline limits the machining when Boundary Method is Selected Shapes. Click [...] to choose them in the drawing.": "Zeichnungsobjekte (IDs), deren Umriss die Bearbeitung begrenzt, wenn die Begrenzungsmethode 'Ausgewählte Formen' ist. [...] klicken, um sie in der Zeichnung zu wählen.",
+  "Expected object IDs separated by commas, e.g. 6, 9, 13": "Erwartet: Objekt-IDs durch Kommas getrennt, z. B. 6, 9, 13",
+  "Select in the drawing": "In der Zeichnung auswählen",
+  "Drawing objects can only be chosen for machining operations of the drawing.": "Zeichnungsobjekte können nur für Bearbeitungen der Zeichnung gewählt werden.",
+  "{0}: objects {1} do not exist and will be removed when applying.": "{0}: Die Objekte {1} existieren nicht und werden beim Übernehmen entfernt.",
+  "{0}: objects {1} do not exist in the drawing.": "{0}: Die Objekte {1} existieren nicht in der Zeichnung.",
+  "{0}: {1} object(s) selected. Click / Ctrl+click / window to change, Enter or middle click = apply, Esc = cancel": "{0}: {1} Objekt(e) ausgewählt. Klick / Strg+Klick / Rahmen ändern die Auswahl, Enter oder Mittelklick = übernehmen, Esc = abbrechen",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

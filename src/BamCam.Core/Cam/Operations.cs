@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Cam;
@@ -125,6 +126,8 @@ public sealed class Profile3DOp : AreaOp
     [Param(76, "Cutting")] public CamParam<RegionFillStyle> RegionFillStyle { get; set; } = new(Cam.RegionFillStyle.InsideOutsideOffsets);
 
     /// <summary>Entity ids used as boundary when <see cref="BoundaryMethod"/> is SelectedShapes (no state attribute).</summary>
+    [Category("Boundary"), DisplayName("Boundary Shapes"),
+     Description("Drawing objects (IDs) whose outline limits the machining when Boundary Method is Selected Shapes. Click [...] to choose them in the drawing.")]
     public List<int> BoundaryShapes { get; } = [];
 
     protected override void CloneExtra(MachineOp clone) => ((Profile3DOp)clone).BoundaryShapes.AddRange(BoundaryShapes);

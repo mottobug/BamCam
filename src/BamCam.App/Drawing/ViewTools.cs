@@ -67,7 +67,7 @@ public abstract class ViewTool
 }
 
 /// <summary>Default tool: click / window selection.</summary>
-public sealed class SelectTool : ViewTool
+public class SelectTool : ViewTool
 {
     private Point? _dragStart;
     private Point _dragCurrent;

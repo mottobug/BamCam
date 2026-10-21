@@ -36,7 +36,16 @@ public partial class MainWindow : Window
         _session.Changed += (_, _) => OnDocumentChanged();
         _session.DocumentReplaced += (_, _) => OnDocumentReplaced();
         _session.SelectionChanged += (_, _) => SyncTreeSelection();
-        _session.InspectedChanged += (_, _) => Properties.SelectedObject = _session.Inspected ?? _session.Document;
+        _session.InspectedChanged += (_, _) =>
+        {
+            // While the objects of an operation are re-selected the operation stays in the property grid.
+            if (_pickingOp != null && _session.Inspected != _pickingOp)
+            {
+                _session.Inspect(_pickingOp);
+                return;
+            }
+            Properties.SelectedObject = _session.Inspected ?? _session.Document;
+        };
 
         View.CursorMoved += (_, p) => CoordText.Text = $"X: {p.X:0.###}  Y: {p.Y:0.###}";
         View.PromptChanged += (_, text) =>
@@ -53,10 +62,11 @@ public partial class MainWindow : Window
             // Configuration edits are not part of the drawing's undo history.
             if (Properties.SelectedObject is not AppSettings) _session.BeginEdit();
         };
-        Properties.ValueChanged += (_, _) =>
+        Properties.ValueChanged += (_, key) =>
         {
             if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
             else OnPropertyEdited();
+            if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
 
         DrawingTree.SelectionChanged += OnTreeSelectionChanged;
@@ -228,6 +238,11 @@ public partial class MainWindow : Window
                 Log(dump);
                 File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bamcam-context.txt"), dump);
             }
+            // --pick <MOP name>: re-select its drawing objects (the clicks below change the selection), then Enter.
+            var pickOp = options.TryGetValue("--pick", out var pickName)
+                ? _session.Document.Parts.SelectMany(p => p.Operations).FirstOrDefault(o => o.Name == pickName)
+                : null;
+            if (pickOp != null) PickOperationObjects(pickOp);
             if (options.TryGetValue("--click", out var clicks))
             {
                 // One or more drawing coordinates "x,y;x,y", optionally prefixed with "ctrl:".
@@ -245,6 +260,11 @@ public partial class MainWindow : Window
                         ReportError(ex);
                     }
                 }
+            }
+            if (pickOp != null)
+            {
+                View.ForwardKeyToTool(Key.Enter, KeyModifiers.None);
+                Log($"--pick: {pickOp.Name} = {string.Join(", ", pickOp.PrimitiveIds)}");
             }
             if (options.TryGetValue("--drag-tab", out var drag))
             {

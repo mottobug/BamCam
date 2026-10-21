@@ -208,15 +208,17 @@ public abstract class MachineOp
     [Category("General")]
     public bool Enabled { get; set; } = true;
 
+    /// <summary>Ids of the drawing objects this operation machines.</summary>
+    [Category("General"), DisplayName("Primitive IDs"),
+     Description("Drawing objects this operation machines, by their ID (shown in brackets in the drawing tree), e.g. 6, 9, 13. Edit the list or click [...] to change the objects in the drawing.")]
+    public List<int> PrimitiveIds { get; } = [];
+
     [Category("General"), Description("CAM style providing default values.")]
     public string Style { get; set; } = "";
 
     [Category("General")]
     public string? Tag { get; set; }
 
-    /// <summary>Ids of the drawing objects this operation machines.</summary>
-    [Browsable(false)]
-    public List<int> PrimitiveIds { get; } = [];
 
     /// <summary>Order of parameter elements as read from file (for faithful re-writing).</summary>
     [Browsable(false)]

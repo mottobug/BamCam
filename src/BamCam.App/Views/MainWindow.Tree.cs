@@ -336,25 +336,7 @@ public partial class MainWindow
                 Add(T("Produce Gcode"), () => _ = ProduceGCode(new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)));
                 Sep();
                 Add(op.Enabled ? T("Disable MOP") : T("Enable MOP"), () => _session.Execute(T("Toggle MOP"), () => op.Enabled = !op.Enabled));
-                Add(T("Select Drawing Objects"), () =>
-                {
-                    if (_session.Selection.Count == 0)
-                    {
-                        _session.Select(op.PrimitiveIds.Select(doc.FindEntity).OfType<Entity>());
-                        Log(T("Source objects selected. Change the selection, then use 'Select Drawing Objects' again to apply."));
-                    }
-                    else
-                    {
-                        var ids = _session.Selection.Select(e => e.Id).ToList();
-                        _session.Execute(T("Set MOP objects"), () =>
-                        {
-                            op.PrimitiveIds.Clear();
-                            op.PrimitiveIds.AddRange(ids);
-                        });
-                        _session.Inspect(op);
-                        Log(F("{0}: {1} drawing object(s).", op.Name, ids.Count));
-                    }
-                });
+                Add(T("Select Drawing Objects"), () => PickOperationObjects(op));
                 Add(T("Set Start Point"), () => View.SetTool(new PickPointTool(T("Select start point"),
                     p => _session.Execute(T("Set start point"), () => op.StartPoint.Set(new OptionalPoint(p.ToPoint3()))))));
                 Add(T("Copy"), () => _clipboardOp = op.CloneOp());

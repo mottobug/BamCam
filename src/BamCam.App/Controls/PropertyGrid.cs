@@ -88,6 +88,10 @@ public sealed partial class PropertyGrid : DockPanel
         public required string Key { get; init; }
         public required string Display { get; init; }
         public string Category { get; init; } = "Misc";
+        /// <summary>Untranslated category (decides the position of the group).</summary>
+        public string CategoryKey { get; init; } = "Misc";
+        /// <summary>Position inside the category for machining parameters (<see cref="ParamAttribute.Order"/>).</summary>
+        public int? Order { get; init; }
         public string? Description { get; init; }
         public required Type Type { get; init; }
         public required Func<object?> Get { get; init; }
@@ -125,7 +129,9 @@ public sealed partial class PropertyGrid : DockPanel
             if (prop.GetCustomAttribute<BrowsableAttribute>() is { Browsable: false }) continue;
             if (prop.Name is "EqualityContract") continue;
 
-            var category = Tr.T(CategoryOf(prop));
+            var categoryKey = CategoryOf(prop);
+            var category = Tr.T(categoryKey);
+            var order = prop.GetCustomAttribute<ParamAttribute>()?.Order;
             var display = Tr.T(DisplayNameOf(prop));
             var desc = prop.GetCustomAttribute<DescriptionAttribute>()?.Description is { } d ? Tr.T(d) : null;
             var choices = prop.GetCustomAttribute<ChoicesAttribute>();
@@ -136,7 +142,7 @@ public sealed partial class PropertyGrid : DockPanel
                 var param = (ICamParam)prop.GetValue(target)!;
                 yield return new Node
                 {
-                    Key = key, Display = display, Category = category, Description = desc, Type = param.ValueType,
+                    Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = param.ValueType,
                     Get = () => param.BoxedValue,
                     Set = v =>
                     {
@@ -149,13 +155,40 @@ public sealed partial class PropertyGrid : DockPanel
                 continue;
             }
 
+            if (prop.PropertyType == typeof(List<int>))
+            {
+                // Id list (Primitive IDs): edited as text "6, 9, 13"; [...] selects interactively in the drawing.
+                var listProp = prop;
+                var owner = target;
+                yield return new Node
+                {
+                    Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = prop.PropertyType,
+                    Get = () => listProp.GetValue(owner),
+                    Set = v =>
+                    {
+                        if (v is List<int> ids)
+                        {
+                            var list = (List<int>)listProp.GetValue(owner)!;
+                            list.Clear();
+                            list.AddRange(ids);
+                        }
+                        else
+                        {
+                            CollectionEditRequested?.Invoke(this, (owner, listProp));
+                        }
+                    },
+                    Depth = depth,
+                };
+                continue;
+            }
+
             if (prop.PropertyType == typeof(List<Vertex>) || prop.PropertyType == typeof(List<Point3>))
             {
                 var listProp = prop;
                 var owner = target;
                 yield return new Node
                 {
-                    Key = key, Display = display, Category = category, Description = desc, Type = prop.PropertyType,
+                    Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = prop.PropertyType,
                     Get = () => listProp.GetValue(owner), Set = _ => CollectionEditRequested?.Invoke(this, (owner, listProp)), Depth = depth,
                 };
                 continue;
@@ -182,7 +215,7 @@ public sealed partial class PropertyGrid : DockPanel
             }
             yield return new Node
             {
-                Key = key, Display = display, Category = category, Description = desc, Type = prop.PropertyType,
+                Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = prop.PropertyType,
                 Get = () => prop.GetValue(target), Set = setter, Depth = depth,
                 Choices = choices?.GetChoices(target.GetType()),
             };
@@ -228,17 +261,43 @@ public sealed partial class PropertyGrid : DockPanel
         }
         else
         {
-            foreach (var group in nodes.GroupBy(n => n.Category))
+            var appearance = nodes.Select(n => n.CategoryKey).Distinct().ToList();
+            var groups = nodes
+                .Select((n, i) => (Node: n, Index: i))
+                .GroupBy(x => x.Node.CategoryKey)
+                .OrderBy(g => CategoryRank(g.Key, appearance.IndexOf(g.Key)))
+                .Select(g => g.OrderBy(x => x.Node.Order ?? -1).ThenBy(x => x.Index).Select(x => x.Node).ToList());
+            foreach (var group in groups)
             {
                 _rows.Children.Add(new Border
                 {
                     Background = new SolidColorBrush(Color.FromRgb(0xE4, 0xE4, 0xE4)),
                     Padding = new Thickness(4, 2),
-                    Child = new TextBlock { Text = group.Key, FontWeight = FontWeight.SemiBold },
+                    Child = new TextBlock { Text = group[0].Category, FontWeight = FontWeight.SemiBold },
                 });
                 foreach (var n in group) AddNode(n);
             }
         }
+    }
+
+    /// <summary>
+    /// Category order similar to CamBam: identification first (General), then what is machined and how
+    /// (depth, cutting, tabs, lead moves, ...), feeds and machine settings, the tool last. Categories not in
+    /// the lists keep their order of appearance between the two groups.
+    /// </summary>
+    private static readonly string[] TopCategories =
+        ["General", "(Main)", "Part", "Depth", "Cutting", "Drilling", "Holding Tabs", "Lead Moves", "3D", "Boundary", "Back Face",
+         "NC File", "Machining", "Stock", "Nesting"];
+
+    private static readonly string[] BottomCategories = ["Feedrates", "Spindle", "Options", "G-Code", "Output", "Tool", "Misc"];
+
+    public static int CategoryRank(string category, int appearance)
+    {
+        var top = Array.IndexOf(TopCategories, category);
+        if (top >= 0) return top;
+        var bottom = Array.IndexOf(BottomCategories, category);
+        if (bottom >= 0) return 10_000 + bottom;
+        return 1_000 + appearance;
     }
 
     private void AddNode(Node node)
@@ -382,6 +441,19 @@ public sealed partial class PropertyGrid : DockPanel
             return panel;
         }
 
+        if (t == typeof(List<int>))
+        {
+            var panel = new DockPanel();
+            var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+            ToolTip.SetTip(button, Tr.T("Select in the drawing"));
+            button.Click += (_, _) => node.Set?.Invoke(null);
+            DockPanel.SetDock(button, Dock.Right);
+            panel.Children.Add(button);
+            var ids = (value as List<int>) ?? [];
+            panel.Children.Add(TextEditor(node, string.Join(", ", ids), readOnly, isDefault, s => ParseIds(s)));
+            return panel;
+        }
+
         if (node.IsComposite)
             // Summaries are enum names ("None", "Automatic") or values ("10 x 20 x 5", "(none)").
             return new TextBlock { Text = value?.ToString() is { } summary ? Tr.T(Humanize(summary)) : "", Margin = new Thickness(4, 0), VerticalAlignment = VerticalAlignment.Center, Foreground = Brushes.DimGray };
@@ -461,6 +533,19 @@ public sealed partial class PropertyGrid : DockPanel
     }
 
     private static string F(double v) => v.ToString("0.######", Inv);
+
+    /// <summary>"6, 9, 13" (also separated by spaces or semicolons, optionally in braces) → ids.</summary>
+    public static List<int> ParseIds(string s)
+    {
+        var ids = new List<int>();
+        foreach (var part in s.Split([',', ';', ' ', '\t', '{', '}', '[', ']'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!int.TryParse(part, NumberStyles.Integer, Inv, out var id) || id < 0)
+                throw new FormatException(Tr.T("Expected object IDs separated by commas, e.g. 6, 9, 13"));
+            if (!ids.Contains(id)) ids.Add(id);
+        }
+        return ids;
+    }
 
     private static Point3 ParsePoint(string s)
     {
