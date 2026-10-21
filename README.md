@@ -1,30 +1,30 @@
 # BamCam
 
-Plattformübergreifende 2.5D-CAD/CAM-Anwendung (Windows, Linux, macOS) mit Bedienkonzept und
-Funktionsumfang nach dem Vorbild von CamBam. Gebaut mit **Avalonia 11** auf **.NET 10**.
+Cross-platform 2.5D CAD/CAM application (Windows, Linux, macOS) whose workflow and feature set follow
+CamBam. Built with **Avalonia 11** on **.NET 10**.
 
-BamCam liest und schreibt CamBam-kompatible Zeichnungen (`.cb`) und Postprozessoren (`.cbpp`),
-importiert DXF, STL und G-Code und erzeugt G-Code über eine Template-Engine mit der
-`{$makro}`-Sprache der `.cbpp`-Dateien.
+BamCam reads and writes CamBam-compatible drawings (`.cb`) and post processors (`.cbpp`), imports DXF,
+STL and G-code, and produces G-code through a template engine that understands the `{$macro}` language of
+`.cbpp` files.
 
-![BamCam unter Windows: T-Bar mit Werkzeugwegen der beiden Profile](docs/screenshots/t-bar-werkzeugwege.png)
+![BamCam on Windows: T-Bar with the toolpaths of both profiles](docs/screenshots/t-bar-toolpaths.png)
 
 <table>
   <tr>
-    <td width="33%"><a href="docs/screenshots/akkubruecke-werkzeugwege.png"><img src="docs/screenshots/akkubruecke-werkzeugwege.png" alt="Akkubrücke mit Taschen und Profilen"></a></td>
-    <td width="33%"><a href="docs/screenshots/polylinie-punkte.png"><img src="docs/screenshots/polylinie-punkte.png" alt="Ausgewählte Polylinie mit Punktliste in den Eigenschaften"></a></td>
-    <td width="33%"><a href="docs/screenshots/konfiguration.png"><img src="docs/screenshots/konfiguration.png" alt="Konfiguration mit Sprachauswahl und Postprozessoren"></a></td>
+    <td width="33%"><a href="docs/screenshots/battery-bridge-toolpaths.png"><img src="docs/screenshots/battery-bridge-toolpaths.png" alt="Battery bridge with pockets and profiles"></a></td>
+    <td width="33%"><a href="docs/screenshots/polyline-points.png"><img src="docs/screenshots/polyline-points.png" alt="Selected polyline with its point list in the properties"></a></td>
+    <td width="33%"><a href="docs/screenshots/configuration.png"><img src="docs/screenshots/configuration.png" alt="Configuration with language selection and post processors"></a></td>
   </tr>
   <tr>
-    <td>Akkubrücke: Taschen und Profile mit Werkzeugwegen, Eigenschaften der Bearbeitung mit Primitive IDs</td>
-    <td>Ausgewählte Polylinie: Punkte über <b>[...]</b> bearbeiten</td>
-    <td>Konfiguration mit Sprachauswahl und Postprozessoren</td>
+    <td>Pockets and profiles with toolpaths; machining operation properties with Primitive IDs</td>
+    <td>Selected polyline: edit its points with <b>[...]</b></td>
+    <td>Configuration with language selection and post processors</td>
   </tr>
 </table>
 
-## Bauen und starten
+## Build and run
 
-Voraussetzung: .NET SDK 10.
+Requirement: .NET SDK 10.
 
 ```bash
 dotnet build
@@ -38,36 +38,46 @@ dotnet run --project src/BamCam.App
 dotnet test
 ```
 
-Eigenständige Pakete (ohne installiertes .NET) für alle Plattformen:
+Self-contained builds (no .NET installation needed) for any platform:
 
 ```bash
 dotnet publish src/BamCam.App -c Release -r win-x64 --self-contained -o artifacts/win-x64
 ```
 
-Weitere Runtime-IDs: `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`.
-Unter macOS ist das Ergebnis ein ausführbares Programm, noch kein signiertes `.app`-Bundle.
+Other runtime IDs: `linux-x64`, `linux-arm64`, `osx-arm64`, `osx-x64`.
+On macOS this produces a plain executable; use the packaging script below for an `.app` bundle.
 
-## Pakete und Releases
+## Packages and releases
 
-Das Skript `build/package.ps1` veröffentlicht BamCam für eine Plattform und verpackt es passend. Es läuft mit
-Windows PowerShell 5.1 und PowerShell 7:
+The script `build/package.ps1` publishes BamCam for one platform and packages it. It runs with Windows
+PowerShell 5.1 and PowerShell 7:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File build/package.ps1 -Rid win-x64 -Version 1.0.0
 ```
 
-| Plattform | Ergebnis in `artifacts/` |
+| Platform | Result in `artifacts/` |
 |---|---|
-| `win-x64` | `BamCam-<Version>-win-x64.zip`, dazu `-setup.exe`, wenn Inno Setup 6 installiert ist |
-| `linux-x64`, `linux-arm64` | `.tar.gz` mit `install.sh` (pro Benutzer, oder `sudo ./install.sh --system`), `.desktop`-Eintrag und Icon |
-| `osx-x64`, `osx-arm64` | `.zip` mit `BamCam.app`, unsigniert. Icon und Ausführungsrechte entstehen nur beim Bauen auf macOS |
+| `win-x64` | `BamCam-<version>-win-x64.zip`, plus `-setup.exe` when Inno Setup 6 is installed |
+| `linux-x64`, `linux-arm64` | `.tar.gz` with `install.sh` (per user, or `sudo ./install.sh --system`), `.desktop` entry and icon |
+| `osx-x64`, `osx-arm64` | `.zip` with `BamCam.app`. Icon, executable permissions and the ad-hoc signature are only added when built on macOS |
 
-Linux- und macOS-Pakete sollten auf dem jeweiligen System gebaut werden (das erledigt die CI), damit die
-Ausführungsrechte erhalten bleiben. Unsignierte macOS-Apps öffnet man beim ersten Start per Rechtsklick ▸ Öffnen.
+Build the Linux and macOS packages on their own systems (the CI does this) so that executable permissions
+are kept and the macOS bundle gets signed.
+
+**First start on macOS:** the app has no Apple developer certificate, so macOS blocks it after downloading.
+Either remove the download flag once in Terminal:
+
+```bash
+xattr -dr com.apple.quarantine /path/to/BamCam.app
+```
+
+or try to open it, then click "Open Anyway" in System Settings ▸ Privacy & Security.
 
 **CI (GitHub Actions, `.github/workflows/build.yml`):**
-- Jeder Push und Pull Request baut und testet auf Windows, Linux und macOS.
-- Ein Tag `v1.2.3` erzeugt zusätzlich alle Pakete und ein GitHub-Release:
+- Every push and pull request builds and tests on Windows, Linux and macOS.
+- Running the workflow manually ("Run workflow") also builds all packages; they can be downloaded from the run.
+- A tag `v1.2.3` builds all packages and publishes a GitHub release:
 
 ```bash
 git tag v1.2.3
@@ -77,100 +87,109 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-Das App-Icon erzeugt `build/make-icon.ps1` (Windows). Die erzeugten Dateien liegen in `src/BamCam.App/Assets`.
-## Projektstruktur
+The app icon is generated by `build/make-icon.ps1` (Windows); the files are in `src/BamCam.App/Assets`.
 
-| Projekt | Inhalt |
+## Project structure
+
+| Project | Contents |
 |---|---|
-| `src/BamCam.Core` | Geometrie (Bulge-Polylinien, Bögen, Matrizen, Offsets/Boolesche Operationen via Clipper2, Arc-Fitting), Dokumentmodell, CAM-Operationen mit Default/Value/Auto-Parametern, Werkzeugweg-Generatoren, Postprozessor-Engine, CAD-Operationen |
-| `src/BamCam.IO` | `.cb`-Reader/Writer (verlustfreier Round-Trip, unbekannte Elemente bleiben erhalten), `.cbpp`, Stil- und Werkzeugbibliotheken, DXF-Import/-Export, STL-Import |
-| `src/BamCam.App` | Avalonia-Oberfläche: Menü, Werkzeugleiste, Zeichnungs-/System-Baum, Eigenschaftsraster, Zeichenfläche mit Fang, Zeichen-/Transformationswerkzeugen, Meldungsfenster |
-| `tests/BamCam.Tests` | Unit- und Integrationstests |
-| `docs/` | Spezifikationen der Oberfläche und der Dateiformate |
+| `src/BamCam.Core` | Geometry (bulge polylines, arcs, matrices, offsets/booleans via Clipper2, arc fitting), document model, machining operations with Default/Value/Auto parameters, toolpath generators, post processor engine, CAD operations, translations |
+| `src/BamCam.IO` | `.cb` reader/writer (lossless round trip, unknown elements are kept), `.cbpp`, style and tool libraries, DXF import/export, STL import |
+| `src/BamCam.App` | Avalonia user interface: menu, toolbar, drawing/system tree, property grid, drawing view with snapping, drawing and transform tools, message window |
+| `tests/BamCam.Tests` | Unit and integration tests |
+| `docs/` | Specifications of the user interface and the file formats, screenshots |
+| `examples_to_test/` | Example drawings with the DXF source and the G-code CamBam produced for them (used by the tests) |
 
-## Funktionsstand
+## Features
 
-**Zeichnen:** Linie, Polylinie, Bogen, Kreis, Rechteck (mit Eckradius), Punktliste, Text (TrueType-Umrisse);
-Bearbeiten per Doppelklick (Punkte ziehen); Fang an Raster und Objektpunkten.
+**Drawing:** line, polyline, arc, circle, rectangle (with corner radius), point list, text (TrueType outlines);
+edit in the drawing by double-click (drag points) or as a point table in the properties; snap to grid and
+object points; full right-click context menu on objects.
 
-**CAD:** Verschieben, Drehen, Spiegeln, Skalieren, Array- und Polar-Kopie, Zentrieren, Join, Offset,
-Open Offset, Explode, Union/Subtract/Intersection, In Polylinie/Region umwandeln, Polylinie umkehren/bereinigen,
-Punkte teilen/Zentren, Ausschneiden/Kopieren/Einfügen (auch zwischen Instanzen), Undo/Redo.
+**CAD:** move, rotate, mirror, resize, array and polar array copy, center, join, offset, open offset,
+explode, union/subtract/intersection, convert to polyline/region, reverse/clean polylines,
+divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 
 **CAM:**
-- **Profil:** innen/außen, Schnittbreite mit mehreren Bahnen, Kollisionserkennung, Ecken-Freischnitt,
-  Haltestege (automatisch/manuell, rechteckig/dreieckig), Tangential- und Spiral-Anfahrt.
-- **Tasche:** Offset- und Schraffur-Füllung, Inseln.
-- **Bohren:** Bohrzyklen G81/G82/G83 und Spiralfräsen.
-- **Gravieren** und **NC-Datei** (G-Code-Rückplot).
-- **3D-Profil** auf Dreiecksnetzen (STL):
-  - Scanline horizontal/vertikal, als Schruppen in Ebenen oder als Schlichten, mit exaktem Drop-Cutter für Schaft- und Kugelfräser.
-  - Waterline-Schruppen und -Schlichten.
-  - Begrenzung über Umriss, Bounding Box, ausgewählte Objekte, Clip-Bereich, Rand und Konizität.
-  - Rückseite und Form (Mold).
-- Weiteres: Tiefenebenen und Schnittreihenfolge, CAM-Stile mit Vererbung, Werkzeugbibliotheken,
-  Werkzeugweg-Anzeige mit Eilgängen und Schnittbreiten, Werkzeugwege in Geometrie umwandeln.
+- **Profile:** inside/outside, cut width with several passes, collision detection, corner overcut,
+  holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins.
+- **Pocket:** offset and hatch fills, islands.
+- **Drill:** canned cycles G81/G82/G83 and spiral milling.
+- **Engrave** and **NC file** (G-code back-plot).
+- **3D profile** on triangle meshes (STL):
+  - Scanline horizontal/vertical, as level roughing or finishing, with an exact drop cutter for end and ball mills.
+  - Waterline roughing and finishing.
+  - Boundary by outline, bounding box, selected shapes, clip area, margin and taper.
+  - Back face and mold.
+- Machining operations refer to drawing objects by ID (**Primitive IDs**); edit the list as text or pick
+  the objects in the drawing with **[...]**.
+- Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with
+  rapids and cut widths, toolpaths to geometry.
 
-**G-Code:** Postprozessoren Default, Mach3, LinuxCNC, GRBL eingebaut; vorhandene `.cbpp`-Dateien werden geladen
-(eigener Systemordner `%APPDATA%/BamCam/post`, bzw. `~/.config/BamCam/post`, sowie eine lokale CamBam-Installation).
-Der für das CamBam-Beispiel `snap-together-box.cb` erzeugte G-Code stimmt in allen 6382 Bewegungszeilen mit der
-mitgelieferten Referenz überein (Tiefenstufen, Haltestege, Freischnitte, Bögen, Verschachtelungs-Kopien).
+**G-code:** built-in post processors Default, Mach3, LinuxCNC and GRBL; existing `.cbpp` files are loaded
+(own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
+The G-code produced for the CamBam sample `snap-together-box.cb` matches the reference in all 6382 motion
+lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For the example drawings in
+`examples_to_test` it matches CamBam's output line for line or within 0.004 mm.
 
-**Noch nicht umgesetzt:** Additiver 3D-Modus, exakte Radiusfräser-Geometrie (wird als Kugelfräser gerechnet), Drehen (Lathe), Spline- und Bitmap-Objekte, Skript-Objekte,
-Druck,
-Schnittgeschwindigkeits-Rechner. Diese Operationen bleiben beim Laden und Speichern von `.cb`-Dateien unverändert erhalten.
+**Not implemented yet:** additive 3D mode, exact bull nose geometry (computed as ball nose), lathe,
+spline and bitmap objects, script objects, printing, speeds and feeds calculator. Such operations are kept
+unchanged when `.cb` files are loaded and saved.
 
-## Einstellungen
+## Settings
 
-Tools ▸ Options (oder System ▸ Configuration) bearbeitet die Programmeinstellungen:
-- Anzeige und Farben, Raster für mm und Zoll, Einheiten und Schrift für neue Zeichnungen.
-- Wiederholen von Zeichenbefehlen, Fangen.
-- Standard-Postprozessor, G-Code-Endung, Nachfrage beim Überschreiben und externer G-Code-Editor.
-- Anzahl der Sicherungsdateien und Länge der Liste „Zuletzt geöffnet“.
+Tools ▸ Options (or System ▸ Configuration) edits the application settings:
+- Display and colors, grid for mm and inches, units and font for new drawings.
+- Repeating draw commands, snapping.
+- Default post processor, G-code file extension, overwrite prompt and external G-code editor.
+- Number of backup files and length of the recent files list.
+- Language.
 
-Gespeichert wird in `settings.json` im Systemordner (`%APPDATA%/BamCam` bzw. `~/.config/BamCam`), zusammen mit
-Fenstergröße, Spaltenbreiten und den zuletzt geöffneten Dateien. Mit der Umgebungsvariable `BAMCAM_SETTINGS`
-kann eine andere Datei verwendet werden.
+They are stored in `settings.json` in the system folder (`%APPDATA%/BamCam` or `~/.config/BamCam`),
+together with the window size, column widths and recent files. The environment variable `BAMCAM_SETTINGS`
+selects a different file.
 
-## Sprachen
+## Languages
 
-Die Oberfläche gibt es auf Englisch und Deutsch. Voreingestellt ist die Sprache des Betriebssystems (sonst Englisch);
-umstellen lässt sie sich unter Tools ▸ Options ▸ Allgemein ▸ Sprache, die Änderung wirkt sofort.
+The user interface is available in English and German. By default it follows the operating system language
+(English when there is no translation); change it in Tools ▸ Options ▸ General ▸ Language, which takes effect
+immediately.
 
-Englisch ist die Ausgangssprache im Code. Jede weitere Sprache ist eine JSON-Datei, die den englischen Text auf
-die Übersetzung abbildet, z. B. `"Generate Toolpaths": "Werkzeugwege erzeugen"`; `"_language"` enthält den Namen der
-Sprache in der Sprache selbst. Fehlende Einträge erscheinen auf Englisch.
-- Eingebaut: `src/BamCam.Core/Localization/lang/*.json` (z. B. `de.json`).
-- Ohne neuen Build: eine Datei `<code>.json` (z. B. `fr.json`) in den Ordner `lang` neben dem Programm oder im
-  Systemordner legen. Einzelne Einträge einer eingebauten Sprache lassen sich dort ebenso überschreiben.
-- Neue Sprache anlegen: `de.json` kopieren, `"_language"` und alle Werte übersetzen. Ein Unterstrich in Menütexten
-  markiert die Zugriffstaste (genau einer pro Text), Platzhalter wie `{0}` oder `{0:0.###}` bleiben erhalten.
-- Der Test `LocalizationTests` sammelt alle Texte der Oberfläche und meldet fehlende Übersetzungen; die Liste der
-  fehlenden Einträge landet in `%TEMP%/bamcam-missing-<code>.json`.
+English is the source language in the code. Every other language is a JSON file that maps the English text
+to its translation, e.g. `"Generate Toolpaths": "Werkzeugwege erzeugen"`; `"_language"` holds the name of the
+language in that language. Missing entries are shown in English.
+- Built in: `src/BamCam.Core/Localization/lang/*.json` (e.g. `de.json`).
+- Without rebuilding: put a `<code>.json` file (e.g. `fr.json`) into a `lang` folder next to the program or
+  in the system folder. Single entries of a built-in language can be overridden there too.
+- New language: copy `de.json`, translate `"_language"` and all values. An underscore in menu texts marks
+  the access key (exactly one per text); keep placeholders such as `{0}` or `{0:0.###}`.
+- The `LocalizationTests` collect every user interface text and report missing translations; the missing
+  entries are written to `%TEMP%/bamcam-missing-<code>.json`.
 
-Dateien (`.cb`, G-Code, DXF) sind sprachunabhängig.
+Files (`.cb`, G-code, DXF) are language neutral.
 
-## Bedienung (Auszug)
+## Controls (excerpt)
 
-| Eingabe | Wirkung |
+| Input | Action |
 |---|---|
-| Mausrad | Zoom am Cursor |
-| Mittlere Taste ziehen | Verschieben |
-| Alt + linke Taste ziehen | 3D-Ansicht drehen |
-| Alt + Doppelklick / Pos1 | Ansicht zurücksetzen |
-| P, A, C, R, D, T | Polylinie, Bogen, Kreis, Rechteck, Punktliste, Text |
-| Enter / mittlerer Klick | Objekt abschließen |
-| Esc | Abbrechen |
-| Strg+T / Strg+W | Werkzeugwege erzeugen / G-Code erzeugen |
-| Strg+M / Strg+R / Strg+E | Verschieben / Drehen / Skalieren |
-| Umschalt + Pfeiltasten | Auswahl um ein Rasterfeld verschieben |
-| Leertaste (im Baum) | Layer ein-/ausblenden, Part/MOP aktivieren/deaktivieren |
+| Mouse wheel | Zoom at the cursor |
+| Drag with middle button | Pan |
+| Alt + drag with left button | Rotate the 3D view |
+| Alt + double-click / Home | Reset the view |
+| P, A, C, R, D, T | Polyline, arc, circle, rectangle, point list, text |
+| Enter / middle click | Finish the object |
+| Esc | Cancel |
+| Right click on an object | Context menu (edit points, transform, machining, ...) |
+| Ctrl+T / Ctrl+W | Generate toolpaths / produce G-code |
+| Ctrl+M / Ctrl+R / Ctrl+E | Move / rotate / resize |
+| Shift + arrow keys | Move the selection by one grid step |
+| Space (in the tree) | Show/hide layer, enable/disable part or machining operation |
 
-## Rechtlicher Hinweis
+## Legal notice
 
-BamCam ist eine eigenständige Neuentwicklung. Programmcode von CamBam wurde weder decompiliert noch
-analysiert. Grundlage waren ausschließlich die Benutzerdokumentation sowie das beobachtbare Verhalten,
-also die Dateien, die das Programm schreibt (Black-Box-Analyse). Die Kompatibilitätstests lesen die
-Beispieldateien einer lokal installierten, lizenzierten CamBam-Version; diese Dateien sind nicht
-Bestandteil dieses Repositorys. Ohne eine solche Installation prüfen diese Tests nichts und gelten als bestanden.
-„CamBam“ ist eine Marke ihres Inhabers.
+BamCam is an independent implementation. No CamBam program code was decompiled or analysed. It is based
+solely on the user documentation and on observable behaviour, i.e. the files the program writes (black-box
+analysis). The compatibility tests read the sample files of a locally installed, licensed copy of CamBam;
+those files are not part of this repository, and without such an installation these tests check nothing
+and pass. The example drawings in `examples_to_test` were contributed by the repository owner.
+"CamBam" is a trademark of its owner.

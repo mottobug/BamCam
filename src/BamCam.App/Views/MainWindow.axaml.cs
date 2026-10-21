@@ -253,7 +253,6 @@ public partial class MainWindow : Window
                     try
                     {
                         View.SimulateClick(new(v[0], v[1]), ctrl ? KeyModifiers.Control : KeyModifiers.None);
-                        Log($"--click {v[0]},{v[1]}: {_session.Selection.Count} selected.");
                     }
                     catch (Exception ex)
                     {
@@ -287,19 +286,32 @@ public partial class MainWindow : Window
                 View.Invalidate();
                 await Task.Delay(400);
             }
-            var size = new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height);
-            using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
-            bmp.Render(this);
-            bmp.Save(path);
-            if (_filterWindow is { } fw)
+            try
             {
-                using var fbmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)fw.Bounds.Width, (int)fw.Bounds.Height));
-                fbmp.Render(fw);
-                fbmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, Path.GetFileNameWithoutExtension(path) + "-filter.png"));
+                Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+                var size = new Avalonia.PixelSize((int)Bounds.Width, (int)Bounds.Height);
+                using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
+                bmp.Render(this);
+                bmp.Save(path);
+                if (_filterWindow is { } fw)
+                {
+                    using var fbmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)fw.Bounds.Width, (int)fw.Bounds.Height));
+                    fbmp.Render(fw);
+                    fbmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, Path.GetFileNameWithoutExtension(path) + "-filter.png"));
+                }
+                File.WriteAllText(Path.ChangeExtension(path, ".log"), Messages.Text);
             }
-            File.WriteAllText(Path.ChangeExtension(path, ".log"), Messages.Text);
-            _closingConfirmed = true; // diagnostic edits are never saved
-            Close();
+            catch (Exception ex)
+            {
+                // Diagnostic mode must never leave a window open: report in crash.log and quit.
+                ReportError(ex);
+                Environment.ExitCode = 1;
+            }
+            finally
+            {
+                _closingConfirmed = true; // diagnostic edits are never saved
+                Close();
+            }
         };
     }
 
