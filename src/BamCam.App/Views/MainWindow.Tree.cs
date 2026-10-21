@@ -531,7 +531,7 @@ public partial class MainWindow
     private object[] ObjectMenuItems(Entity? target)
     {
         var items = new List<object>();
-        if (target is PolylineEntity or LineEntity or PointListEntity)
+        if (target is PolylineEntity or LineEntity or PointListEntity or SplineEntity)
             items.Add(Item("Edit _Points...", () => EditPoints(target)));
         if (target != null)
         {

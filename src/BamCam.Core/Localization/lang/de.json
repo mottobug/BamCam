@@ -889,6 +889,11 @@
   "Whether the curve ends where it starts.": "Ob die Kurve dort endet, wo sie beginnt.",
   "Control points of the spline (the curve is pulled towards them). Click [...] to edit.": "Kontrollpunkte des Splines (die Kurve wird zu ihnen hingezogen). Zum Bearbeiten [...] klicken.",
 
+  "_Spline": "_Spline",
+  "Spline: select first point": "Spline: ersten Punkt wählen",
+  "Draw spline": "Spline zeichnen",
+  "Edit spline: drag points and tangent handles, Ctrl = move a handle alone  [Enter / Esc = finish]": "Spline bearbeiten: Punkte und Tangenten-Griffe ziehen, Strg = Griff einzeln bewegen  [Enter / Esc = fertig]",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

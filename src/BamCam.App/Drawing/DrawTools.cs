@@ -140,6 +140,86 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
     }
 }
 
+/// <summary>
+/// Spline tool (as in CamBam): click the points the curve passes through; tangents are set automatically and
+/// can be adjusted afterwards (double-click). Enter or middle click finishes, C or clicking the first point closes.
+/// </summary>
+public sealed class SplineTool : DrawTool
+{
+    private readonly List<Point2> _pts = [];
+
+    public override string Prompt => _pts.Count == 0
+        ? T("Spline: select first point")
+        : T("Select next point  [Enter / middle click = finish, C = close, Esc = cancel]");
+
+    protected override bool HasPendingInput => _pts.Count > 0;
+    protected override void Reset() => _pts.Clear();
+
+    public override void PointerPressed(Point screen, Point2 world, PointerPointProperties props, KeyModifiers mods)
+    {
+        if (!props.IsLeftButtonPressed) return;
+        if (_pts.Count >= 3 && world.AlmostEquals(_pts[0], Tolerance.Point))
+        {
+            Finish(closed: true);
+            return;
+        }
+        if (_pts.Count > 0 && world.AlmostEquals(_pts[^1], Tolerance.Point)) return;
+        _pts.Add(world);
+        Host.SetPrompt(Prompt);
+        Host.Invalidate();
+    }
+
+    public override void PointerReleased(Point screen, Point2 world, MouseButton button, KeyModifiers mods)
+    {
+        if (button == MouseButton.Middle && HasPendingInput) Finish(false);
+        else base.PointerReleased(screen, world, button, mods);
+    }
+
+    public override bool KeyDown(Key key, KeyModifiers mods)
+    {
+        if (key is Key.Enter or Key.Return && HasPendingInput)
+        {
+            Finish(false);
+            return true;
+        }
+        if (key == Key.C && _pts.Count >= 3)
+        {
+            Finish(true);
+            return true;
+        }
+        if (key == Key.Back && _pts.Count > 0)
+        {
+            _pts.RemoveAt(_pts.Count - 1);
+            Host.Invalidate();
+            return true;
+        }
+        return base.KeyDown(key, mods);
+    }
+
+    private void Finish(bool closed)
+    {
+        if (_pts.Count < 2)
+        {
+            Reset();
+            return;
+        }
+        Commit(T("Draw spline"), SplineEditing.FromAnchors(_pts.Select(p => p.ToPoint3()).ToList(), closed));
+    }
+
+    public override void RenderOverlay(DrawingContext dc, ViewTransform view)
+    {
+        if (_pts.Count == 0) return;
+        var pts = _pts.Append(Cursor).Select(p => p.ToPoint3()).ToList();
+        if (pts.Count >= 2 && !pts[^1].XY.AlmostEquals(pts[^2].XY, Tolerance.Point))
+            DrawPath(dc, view, SplineEditing.FromAnchors(pts, false).LocalPath, PreviewPen);
+        foreach (var p in _pts)
+        {
+            var s = view.ToScreen(p);
+            dc.DrawEllipse(null, new Pen(Brushes.Red, 1.5), s, 4, 4);
+        }
+    }
+}
+
 public sealed class CircleTool : DrawTool
 {
     private Point2? _center;

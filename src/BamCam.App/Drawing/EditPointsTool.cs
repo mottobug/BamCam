@@ -10,6 +10,8 @@ namespace BamCam.App.Drawing;
 /// <summary>
 /// Interactive control-point editing (double-click an object): drag square handles to move points.
 /// Polylines, lines and point lists expose their vertices; circles expose centre and rim.
+/// Splines show anchors (red circles) and tangent handles (yellow squares); a handle drags the opposite handle
+/// of its anchor along unless Ctrl is held.
 /// Enter, middle click or Esc leaves the edit mode.
 /// </summary>
 public sealed class EditPointsTool(Entity entity) : ViewTool
@@ -17,7 +19,9 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
     private int _dragIndex = -1;
     private bool _recorded;
 
-    public override string Prompt => T("Edit: drag the handles  [Enter / Esc = finish]");
+    public override string Prompt => entity is SplineEntity
+        ? T("Edit spline: drag points and tangent handles, Ctrl = move a handle alone  [Enter / Esc = finish]")
+        : T("Edit: drag the handles  [Enter / Esc = finish]");
 
     private List<Point2> Handles()
     {
@@ -26,6 +30,7 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
         {
             PolylineEntity p => p.Points.Select(v => m.Transform(v.Point).XY).ToList(),
             LineEntity l => l.Points.Select(v => m.Transform(v).XY).ToList(),
+            SplineEntity s => s.ControlPoints.Select(v => m.Transform(v).XY).ToList(),
             PointListEntity pl => pl.WorldPoints().Select(v => v.XY).ToList(),
             CircleEntity c => [m.Transform(c.Center).XY, m.Transform(c.Center).XY + new Point2(c.Radius * m.ScaleXY, 0)],
             RectEntity r => r.LocalPath.Vertices.Where((_, i) => r.CornerRadius <= 0 || i % 2 == 0).Select(v => m.Transform(v.Point).XY).Take(4).ToList(),
@@ -36,7 +41,7 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
     protected override void OnAttached()
     {
         // Edit in drawing coordinates.
-        if (!entity.Transform.IsIdentity && entity is PolylineEntity or LineEntity or PointListEntity or CircleEntity)
+        if (!entity.Transform.IsIdentity && entity is PolylineEntity or LineEntity or PointListEntity or CircleEntity or SplineEntity)
             entity.ApplyTransform(Matrix4.Identity);
         Host.Session.Select([entity]);
     }
@@ -82,6 +87,9 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
                 break;
             case LineEntity l when i < l.Points.Count:
                 l.Points[i] = new Point3(world.X, world.Y, l.Points[i].Z);
+                break;
+            case SplineEntity s when i < s.ControlPoints.Count:
+                SplineEditing.MoveControlPoint(s, i, new Point3(world.X, world.Y, s.ControlPoints[i].Z), linked: !mods.HasFlag(KeyModifiers.Control));
                 break;
             case PointListEntity pl when i < pl.Points.Count:
                 pl.Points[i] = new Point3(world.X, world.Y, pl.Points[i].Z);
@@ -137,10 +145,44 @@ public sealed class EditPointsTool(Entity entity) : ViewTool
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         var pen = new Pen(Brushes.Yellow, 1);
+        if (entity is SplineEntity spline)
+        {
+            RenderSpline(dc, view, spline, pen);
+            return;
+        }
         foreach (var h in Handles())
         {
             var s = view.ToScreen(h);
             dc.DrawRectangle(Brushes.Black, pen, new Rect(s.X - 4, s.Y - 4, 8, 8));
+        }
+    }
+
+    /// <summary>Anchors as red circles, tangent handles as yellow squares connected to their anchor.</summary>
+    private void RenderSpline(DrawingContext dc, ViewTransform view, SplineEntity s, IPen handlePen)
+    {
+        var pts = Handles();
+        var chain = SplineEditing.IsBezierChain(s);
+        var linePen = new Pen(new SolidColorBrush(Color.FromArgb(160, 200, 200, 200)), 1, DashStyle.Dash);
+        if (chain)
+        {
+            for (var i = 0; i < pts.Count; i++)
+            {
+                if (SplineEditing.IsAnchor(i)) continue;
+                var anchor = i % 3 == 1 ? i - 1 : i + 1;
+                dc.DrawLine(linePen, view.ToScreen(pts[anchor]), view.ToScreen(pts[i]));
+            }
+        }
+        else
+        {
+            // General NURBS: the control polygon.
+            for (var i = 1; i < pts.Count; i++) dc.DrawLine(linePen, view.ToScreen(pts[i - 1]), view.ToScreen(pts[i]));
+        }
+        var anchorPen = new Pen(Brushes.Red, 1.5);
+        for (var i = 0; i < pts.Count; i++)
+        {
+            var p = view.ToScreen(pts[i]);
+            if (chain && SplineEditing.IsAnchor(i)) dc.DrawEllipse(Brushes.Black, anchorPen, p, 4.5, 4.5);
+            else dc.DrawRectangle(Brushes.Black, handlePen, new Rect(p.X - 3.5, p.Y - 3.5, 7, 7));
         }
     }
 }

@@ -118,4 +118,62 @@ public class SplineTests
         Assert.Equal(1, s.Degree);
         Assert.Equal(2 + 1 + 1, s.Knots.Count);
     }
+
+    [Fact]
+    public void Drawn_splines_place_tangents_like_CamBam()
+    {
+        // Anchors of the open spline in spline.cb; at the inner anchor (21,-49) CamBam put the handles at
+        // (19.1114670834788,-49.2697904166459) and (22.6114670834788,-48.7697904166459).
+        Point3[] anchors = [new(19, -7, 0), new(0, -31, 0), new(21, -49, 0), new(7, -30, 0), new(23, -24, 0), new(26, -36, 0)];
+        var s = SplineEditing.FromAnchors(anchors, closed: false);
+        Assert.True(SplineEditing.IsBezierChain(s));
+        Assert.Equal(16, s.ControlPoints.Count);
+        Assert.Equal(19.1114670834788, s.ControlPoints[5].X, 9);
+        Assert.Equal(-49.2697904166459, s.ControlPoints[5].Y, 9);
+        Assert.Equal(22.6114670834788, s.ControlPoints[7].X, 9);
+        Assert.Equal(-48.7697904166459, s.ControlPoints[7].Y, 9);
+
+        var closed = SplineEditing.FromAnchors(anchors, closed: true);
+        Assert.True(closed.Closed);
+        Assert.Equal(closed.ControlPoints[0], closed.ControlPoints[^1]);
+        Assert.Equal(6 * 3 + 1, closed.ControlPoints.Count);
+    }
+
+    [Fact]
+    public void Moving_points_keeps_tangents_smooth()
+    {
+        var s = SplineEditing.FromAnchors([new(0, 0, 0), new(10, 10, 0), new(20, 0, 0)], closed: false);
+        var anchor = s.ControlPoints[3];
+        var outLen = (s.ControlPoints[4] - anchor).XY.Length;
+
+        // Dragging the incoming handle turns the outgoing one to stay on a line, keeping its length.
+        SplineEditing.MoveControlPoint(s, 2, new Point3(5, 12, 0), linked: true);
+        var inDir = (s.ControlPoints[2] - anchor).XY;
+        var outDir = (s.ControlPoints[4] - anchor).XY;
+        Assert.Equal(0, Point2.Cross(inDir, outDir), 9);
+        Assert.True(Point2.Dot(inDir, outDir) < 0);
+        Assert.Equal(outLen, outDir.Length, 9);
+
+        // With Ctrl (not linked) the opposite handle stays where it is.
+        var before = s.ControlPoints[4];
+        SplineEditing.MoveControlPoint(s, 2, new Point3(4, 15, 0), linked: false);
+        Assert.Equal(before, s.ControlPoints[4]);
+
+        // An anchor takes both handles along.
+        var h1 = s.ControlPoints[2];
+        var h2 = s.ControlPoints[4];
+        SplineEditing.MoveControlPoint(s, 3, anchor + new Point3(1, 2, 0), linked: true);
+        Assert.Equal(h1 + new Point3(1, 2, 0), s.ControlPoints[2]);
+        Assert.Equal(h2 + new Point3(1, 2, 0), s.ControlPoints[4]);
+    }
+
+    [Fact]
+    public void Moving_the_start_of_a_closed_spline_moves_its_end_too()
+    {
+        var s = SplineEditing.FromAnchors([new(0, 0, 0), new(10, 0, 0), new(10, 10, 0), new(0, 10, 0)], closed: true);
+        SplineEditing.MoveControlPoint(s, 0, new Point3(-2, -2, 0), linked: true);
+        Assert.Equal(new Point3(-2, -2, 0), s.ControlPoints[0]);
+        Assert.Equal(new Point3(-2, -2, 0), s.ControlPoints[^1]);
+        Assert.True(s.ToPaths().Single().Closed);
+    }
 }

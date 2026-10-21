@@ -10,7 +10,7 @@ public static class CadOps
     public static List<PolylineEntity> ToPolylines(Entity e) =>
         e.ToPaths().Where(p => p.Count >= 2).Select(p => new PolylineEntity(p)).ToList();
 
-    /// <summary>Splits entities into their parts: polylines → lines/arcs, point lists → points, regions → polylines.</summary>
+    /// <summary>Splits entities into their parts: polylines → lines/arcs, point lists → points, regions, texts and splines → polylines.</summary>
     public static List<Entity> Explode(Entity e)
     {
         var result = new List<Entity>();
@@ -24,7 +24,7 @@ public static class CadOps
                     result.Add(single);
                 }
                 break;
-            case RegionEntity or TextEntity:
+            case RegionEntity or TextEntity or SplineEntity:
                 result.AddRange(ToPolylines(e));
                 break;
             default:

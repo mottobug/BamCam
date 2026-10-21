@@ -207,6 +207,7 @@ public partial class MainWindow
         Item("_Line", () => View.SetTool(new PolylineTool(linesOnly: true))),
         Item("_Polyline", () => View.SetTool(new PolylineTool())),
         Item("_Arc", () => View.SetTool(new ArcTool())),
+        Item("_Spline", () => View.SetTool(new SplineTool())),
         Item("_Circle", () => View.SetTool(new CircleTool())),
         Item("_Rectangle", () => View.SetTool(new RectangleTool())),
         Sub("Point _List",

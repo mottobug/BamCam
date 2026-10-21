@@ -23,6 +23,7 @@ public partial class MainWindow
             PolylineEntity p => p.Points.ToList(),
             LineEntity l => l.Points.Select(pt => new Vertex(pt)).ToList(),
             PointListEntity pl => pl.Points.Select(pt => new Vertex(pt)).ToList(),
+            SplineEntity s => s.ControlPoints.Select(pt => new Vertex(pt)).ToList(),
             _ => null,
         };
         var label = F("{0} ({1})", T(entity.TypeName), entity.Id);
@@ -51,6 +52,9 @@ public partial class MainWindow
                 case PointListEntity pl:
                     pl.Points.Clear();
                     pl.Points.AddRange(r.Points.Select(v => v.Point));
+                    break;
+                case SplineEntity s:
+                    s.SetControlPoints(r.Points.Select(v => v.Point));
                     break;
             }
         });
