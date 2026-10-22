@@ -351,6 +351,11 @@ public static class CbWriter
                      "RetractHeight Dwell CustomScript " + BaseOrder).Split(' '),
         ["engrave"] = ("TargetDepth DepthIncrement FinalDepthIncrement " + BaseOrder).Split(' '),
         ["ncfile"] = ("SourceFile " + BaseOrder).Split(' '),
+        // Lathe operations (plugin MOP) use the older order and omit their own properties while they are Default.
+        [LatheOp.XsiType] = ("WorkPlane OptimisationMode RoughingFinishing ToolDiameter ToolNumber ToolProfile PlungeFeedrate CutFeedrate " +
+                             "MaxCrossoverDistance StartPoint CustomMOPHeader CustomMOPFooter Name StockSurface RoughingClearance ClearancePlane " +
+                             "SpindleDirection SpindleSpeed SpindleRange VelocityMode primitive Style Enabled DepthIncrement LatheLeadOutLength " +
+                             "LatheLeadInLength LatheCutDirection").Split(' '),
         // Only the older order (base properties first) has been observed for 3D profiles.
         ["surface3d"] = ("WorkPlane OptimisationMode RoughingFinishing ToolDiameter ToolNumber ToolProfile PlungeFeedrate CutFeedrate " +
                          "MaxCrossoverDistance StartPoint CustomMOPHeader CustomMOPFooter Name StockSurface RoughingClearance ClearancePlane " +
@@ -376,7 +381,9 @@ public static class CbWriter
             return copy;
         }
 
-        var el = new XElement(op.XmlName);
+        var el = op is LatheOp
+            ? new XElement("mop", new XAttribute(Xsi + "type", LatheOp.XsiType))
+            : new XElement(op.XmlName);
         var parameters = op.Parameters().ToDictionary(p => p.Name, p => p.Param);
         var canonical = CanonicalOrder.TryGetValue(op.XmlName, out var c) ? c : BaseOrder.Split(' ');
         var order = op.ElementOrder.Count > 0 ? op.ElementOrder : canonical.ToList();
@@ -417,6 +424,9 @@ public static class CbWriter
             }
             if (parameters.TryGetValue(name, out var param))
             {
+                // CamBam leaves out the lathe-specific values while they are Default (StartPoint is not written either).
+                if (op is LatheOp && param.State == ParamState.Default && !op.ElementOrder.Contains(name) &&
+                    name is "DepthIncrement" or "LatheLeadOutLength" or "LatheLeadInLength" or "LatheCutDirection" or "StartPoint") return;
                 el.Add(CbParams.Write(name, param));
                 return;
             }

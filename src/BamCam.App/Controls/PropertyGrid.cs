@@ -286,7 +286,7 @@ public sealed partial class PropertyGrid : DockPanel
     /// the lists keep their order of appearance between the two groups.
     /// </summary>
     private static readonly string[] TopCategories =
-        ["General", "(Main)", "Part", "Depth", "Cutting", "Drilling", "Holding Tabs", "Lead Moves", "3D", "Boundary", "Back Face",
+        ["General", "(Main)", "Part", "Depth", "Cutting", "Lathe", "Drilling", "Holding Tabs", "Lead Moves", "3D", "Boundary", "Back Face",
          "NC File", "Machining", "Stock", "Nesting"];
 
     private static readonly string[] BottomCategories = ["Feedrates", "Spindle", "Options", "G-Code", "Output", "Tool", "Misc"];

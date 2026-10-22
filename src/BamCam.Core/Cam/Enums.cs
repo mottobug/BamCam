@@ -22,6 +22,9 @@ public enum OptimisationMode { Experimental, Standard, Legacy, None }
 
 public enum RoughingFinishing { Roughing, Finishing }
 
+/// <summary>Turning direction: right hand cuts from +Z towards the chuck (-Z), left hand the other way.</summary>
+public enum LatheCutDirection { RightHand, LeftHand }
+
 public enum StepoverFeedrate
 {
     [EnumMember(Value = "Plunge Feedrate")] PlungeFeedrate,

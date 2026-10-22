@@ -894,6 +894,16 @@
   "Draw spline": "Spline zeichnen",
   "Edit spline: drag points and tangent handles, Ctrl = move a handle alone  [Enter / Esc = finish]": "Spline bearbeiten: Punkte und Tangenten-Griffe ziehen, Strg = Griff einzeln bewegen  [Enter / Esc = fertig]",
 
+  "_Lathe": "_Drehen",
+  "Lathe Cut Direction": "Schnittrichtung",
+  "Lathe Lead In Length": "Anfahrlänge (45°)",
+  "Lathe Lead Out Length": "Abfahrlänge (45°)",
+  "Lathe Tool Radius Offset": "Schneidenradius-Versatz",
+  "Lathe X Mode": "X-Modus Drehen",
+  "Right Hand": "Rechts (+Z nach -Z)",
+  "Left Hand": "Links (-Z nach +Z)",
+  "{0}: the profile could not be offset for the tool.": "{0}: Das Profil konnte nicht um das Werkzeug versetzt werden.",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

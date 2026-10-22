@@ -143,6 +143,33 @@ public sealed class NcFileOp : MachineOp
 }
 
 /// <summary>
+/// Turning (lathe) operation, stored as &lt;mop xsi:type="MOPLathe"&gt;. The drawing holds only the profile line on one
+/// side of the spindle axis: lathe +Z runs along drawing +X, lathe +X (radius) away from the axis, which passes
+/// through the machining origin. Roughing cuts straight passes per Depth Increment (radial) down to the
+/// profile plus Roughing Clearance, then one pass along the contour; finishing makes the contour pass only.
+/// </summary>
+public sealed class LatheOp : MachineOp
+{
+    /// <summary>Value of the xsi:type attribute in drawing files.</summary>
+    public const string XsiType = "MOPLathe";
+
+    public override string XmlName => XsiType;
+    public override string DisplayType => "Lathe";
+
+    public LatheOp()
+    {
+        // Turning always works in the XZ plane (stored as an explicit value, like CamBam does).
+        WorkPlane = new(Cam.WorkPlane.XZ) { State = ParamState.Value };
+        ToolProfile = new(Cam.ToolProfile.Lathe);
+    }
+
+    [Param(41, "Depth")] public CamParam<double> DepthIncrement { get; set; } = new(0.25);
+    [Param(70, "Lathe")] public CamParam<LatheCutDirection> LatheCutDirection { get; set; } = new(Cam.LatheCutDirection.RightHand);
+    [Param(71, "Lathe")] public CamParam<double> LatheLeadInLength { get; set; } = new(0);
+    [Param(72, "Lathe")] public CamParam<double> LatheLeadOutLength { get; set; } = new(0);
+}
+
+/// <summary>
 /// An operation type this version does not machine (3D profile, lathe, plugins). Its parameters
 /// are kept in <see cref="MachineOp.Extensions"/> and written back unchanged.
 /// </summary>
@@ -176,6 +203,7 @@ public static class MachineOpFactory
         "drill" => new DrillOp(),
         "surface3d" => new Profile3DOp(),
         "ncfile" => new NcFileOp(),
+        LatheOp.XsiType => new LatheOp(),
         _ => null,
     };
 }

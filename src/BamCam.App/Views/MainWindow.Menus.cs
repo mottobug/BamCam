@@ -224,6 +224,7 @@ public partial class MainWindow
         Item("_Drill", () => CreateOp(new DrillOp())),
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_3D Profile", () => CreateOp(new Profile3DOp())),
+        Item("_Lathe", () => CreateOp(new LatheOp())),
         "-",
         Item("New Part", NewPart),
         "-",

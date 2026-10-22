@@ -213,7 +213,7 @@ public sealed partial class GCodePoster
                 };
             case "arccentermode":
                 return _doc.Machining.ArcCenterMode == ArcCenterMode.Absolute ? _post.ArcCenterAbsolute : _post.ArcCenterIncremental;
-            case "lathexmode": return _post.XModeRadius;
+            case "lathexmode": return _post.LatheXMode == LatheXMode.Diameter ? _post.XModeDiameter : _post.XModeRadius;
             case "velocitymode": return VelocityMode();
             case "workplane": return Workplane();
             case "spindle": return Spindle(args);
@@ -370,6 +370,11 @@ public sealed partial class GCodePoster
 
     private string Clearance()
     {
+        if (_post.ClearancePlaneAxis.Trim().Equals("X", StringComparison.OrdinalIgnoreCase))
+        {
+            // Turning: retract radially; the clearance plane is a radius.
+            return MoveLine(_post.Rapid, MoveKind.Rapid, new Dictionary<char, double> { ['X'] = LatheX(ClearanceZ()) });
+        }
         var z = ClearanceZ();
         if (!double.IsNaN(_posZ) && _posZ >= z - 1e-9) return "";
         return MoveLine(_post.Rapid, MoveKind.Rapid, new Dictionary<char, double> { ['Z'] = z }, forceEmit: true);
@@ -454,6 +459,7 @@ public sealed partial class GCodePoster
             _lastG = null;
             return path == null ? "" : File.ReadAllText(path).Replace("\r\n", "\n").TrimEnd('\n').Replace("\n", "\r\n") + "\r\n";
         }
+        if (job.Op is LatheOp) return LatheBlocks(job);
         var sb = new StringBuilder();
         var mirrored = job.Copy.DeterminantXY < 0;
         var stockSurface = job.Op.StockSurface.Value;
@@ -541,6 +547,69 @@ public sealed partial class GCodePoster
         {
             Line(Expand(_post.EndCut));
             _cutting = false;
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>Lathe X word value: radius, or diameter when the post is in diameter mode.</summary>
+    private double LatheX(double radius) => _post.LatheXMode == LatheXMode.Diameter ? radius * 2 : radius;
+
+    /// <summary>
+    /// Turning moves: drawing X (minus origin) becomes lathe Z, the distance from the spindle axis lathe X.
+    /// Arcs use I (along X) and K (along Z); their direction is taken in the Z-X view and flipped when the
+    /// post sets Invert Arcs.
+    /// </summary>
+    private string LatheBlocks(Job job)
+    {
+        var sb = new StringBuilder();
+        void Line(string s)
+        {
+            if (s.Length > 0) sb.Append(s).Append("\r\n");
+        }
+
+        Point3? pos = null;
+        foreach (var m in job.Toolpath.Moves)
+        {
+            if (m.Kind == MoveKind.Comment)
+            {
+                Line($"{_post.Comment} {m.Text} {_post.EndComment}");
+                continue;
+            }
+            if (!m.IsMotion) continue;
+            var t = Out(m.To);
+            var x = LatheX(Math.Abs(t.Y));
+            var z = t.X;
+            if (m.Kind == MoveKind.Rapid)
+            {
+                Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = x, ['Z'] = z }));
+            }
+            else if (m.Kind == MoveKind.Feed || pos == null)
+            {
+                Line(MoveLine(_post.FeedMove, MoveKind.Feed, new() { ['X'] = x, ['Z'] = z, ['F'] = m.Feed }));
+            }
+            else
+            {
+                var from = Out(pos.Value);
+                var center = OutXY(m.Center);
+                // Below the axis the drawing is mirrored relative to the Z-X view.
+                var side = Math.Abs(t.Y) > 1e-12 ? Math.Sign(t.Y) : Math.Sign(from.Y);
+                var cw = (m.Kind == MoveKind.ArcCW) ^ (side < 0) ^ (job.Copy.DeterminantXY < 0) ^ _post.InvertArcs;
+                var regs = new Dictionary<char, double> { ['X'] = x, ['Z'] = z, ['F'] = m.Feed };
+                var cx = Math.Abs(center.Y);
+                var fx = Math.Abs(from.Y);
+                if (_doc.Machining.ArcCenterMode == ArcCenterMode.Absolute)
+                {
+                    regs['I'] = LatheX(cx);
+                    regs['K'] = center.X;
+                }
+                else
+                {
+                    regs['I'] = cx - fx;
+                    regs['K'] = center.X - from.X;
+                }
+                Line(MoveLine(cw ? _post.ArcCW : _post.ArcCCW, m.Kind, regs, forceEmit: true));
+            }
+            pos = m.To;
         }
         return sb.ToString();
     }

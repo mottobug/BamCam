@@ -351,10 +351,11 @@ public static class CbReader
     private static MachineOp ReadOp(XElement el)
     {
         var name = el.Name.LocalName;
-        var op = MachineOpFactory.Create(name);
+        var xsiType = el.Attribute(XName.Get("type", "http://www.w3.org/2001/XMLSchema-instance"))?.Value;
+        // Plugin operations are generic <mop> elements whose class is named by xsi:type (e.g. MOPLathe).
+        var op = MachineOpFactory.Create(name == "mop" && xsiType != null ? xsiType : name);
         if (op == null)
         {
-            var xsiType = el.Attribute(XName.Get("type", "http://www.w3.org/2001/XMLSchema-instance"))?.Value;
             var un = new UnsupportedOp(xsiType ?? name) { RawXml = new XElement(el) };
             un.Name = el.Element("Name")?.Value ?? un.XmlName;
             un.Enabled = el.Element("Enabled") is not { } en || CbFormat.ParseBool(en.Value, true);

@@ -102,6 +102,10 @@ public sealed class PostProcessorDefinition
     [Category("Options")] public string EndComment { get; set; } = ")";
     [Category("Options")] public string EndOfLine { get; set; } = "\\r\\n";
     [Category("Options")] public bool InvertArcs { get; set; }
+    /// <summary>Lathe X words as radius or diameter ({$lathexmode} prints XModeRadius / XModeDiameter).</summary>
+    [Category("Lathe"), DisplayName("Lathe X Mode")] public LatheXMode LatheXMode { get; set; } = LatheXMode.Radius;
+    /// <summary>Output the virtual tool point instead of the nose radius centre.</summary>
+    [Category("Lathe"), DisplayName("Lathe Tool Radius Offset")] public bool LatheToolRadiusOffset { get; set; }
     [Category("Options")] public double MinimumArcLength { get; set; } = 1e-4;
     [Category("Options")] public double MaximumArcRadius { get; set; } = 1e6;
     [Category("Options")] public string NumberFormat { get; set; } = "0.0###";
@@ -168,3 +172,6 @@ public sealed class PostProcessorDefinition
         return c;
     }
 }
+
+/// <summary>How lathe X coordinates are written.</summary>
+public enum LatheXMode { Radius, Diameter }
