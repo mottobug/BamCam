@@ -19,6 +19,8 @@ public class UserExampleTests(ITestOutputHelper output)
         if (!Directory.Exists(Dir)) yield break;
         foreach (var cb in Directory.GetFiles(Dir, "*.cb"))
         {
+            // Turning examples are compared with CamBam's turning post in LatheTests.
+            if (File.ReadAllText(cb).Contains("MOPLathe")) continue;
             var nc = Directory.GetFiles(Dir, Path.GetFileNameWithoutExtension(cb) + ".*.nc").FirstOrDefault();
             if (nc != null) yield return [Path.GetFileName(cb), Path.GetFileName(nc)];
         }

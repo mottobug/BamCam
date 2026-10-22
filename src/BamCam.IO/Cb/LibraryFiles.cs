@@ -96,6 +96,28 @@ public static class LibraryFiles
         foreach (var (name, el) in style.Values)
             resolved[name] = el;
 
+        // Default tool cascade: a tool chosen on the part or in the machining options wins over the style;
+        // its diameter and profile come from the tool library.
+        var cascadeTool = part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
+        if (cascadeTool > 0)
+        {
+            var tool = CamLibraries.FindTool(doc, part, cascadeTool);
+            void Set<T>(CamParam<T> p, T value, string name)
+            {
+                if (p.State != ParamState.Default || Equals(p.Value, value)) return;
+                p.Value = value;
+                p.RawXml = null;
+                changed.Add(name);
+            }
+            Set(op.ToolNumber, cascadeTool, "ToolNumber");
+            if (tool != null)
+            {
+                Set(op.ToolDiameter, tool.Diameter, "ToolDiameter");
+                if (tool.ToolProfile != ToolProfile.Unspecified) Set(op.ToolProfile, tool.ToolProfile, "ToolProfile");
+            }
+            foreach (var key in new[] { "ToolNumber", "ToolDiameter", "ToolProfile" }) resolved.Remove(key);
+        }
+
         foreach (var (name, param, _) in op.Parameters())
         {
             if (param.State != ParamState.Default || !resolved.TryGetValue(name, out var el)) continue;

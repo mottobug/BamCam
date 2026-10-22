@@ -122,6 +122,11 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   - Waterline roughing and finishing.
   - Boundary by outline, bounding box, selected shapes, clip area, margin and taper.
   - Back face and mold.
+- **Lathe** (turning): draw only the profile on one side of the spindle axis, which runs through the machining
+  origin (lathe Z along drawing X). Roughing in radial depth increments with 45° lead out, then a contour pass;
+  finishing makes the contour pass only; right or left hand cutting. The output is the virtual tool tip, X as
+  radius or diameter depending on the post processor. The G-code for CamBam's `lathe-test` sample (right and left
+  hand, Mach3-Turn-CutViewer post) matches CamBam's output line for line.
 - Machining operations refer to drawing objects by ID (**Primitive IDs**); edit the list as text or pick
   the objects in the drawing with **[...]**.
 - Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with
@@ -133,7 +138,7 @@ The G-code produced for the CamBam sample `snap-together-box.cb` matches the ref
 lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For the example drawings in
 `examples_to_test` it matches CamBam's output line for line or within 0.004 mm.
 
-**Not implemented yet:** additive 3D mode, exact bull nose geometry (computed as ball nose), lathe,
+**Not implemented yet:** additive 3D mode, exact bull nose geometry (computed as ball nose),
 bitmap objects, script objects, printing, speeds and feeds calculator. Such operations are kept
 unchanged when `.cb` files are loaded and saved.
 

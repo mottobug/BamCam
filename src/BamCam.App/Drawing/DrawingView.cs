@@ -571,10 +571,18 @@ public sealed partial class DrawingView : Control, IToolHost
 
     private void RenderStock(DrawingContext dc)
     {
-        var stock = _session!.Document.Machining.Stock;
+        var doc = _session!.Document;
+        var stock = doc.Machining.Stock;
         if (stock.IsEmpty) return;
         var a = stock.Min;
         var b = stock.Max;
+        // Turning: the stock is given in lathe coordinates around the machining origin (Z along drawing X,
+        // radius across); CamBam's passes start at its end (verified with lathe-test.cb).
+        if (doc.Parts.SelectMany(p => p.Operations).OfType<LatheOp>().Any() && doc.Machining.MachiningOrigin.Point is { } o)
+        {
+            a += new Point3(o.X, o.Y, 0);
+            b += new Point3(o.X, o.Y, 0);
+        }
         var c = stock.Color;
         var pen = new Pen(new SolidColorBrush(Color.FromArgb(160, c.R, c.G, c.B)), 1);
         Point3[] corners =

@@ -50,7 +50,7 @@ public sealed partial class GCodePoster
     private ToolInfo? _toolContext;
 
     private sealed record Job(Part Part, MachineOp Op, Toolpath Toolpath, Matrix4 Copy, Point2 Origin);
-    private sealed record ToolInfo(int Index, double Diameter, ToolProfile Profile);
+    private sealed record ToolInfo(int Index, double Diameter, ToolProfile Profile, string Comment = "");
 
     private GCodePoster(CadDocument doc, PostProcessorDefinition post, List<Job> jobs, DateTime now)
     {
@@ -230,11 +230,12 @@ public sealed partial class GCodePoster
 
             case "tool.index": return Tool()?.Index.ToString(Inv) ?? "";
             case "tool.diameter": return Tool() is { } td ? Num(td.Diameter) : "";
-            case "tool.radius": return Tool() is { } tr ? Num(tr.Profile is ToolProfile.BallNose or ToolProfile.BullNose ? tr.Diameter / 2 : 0) : "";
+            case "tool.radius": return Tool() is { } tr ? Num(tr.Profile is ToolProfile.BallNose or ToolProfile.BullNose or ToolProfile.Lathe ? tr.Diameter / 2 : 0) : "";
             case "tool.length": return Num(0);
             case "tool.profile": return Tool()?.Profile.ToString() ?? "";
             case "tool.name": return Tool() is { } tn ? $"{Num(tn.Diameter)} {tn.Profile}" : "";
-            case "tool.comment": return "";
+            // Free text of the tool library entry; it may contain macros ({$comment}, {$tool.radius}, ...).
+            case "tool.comment": return Tool() is { Comment.Length: > 0 } tc ? Expand(tc.Comment) : "";
             case "tool.veeangle": return Num(0);
 
             case "mop.name": return op?.Name ?? "";
@@ -308,7 +309,13 @@ public sealed partial class GCodePoster
 
     private ToolInfo? Tool() => _toolContext ?? (_job is { } j ? ToolOf(j) : null);
 
-    private ToolInfo ToolOf(Job j) => new(j.Op.ToolNumber.Value, j.Op.EffectiveToolDiameter(_doc), j.Op.ToolProfile.Value);
+    private ToolInfo ToolOf(Job j)
+    {
+        var number = j.Op.ToolNumber.Value;
+        var part = _doc.Parts.FirstOrDefault(p => p.Operations.Contains(j.Op));
+        var comment = CamLibraries.FindTool(_doc, part, number)?.Comment ?? "";
+        return new(number, j.Op.EffectiveToolDiameter(_doc), j.Op.ToolProfile.Value, comment);
+    }
 
     private string Mops()
     {
@@ -567,6 +574,9 @@ public sealed partial class GCodePoster
             if (s.Length > 0) sb.Append(s).Append("\r\n");
         }
 
+        // The profile lies on one side of the axis; the tool tip may cross it slightly (negative X).
+        var motion = job.Toolpath.Moves.Where(m => m.IsMotion).Select(m => Out(m.To).Y).ToList();
+        double side = motion.Count > 0 && motion.Average() < 0 ? -1 : 1;
         Point3? pos = null;
         foreach (var m in job.Toolpath.Moves)
         {
@@ -577,11 +587,31 @@ public sealed partial class GCodePoster
             }
             if (!m.IsMotion) continue;
             var t = Out(m.To);
-            var x = LatheX(Math.Abs(t.Y));
+            var x = LatheX(t.Y * side);
             var z = t.X;
             if (m.Kind == MoveKind.Rapid)
             {
-                Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = x, ['Z'] = z }));
+                // Both axes: retract radially first (or travel along Z first when going in), like CamBam.
+                var lastX = _last.TryGetValue('X', out var lx) ? lx : null;
+                var lastZ = _last.TryGetValue('Z', out var lz) ? lz : null;
+                if (lastX != null && lastZ != null && lastX != Num(x) && lastZ != Num(z))
+                {
+                    var outward = double.TryParse(lastX, NumberStyles.Float, Inv, out var px) && x > px;
+                    if (outward)
+                    {
+                        Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = x }));
+                        Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['Z'] = z }));
+                    }
+                    else
+                    {
+                        Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['Z'] = z }));
+                        Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = x }));
+                    }
+                }
+                else
+                {
+                    Line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = x, ['Z'] = z }));
+                }
             }
             else if (m.Kind == MoveKind.Feed || pos == null)
             {
@@ -592,11 +622,10 @@ public sealed partial class GCodePoster
                 var from = Out(pos.Value);
                 var center = OutXY(m.Center);
                 // Below the axis the drawing is mirrored relative to the Z-X view.
-                var side = Math.Abs(t.Y) > 1e-12 ? Math.Sign(t.Y) : Math.Sign(from.Y);
                 var cw = (m.Kind == MoveKind.ArcCW) ^ (side < 0) ^ (job.Copy.DeterminantXY < 0) ^ _post.InvertArcs;
                 var regs = new Dictionary<char, double> { ['X'] = x, ['Z'] = z, ['F'] = m.Feed };
-                var cx = Math.Abs(center.Y);
-                var fx = Math.Abs(from.Y);
+                var cx = center.Y * side;
+                var fx = from.Y * side;
                 if (_doc.Machining.ArcCenterMode == ArcCenterMode.Absolute)
                 {
                     regs['I'] = LatheX(cx);

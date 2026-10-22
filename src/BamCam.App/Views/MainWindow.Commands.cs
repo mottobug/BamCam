@@ -490,6 +490,9 @@ public partial class MainWindow
         {
             SetStatus(F("Generating toolpaths: {0} ({1}/{2})…", op.Name, count + 1, ops.Count));
             var doc = _session.Document;
+            // Like CamBam, Default values are taken from the CAM style when toolpaths are generated
+            // (the values cached in the drawing may come from another style library version).
+            BamCam.IO.Cb.LibraryFiles.ApplyStyle(doc, op);
             var tp = await Task.Run(() => ToolpathGenerator.Generate(doc, op));
             _session.SetToolpath(op, tp);
             foreach (var w in tp.Warnings) Log(F("Warning: {0}", w));
