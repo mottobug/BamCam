@@ -80,6 +80,9 @@ public sealed class AppSettings
     public bool RepeatCommands { get; set; } = true;
     [Category("Drawing"), DisplayName("Snap To Grid")] public bool SnapToGrid { get; set; } = true;
     [Category("Drawing"), DisplayName("Snap To Points")] public bool SnapToPoints { get; set; }
+    [Category("Drawing"), DisplayName("Spline To Polyline Tolerance"),
+     Description("Largest deviation of the lines and arcs used for splines (display, toolpaths, export as polylines).")]
+    public double SplineTolerance { get; set; } = 0.001;
 
     // ---- CAM ----
     [Category("CAM"), DisplayName("Default Post Processor"), Description("Post processor used when a drawing does not name one.")]
@@ -94,6 +97,9 @@ public sealed class AppSettings
     [Category("Files"), DisplayName("File Backups"), Description("Number of name.b1 … name.bN backups kept when saving.")]
     public int FileBackups { get; set; } = 3;
     [Category("Files"), DisplayName("Recent Files Count")] public int MaxRecentFiles { get; set; } = 10;
+    [Category("Files"), DisplayName("DXF Export Version"),
+     Description("R2000 keeps splines as splines; R12 is read by older programs (splines and texts become polylines).")]
+    public BamCam.IO.Dxf.DxfVersion DxfExportVersion { get; set; } = BamCam.IO.Dxf.DxfVersion.R2000;
     [Browsable(false)] public List<string> RecentFiles { get; set; } = [];
 
     /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
@@ -188,6 +194,7 @@ public sealed class AppSettings
         Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);
+        if (SplineTolerance is <= 0 or > 1 || double.IsNaN(SplineTolerance)) SplineTolerance = 0.001;
         if (WindowWidth < 400) WindowWidth = 1366;
         if (WindowHeight < 300) WindowHeight = 860;
         LeftColumnWidth = Math.Clamp(LeftColumnWidth, 150, 1000);

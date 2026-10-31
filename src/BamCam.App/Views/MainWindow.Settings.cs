@@ -88,6 +88,7 @@ public partial class MainWindow
         _settings.ApplyTo(View.Settings, _session?.Document.Units ?? _settings.DrawingUnits);
         DrawTool.RepeatCommands = _settings.RepeatCommands;
         TextOutlines.DefaultFont = _settings.DefaultFontFamily;
+        SplineEntity.Tolerance = _settings.SplineTolerance;
         _system.DefaultPostName = _settings.DefaultPostProcessor;
         if (_session != null && oldFont != _settings.DefaultFontFamily)
             foreach (var t in _session.Document.AllEntities().OfType<TextEntity>()) t.InvalidateOutlines();

@@ -446,7 +446,7 @@ public partial class MainWindow : Window
         if (file?.TryGetLocalPath() is not { } path) return;
         try
         {
-            DxfWriter.Save(_session.Document, path);
+            DxfWriter.Save(_session.Document, path, version: _settings.DxfExportVersion);
             Log(F("Exported {0}", path));
         }
         catch (Exception ex)

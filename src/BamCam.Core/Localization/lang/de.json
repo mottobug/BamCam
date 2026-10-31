@@ -981,6 +981,13 @@
   "{0}: the pitch must be greater than 0.": "{0}: Die Steigung muss größer als 0 sein.",
   "{0}: the stock does not reach beyond the end face; one pass at the face.": "{0}: Das Rohteil reicht nicht über die Stirnfläche hinaus; ein Durchgang an der Stirnfläche.",
 
+  "Spline To Polyline Tolerance": "Spline-Toleranz",
+  "Largest deviation of the lines and arcs used for splines (display, toolpaths, export as polylines).": "Größte Abweichung der Linien und Bögen, durch die Splines ersetzt werden (Anzeige, Werkzeugwege, Export als Polylinie).",
+  "DXF Export Version": "DXF-Exportformat",
+  "R2000 keeps splines as splines; R12 is read by older programs (splines and texts become polylines).": "R2000 behält Splines als Splines; R12 lesen auch ältere Programme (Splines und Texte werden zu Polylinien).",
+  "R12": "R12",
+  "R2000": "R2000",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",
