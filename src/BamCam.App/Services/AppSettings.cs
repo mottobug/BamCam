@@ -74,7 +74,7 @@ public sealed class AppSettings
     // ---- Drawing ----
     [Category("Drawing"), DisplayName("Drawing Units"), Description("Units for new drawings.")]
     public DrawingUnits DrawingUnits { get; set; } = DrawingUnits.Millimeters;
-    [Category("Drawing"), DisplayName("Default Font Family"), Description("Font for text objects without a font.")]
+    [Category("Drawing"), DisplayName("Default Font Family"), Description("Font for text objects without a font."), FontName]
     public string DefaultFontFamily { get; set; } = "Arial";
     [Category("Drawing"), DisplayName("Repeat Commands"), Description("Drawing commands restart after finishing an object until Esc.")]
     public bool RepeatCommands { get; set; } = true;

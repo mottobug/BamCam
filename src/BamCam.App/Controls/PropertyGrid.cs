@@ -100,6 +100,8 @@ public sealed partial class PropertyGrid : DockPanel
         public int Depth { get; init; }
         /// <summary>Fixed list of (value, display text) for a string property, see <see cref="ChoicesAttribute"/>.</summary>
         public IReadOnlyList<KeyValuePair<string, string>>? Choices { get; init; }
+        /// <summary>Font family name: edited with a list of the installed fonts.</summary>
+        public bool IsFontName { get; init; }
         public bool IsComposite => IsCompositeType(Type);
     }
 
@@ -218,6 +220,7 @@ public sealed partial class PropertyGrid : DockPanel
                 Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = prop.PropertyType,
                 Get = () => prop.GetValue(target), Set = setter, Depth = depth,
                 Choices = choices?.GetChoices(target.GetType()),
+                IsFontName = prop.GetCustomAttribute<FontNameAttribute>() != null,
             };
         }
     }
@@ -465,6 +468,8 @@ public sealed partial class PropertyGrid : DockPanel
             return cb;
         }
 
+        if (node.IsFontName && !readOnly) return FontEditor(node, value as string ?? "");
+
         if (t.IsEnum || node.Choices != null)
         {
             // (value, display text): enum members are shown humanized and translated ("DepthFirst" → "Depth First").
@@ -530,6 +535,35 @@ public sealed partial class PropertyGrid : DockPanel
             _ => s => s,
         };
         return TextEditor(node, text, readOnly, isDefault, parse);
+    }
+
+    private static List<string>? _fontNames;
+
+    /// <summary>Installed font families, sorted (read once).</summary>
+    private static List<string> FontNames() => _fontNames ??=
+        FontManager.Current.SystemFonts.Select(f => f.Name).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(n => n, StringComparer.CurrentCultureIgnoreCase).ToList();
+
+    /// <summary>Drop-down of the installed fonts, each shown in its own typeface; unknown names stay selectable.</summary>
+    private Control FontEditor(Node node, string current)
+    {
+        var names = FontNames().ToList();
+        if (current.Length > 0 && !names.Contains(current, StringComparer.OrdinalIgnoreCase)) names.Insert(0, current);
+        var combo = new ComboBox
+        {
+            ItemsSource = names,
+            SelectedItem = names.FirstOrDefault(n => n.Equals(current, StringComparison.OrdinalIgnoreCase)),
+            HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 20, Padding = new Thickness(4, 0),
+            BorderThickness = new Thickness(0), MaxDropDownHeight = 360,
+            ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((name, _) =>
+                new TextBlock { Text = name, FontFamily = new FontFamily(name ?? ""), VerticalAlignment = VerticalAlignment.Center }),
+        };
+        combo.SelectionChanged += (_, _) =>
+        {
+            if (combo.SelectedItem is string s && !s.Equals(current, StringComparison.Ordinal)) Apply(node, s);
+        };
+        combo.GotFocus += (_, _) => _help.Text = $"{node.Display}\n{node.Description}";
+        return combo;
     }
 
     private static string F(double v) => v.ToString("0.######", Inv);

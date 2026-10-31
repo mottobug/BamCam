@@ -513,7 +513,7 @@ public sealed class TextEntity : Entity
     [Category("Text")]
     public double Height { get; set; } = 10;
 
-    [Category("Text")]
+    [Category("Text"), FontName]
     public string Font { get; set; } = "Arial";
 
     [Category("Text")]
