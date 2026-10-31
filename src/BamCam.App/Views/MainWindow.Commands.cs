@@ -329,7 +329,7 @@ public partial class MainWindow
         string? xml = null;
         if (Clipboard != null)
         {
-            try { xml = await Clipboard.GetTextAsync(); } catch { /* ignore */ }
+            try { xml = await Clipboard.TryGetTextAsync(); } catch { /* ignore */ }
         }
         if (xml == null || !xml.Contains("<CADFile")) xml = _internalClipboard;
         if (xml == null) return;
@@ -599,7 +599,7 @@ public partial class MainWindow
         foreach (var w in result.Warnings.Distinct()) Log(F("Post: {0}", w));
         try
         {
-            File.WriteAllText(path, result.Text);
+            File.WriteAllText(path!, result.Text);
             _lastGCodePath = path;
             Log(F("G-code written to {0} ({1} lines, post processor '{2}').", path, result.LineCount, post.Name));
         }

@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Layout;
 using BamCam.Core.Geometry;
 using static BamCam.Core.Localization.Tr;
@@ -216,7 +217,7 @@ public sealed class PointsEditorWindow : Window
     private async Task PasteRows()
     {
         if (Clipboard == null) return;
-        var text = await Clipboard.GetTextAsync();
+        var text = await Clipboard.TryGetTextAsync();
         if (string.IsNullOrWhiteSpace(text)) return;
         var parsed = new List<PointRow>();
         foreach (var line in text.Replace("\r", "").Split('\n', StringSplitOptions.RemoveEmptyEntries))

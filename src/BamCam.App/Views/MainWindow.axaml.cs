@@ -459,7 +459,7 @@ public partial class MainWindow : Window
 
     private void OnDrop(object? sender, DragEventArgs e)
     {
-        var files = e.Data.GetFiles();
+        var files = e.DataTransfer.TryGetFiles();
         if (files?.FirstOrDefault()?.TryGetLocalPath() is { } path) OpenPath(path);
     }
 
