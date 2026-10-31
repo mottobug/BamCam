@@ -129,6 +129,10 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   finishing makes the contour pass only; right or left hand cutting. The output is the virtual tool tip, X as
   radius or diameter depending on the post processor. The G-code for CamBam's `lathe-test` sample (right and left
   hand, Mach3-Turn-CutViewer post) matches CamBam's output line for line.
+  Further turning operations (BamCam's own, not in CamBam): **facing**, **grooving / parting off** (pecking,
+  finish pass), **threading** (external/internal, metric depth by default; G76 cycle when the post defines one,
+  e.g. the built-in *LinuxCNC Turn* post, otherwise single G33 passes) and **axial drilling** with pecks.
+  The stock that remains after the turning operations is shown in the drawing (simulation).
 - Machining operations refer to drawing objects by ID (**Primitive IDs**); edit the list as text or pick
   the objects in the drawing with **[...]**.
 - Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with

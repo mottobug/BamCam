@@ -142,29 +142,21 @@ internal static class LatheGenerator
     /// </summary>
     internal static List<(double From, double To)> FreeIntervals(Path2 outline, double centerX, double zMin, double zMax, double dir)
     {
+        // Inside/outside from the flattened outline (half-open rule: robust where the line meets a vertex),
+        // positions then refined on the exact lines and arcs (exact pass ends).
+        var ring = outline.Flatten(ToolpathGenerator.ChordTolerance);
+        var exact = ExactCrossings(outline, centerX);
         var crossings = new List<double>();
-        foreach (var s in outline.Segments())
+        for (var i = 0; i < ring.Count; i++)
         {
-            var a = s.Start.XY;
-            var b = s.End.XY;
-            if (!s.IsArc)
-            {
-                // Half-open rule: an end point exactly on the line counts once.
-                if ((a.Y > centerX) != (b.Y > centerX)) crossings.Add(a.X + (b.X - a.X) * (centerX - a.Y) / (b.Y - a.Y));
-                continue;
-            }
-            var arc = s.ToArc();
-            var dy = centerX - arc.Center.Y;
-            if (Math.Abs(dy) >= arc.Radius) continue;
-            var dz = Math.Sqrt(arc.Radius * arc.Radius - dy * dy);
-            foreach (var z in new[] { arc.Center.X - dz, arc.Center.X + dz })
-            {
-                var p = new Point2(z, centerX);
-                // Points exactly at an arc end are left to the neighbouring element (equal heights are practically never hit).
-                if (p.AlmostEquals(a, 1e-12) || p.AlmostEquals(b, 1e-12)) continue;
-                if (arc.ContainsAngle((p - arc.Center).Angle)) crossings.Add(z);
-            }
-        }        crossings.Sort();
+            var a = ring[i];
+            var b = ring[(i + 1) % ring.Count];
+            if ((a.Y > centerX) == (b.Y > centerX)) continue;
+            var z = a.X + (b.X - a.X) * (centerX - a.Y) / (b.Y - a.Y);
+            var nearest = exact.Count == 0 ? z : exact.MinBy(e => Math.Abs(e - z));
+            crossings.Add(Math.Abs(nearest - z) < 0.01 ? nearest : z);
+        }
+        crossings.Sort();
         // Inside the outline between pairs of crossings; outside before the first and after the last.
         var free = new List<(double Lo, double Hi)>();
         var lo = double.NegativeInfinity;
@@ -343,6 +335,32 @@ internal static class LatheGenerator
         yield return m - new Point2(-u.Y, u.X) * h;
     }
 
+    /// <summary>All intersections of the line X = <paramref name="centerX"/> with the exact outline elements (Z values).</summary>
+    private static List<double> ExactCrossings(Path2 outline, double centerX)
+    {
+        var result = new List<double>();
+        foreach (var s in outline.Segments())
+        {
+            var a = s.Start.XY;
+            var b = s.End.XY;
+            if (!s.IsArc)
+            {
+                if (Math.Abs(b.Y - a.Y) > 1e-15 && (a.Y - centerX) * (b.Y - centerX) <= 0)
+                    result.Add(a.X + (b.X - a.X) * (centerX - a.Y) / (b.Y - a.Y));
+                continue;
+            }
+            var arc = s.ToArc();
+            var dy = centerX - arc.Center.Y;
+            if (Math.Abs(dy) > arc.Radius) continue;
+            var dz = Math.Sqrt(Math.Max(0, arc.Radius * arc.Radius - dy * dy));
+            foreach (var z in new[] { arc.Center.X - dz, arc.Center.X + dz })
+            {
+                var p = new Point2(z, centerX);
+                if (arc.ContainsAngle((p - arc.Center).Angle) || p.AlmostEquals(a, 1e-9) || p.AlmostEquals(b, 1e-9)) result.Add(z);
+            }
+        }
+        return result;
+    }
     /// <summary>Inserts points so that no segment is longer than <paramref name="maxLength"/>.</summary>
     internal static List<Point2> Densify(List<Point2> pts, double maxLength)
     {

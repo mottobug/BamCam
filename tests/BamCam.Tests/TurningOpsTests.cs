@@ -154,4 +154,28 @@ public class TurningOpsTests
         Assert.Single(ops.OfType<LatheDrillOp>());
         Assert.All(ops, o => Assert.Equal(WorkPlane.XZ, o.WorkPlane.Value));
     }
+
+    [Fact]
+    public void Simulation_leaves_the_turned_part()
+    {
+        // Step: radius 8 from Z -40 to -20, radius 5 to Z 0; stock radius 10 from Z -40 to 3.
+        var (doc, shape) = Drawing(new(-40, 8), new(-20, 8), new(-20, 5), new(0, 5));
+        doc.Machining.Stock = new Stock { PMin = new Point3(-40, -10, -10), PMax = new Point3(3, 10, 10) };
+        var turn = Add(doc, shape, new LatheOp());
+        turn.DepthIncrement.Set(0.5);
+        var face = Add(doc, shape, new LatheFacingOp());
+        var paths = doc.ActivePart.Operations.ToDictionary(o => o, o => ToolpathGenerator.Generate(doc, o));
+        var remaining = TurningSimulation.Remaining(doc, paths);
+        Assert.NotEmpty(remaining);
+
+        bool Material(double z, double radius) => remaining.Any(p => p.Contains(new Point2(40 + z, -radius)));
+        Assert.True(Material(-30, 7.5), "large diameter stays");
+        Assert.True(Material(-10, 4.5), "small diameter stays");
+        Assert.False(Material(-30, 9.5), "stock above the large diameter is turned off");
+        Assert.False(Material(-10, 7), "stock above the small diameter is turned off");
+        Assert.False(Material(1.5, 2), "the stock in front of the end face is faced off");
+        // Shown on both sides of the axis.
+        Assert.Contains(remaining, p => p.Contains(new Point2(40 - 30, 7.5)));
+        _ = face;
+    }
 }

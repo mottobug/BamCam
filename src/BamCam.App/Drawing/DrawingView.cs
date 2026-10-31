@@ -50,15 +50,18 @@ public sealed partial class DrawingView : Control, IToolHost
                 _session.Changed -= OnSessionChanged;
                 _session.SelectionChanged -= OnSessionChanged;
                 _session.ToolpathsChanged -= OnSessionChanged;
+                _session.ToolpathsChanged -= OnToolpathsChanged;
                 _session.InspectedChanged -= OnSessionChanged;
                 _session.DocumentReplaced -= OnDocumentReplaced;
             }
             _session = value;
+            _turnedStock = [];
             if (_session != null)
             {
                 _session.Changed += OnSessionChanged;
                 _session.SelectionChanged += OnSessionChanged;
                 _session.ToolpathsChanged += OnSessionChanged;
+                _session.ToolpathsChanged += OnToolpathsChanged;
                 _session.InspectedChanged += OnSessionChanged;
                 _session.DocumentReplaced += OnDocumentReplaced;
             }
@@ -569,6 +572,42 @@ public sealed partial class DrawingView : Control, IToolHost
         _ = o;
     }
 
+    /// <summary>Turning simulation: stock left after the turning operations (drawing coordinates, both sides of the axis).</summary>
+    private List<Path2> _turnedStock = [];
+
+    private void OnToolpathsChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            _turnedStock = _session == null ? [] : TurningSimulation.Remaining(_session.Document, _session.Toolpaths);
+        }
+        catch (Exception)
+        {
+            _turnedStock = []; // display only; never disturbs generation
+        }
+    }
+
+    private void RenderTurnedStock(DrawingContext dc, RgbColor c)
+    {
+        if (_turnedStock.Count == 0) return;
+        var fill = new SolidColorBrush(Color.FromArgb(70, c.R, c.G, c.B));
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(200, c.R, c.G, c.B)), 1);
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            ctx.SetFillRule(FillRule.EvenOdd);
+            foreach (var p in _turnedStock)
+            {
+                var pts = p.Flatten(_view.ToWorldLength(0.5));
+                if (pts.Count < 3) continue;
+                ctx.BeginFigure(_view.ToScreen(pts[0]), true);
+                for (var i = 1; i < pts.Count; i++) ctx.LineTo(_view.ToScreen(pts[i]));
+                ctx.EndFigure(true);
+            }
+        }
+        dc.DrawGeometry(fill, pen, geo);
+    }
+
     private void RenderStock(DrawingContext dc)
     {
         var doc = _session!.Document;
@@ -592,6 +631,12 @@ public sealed partial class DrawingView : Control, IToolHost
         ];
         int[][] edges = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
         foreach (var e in edges) dc.DrawLine(pen, _view.ToScreen(corners[e[0]]), _view.ToScreen(corners[e[1]]));
+        if (_turnedStock.Count > 0 && _view.IsTopView)
+        {
+            // Turned: show the material that remains instead of the full stock box.
+            RenderTurnedStock(dc, c);
+            return;
+        }
         if (_view.IsTopView)
         {
             var r = new Rect(_view.ToScreen(corners[3]), _view.ToScreen(corners[1])).Normalize();
