@@ -1,0 +1,50 @@
+name: Bug report
+description: Something does not work or BamCam produces wrong G-code
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check the open issues first. Do not attach files made with or copied
+        from CamBam's own samples or libraries unless you are allowed to share them.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the attached drawing
+        2. Select the profile operation and generate toolpaths
+        3. ...
+  - type: textarea
+    id: files
+    attributes:
+      label: Drawing, G-code or messages
+      description: |
+        Attach a small `.cb`/`.dxf` file that shows the problem (zip it if GitHub refuses the extension),
+        the relevant G-code lines and the text of the message window.
+  - type: input
+    id: version
+    attributes:
+      label: BamCam version
+      placeholder: v0.3.0 or commit hash
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options: [Windows, macOS (Apple Silicon), macOS (Intel), Linux]
+    validations:
+      required: true
+  - type: input
+    id: post
+    attributes:
+      label: Post processor
+      placeholder: e.g. Mach3, LinuxCNC, GRBL, own .cbpp

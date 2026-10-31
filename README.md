@@ -211,6 +211,10 @@ Files (`.cb`, G-code, DXF) are language neutral.
 | Shift + arrow keys | Move the selection by one grid step |
 | Space (in the tree) | Show/hide layer, enable/disable part or machining operation |
 
+## Contributing
+
+Bug reports, ideas, translations and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 BamCam is released under the [MIT License](LICENSE).

@@ -1,0 +1,22 @@
+name: Feature request
+description: Suggest a new function or an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe the task or machining problem, not only the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed solution
+      description: How could BamCam support it? If CamBam has a similar function, describe how it behaves
+        from the user's point of view (BamCam is a clean-room implementation, so please no code or binaries).
+  - type: textarea
+    id: more
+    attributes:
+      label: Additional context
+      description: Sketches, example drawings, G-code your machine expects ...
