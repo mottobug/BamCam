@@ -341,6 +341,7 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconLine", "Line", () => View.SetTool(new PolylineTool(linesOnly: true))));
         p.Children.Add(ToolButton("IconPolyline", "Polyline (P)", () => View.SetTool(new PolylineTool())));
         p.Children.Add(ToolButton("IconArc", "Arc (A)", () => View.SetTool(new ArcTool())));
+        p.Children.Add(ToolButton("IconSpline", "Spline", () => View.SetTool(new SplineTool())));
         p.Children.Add(ToolButton("IconCircle", "Circle (C)", () => View.SetTool(new CircleTool())));
         p.Children.Add(ToolButton("IconRect", "Rectangle (R)", () => View.SetTool(new RectangleTool())));
         p.Children.Add(ToolButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool())));
