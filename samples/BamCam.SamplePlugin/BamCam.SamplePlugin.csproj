@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Example plugin for BamCam: a drawing command and a machining operation. Copy the build output
+       (BamCam.SamplePlugin.dll) into the "plugins" folder of BamCam's system folder. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Plugin build: writes a .deps.json so that BamCam can resolve the plugin's own dependencies. -->
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <!-- Shown to the user when the plugin is approved and in Tools > Plugins. -->
+    <Product>BamCam Sample Plugin</Product>
+    <Company>BamCam project</Company>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- BamCam provides these at run time: reference them without copying them to the output. -->
+    <ProjectReference Include="..\..\src\BamCam.PluginApi\BamCam.PluginApi.csproj" Private="false" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\..\src\BamCam.Core\BamCam.Core.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

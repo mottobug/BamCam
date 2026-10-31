@@ -96,6 +96,9 @@ public sealed class AppSettings
     [Category("Files"), DisplayName("Recent Files Count")] public int MaxRecentFiles { get; set; } = 10;
     [Browsable(false)] public List<string> RecentFiles { get; set; } = [];
 
+    /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
+    [Browsable(false)] public List<PluginApproval> Plugins { get; set; } = [];
+
     // ---- Window (not shown in the dialog) ----
     [Browsable(false)] public double WindowWidth { get; set; } = 1366;
     [Browsable(false)] public double WindowHeight { get; set; } = 860;
@@ -181,6 +184,7 @@ public sealed class AppSettings
             if (g.MajorScale < g.MinorScale) g.MajorScale = g.MinorScale * 10;
         }
         RecentFiles ??= [];
+        Plugins ??= [];
         Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);

@@ -3,6 +3,10 @@
     <Project Path="src/BamCam.App/BamCam.App.csproj" />
     <Project Path="src/BamCam.Core/BamCam.Core.csproj" />
     <Project Path="src/BamCam.IO/BamCam.IO.csproj" />
+    <Project Path="src/BamCam.PluginApi/BamCam.PluginApi.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/BamCam.SamplePlugin/BamCam.SamplePlugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BamCam.Tests/BamCam.Tests.csproj" />

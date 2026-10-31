@@ -381,9 +381,10 @@ public static class CbWriter
             return copy;
         }
 
-        var el = op is LatheOp
-            ? new XElement("mop", new XAttribute(Xsi + "type", LatheOp.XsiType))
-            : new XElement(op.XmlName);
+        // Lathe and plugin operations are generic <mop> elements naming their class in xsi:type (as CamBam does).
+        var el = MachineOpFactory.BuiltInElements.Contains(op.XmlName)
+            ? new XElement(op.XmlName)
+            : new XElement("mop", new XAttribute(Xsi + "type", op.XmlName));
         var parameters = op.Parameters().ToDictionary(p => p.Name, p => p.Param);
         var canonical = CanonicalOrder.TryGetValue(op.XmlName, out var c) ? c : BaseOrder.Split(' ');
         var order = op.ElementOrder.Count > 0 ? op.ElementOrder : canonical.ToList();

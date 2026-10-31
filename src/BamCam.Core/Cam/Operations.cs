@@ -195,7 +195,26 @@ public sealed class UnsupportedOp(string xmlName) : MachineOp
 
 public static class MachineOpFactory
 {
-    public static MachineOp? Create(string xmlName) => xmlName switch
+    private static readonly Dictionary<string, Func<MachineOp>> Plugins = new(StringComparer.Ordinal);
+
+    /// <summary>Element names of the built-in operations; every other type is stored as &lt;mop xsi:type="…"&gt;.</summary>
+    public static readonly IReadOnlySet<string> BuiltInElements = new HashSet<string> { "profile", "pocket", "engrave", "drill", "surface3d", "ncfile" };
+
+    /// <summary>Registers an operation type added by a plugin under its <see cref="MachineOp.XmlName"/> (the xsi:type in files).</summary>
+    public static void Register(string xmlName, Func<MachineOp> create)
+    {
+        if (BuiltInElements.Contains(xmlName) || xmlName == LatheOp.XsiType)
+            throw new ArgumentException($"'{xmlName}' is a built-in operation type.", nameof(xmlName));
+        Plugins[xmlName] = create;
+    }
+
+    /// <summary>Operation types added by plugins (name, factory).</summary>
+    public static IEnumerable<(string XmlName, Func<MachineOp> Create)> Registered => Plugins.Select(kv => (kv.Key, kv.Value));
+
+    /// <summary>Removes all plugin operation types (tests).</summary>
+    public static void ClearRegistered() => Plugins.Clear();
+
+    public static MachineOp? Create(string xmlName) => Plugins.TryGetValue(xmlName, out var plugin) ? plugin() : xmlName switch
     {
         "profile" => new ProfileOp(),
         "pocket" => new PocketOp(),

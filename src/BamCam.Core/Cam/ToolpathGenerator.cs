@@ -41,7 +41,10 @@ public static class ToolpathGenerator
                     }
                     break;
                 }
-                default: tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType))); break;
+                default:
+                    if (Generators.TryGetValue(op.GetType(), out var generator)) generator(new ToolpathContext(ctx), op, tp);
+                    else tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType)));
+                    break;
             }
         }
         catch (Exception ex)
@@ -53,6 +56,18 @@ public static class ToolpathGenerator
             tp.Warnings.Add(Tr.F("{0}: no toolpath was generated (check the selected drawing objects).", op.Name));
         return tp;
     }
+
+    private static readonly Dictionary<Type, Action<ToolpathContext, MachineOp, Toolpath>> Generators = [];
+
+    /// <summary>
+    /// Registers the toolpath generator of an operation type added by a plugin. The generator appends moves to the
+    /// toolpath (in drawing coordinates) and may add warnings to <see cref="Toolpath.Warnings"/>.
+    /// </summary>
+    public static void RegisterGenerator<TOp>(Action<ToolpathContext, TOp, Toolpath> generator) where TOp : MachineOp =>
+        Generators[typeof(TOp)] = (ctx, op, tp) => generator(ctx, (TOp)op, tp);
+
+    /// <summary>Removes all registered plugin generators (tests).</summary>
+    public static void ClearRegisteredGenerators() => Generators.Clear();
 
     /// <summary>Resolves an NC file path (absolute, or relative to the drawing).</summary>
     public static string? ResolveNcPath(CadDocument doc, NcFileOp op)
@@ -67,6 +82,41 @@ public static class ToolpathGenerator
         }
         return null;
     }
+}
+
+/// <summary>
+/// Inputs of a plugin toolpath generator: the operation's resolved values (style, Auto values from the stock,
+/// tool from the library) and its source geometry.
+/// </summary>
+public sealed class ToolpathContext
+{
+    private readonly GenContext _ctx;
+
+    internal ToolpathContext(GenContext ctx) => _ctx = ctx;
+
+    public CadDocument Document => _ctx.Doc;
+    public MachineOp Operation => _ctx.Op;
+    public Part? Part => _ctx.Part;
+    /// <summary>Stock of the part, or of the machining options when the part has none (may be empty).</summary>
+    public Stock Stock => _ctx.Stock;
+    public double ToolDiameter => _ctx.ToolDiameter;
+    public double ToolRadius => _ctx.ToolRadius;
+    /// <summary>Z where machining starts (Auto = top of the stock).</summary>
+    public double StockSurface => _ctx.StockSurface;
+    /// <summary>Final depth for operations derived from <see cref="DepthOp"/> (Auto = bottom of the stock).</summary>
+    public double TargetDepth => _ctx.TargetDepth;
+    /// <summary>Safe Z for rapid moves.</summary>
+    public double Clearance => _ctx.Clearance;
+    /// <summary>Rapid plunges may go down to this height above the stock surface or the last cut level.</summary>
+    public double FastPlungeHeight => _ctx.FastPlunge;
+    public double PlungeFeed => _ctx.PlungeFeed;
+    public double CutFeed => _ctx.CutFeed;
+
+    /// <summary>Geometry of the operation's drawing objects (Primitive IDs) in drawing coordinates.</summary>
+    public IEnumerable<(Entity Entity, Path2 Path)> SourcePaths() => _ctx.SourcePaths();
+
+    /// <summary>Depth levels from just below the stock surface down to the target depth (Depth Increment, Final Depth Increment).</summary>
+    public List<double> DepthLevels(DepthOp op) => _ctx.Levels(op);
 }
 
 /// <summary>Resolved inputs shared by the generators.</summary>

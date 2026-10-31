@@ -95,6 +95,8 @@ public partial class MainWindow : Window
 
         OnDocumentReplaced();
         Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf)."));
+        // Plugins after the window is shown: new plugins are confirmed in a dialog.
+        Opened += async (_, _) => await LoadPluginsAsync();
     }
 
     // ------------------------------------------------------------------ messages / status

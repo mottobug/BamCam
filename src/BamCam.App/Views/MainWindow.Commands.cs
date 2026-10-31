@@ -275,7 +275,7 @@ public partial class MainWindow
             b.Min.X, b.Min.Y, b.Min.Z, b.Max.X, b.Max.Y, b.Max.Z, b.Width, b.Height, b.Depth));
     }
 
-    private static void OpenFolder(string path)
+    internal static void OpenFolder(string path)
     {
         Directory.CreateDirectory(path);
         try

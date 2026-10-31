@@ -105,10 +105,13 @@ public partial class MainWindow
             Item("_Measure", () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)))),
             Item("Get Object _Extremas", ReportExtremas),
             Item("_Options...", ShowOptions),
+            Item("_Plugins...", ShowPluginManager),
             Item("_Clear Messages", () => Messages.Text = ""),
             "-",
             Item("Reload Post Processors", () => { _system.Reload(); BuildSystemTree(); Log(F("{0} post processors loaded.", _system.Posts.Count)); }),
             Item("Browse System Folder", () => OpenFolder(Services.SystemLibrary.SystemFolder))));
+
+        if (PluginMenuItems("Plugins") is { Length: > 0 } pluginItems) MainMenu.Items.Add(Sub("P_lugins", pluginItems));
 
         MainMenu.Items.Add(Sub("_Help",
             Item("_About BamCam", () => _ = Dialogs.Message(this, T("About BamCam"),
@@ -159,6 +162,7 @@ public partial class MainWindow
             Item("_Reverse", ReversePolylines),
             Item("_Clean", CleanPolylines)),
         Sub("_Transform", TransformMenuItems()),
+        .. PluginMenuItems("Edit"),
     ];
 
     private object[] TransformMenuItems() =>
@@ -215,6 +219,7 @@ public partial class MainWindow
             Item("Di_vide Geometry...", DividePoints),
             Item("_Centers", CenterPoints)),
         Item("_Text...", DrawText),
+        .. PluginMenuItems("Draw"),
     ];
 
     private object[] MachiningMenuItems() =>
@@ -225,12 +230,14 @@ public partial class MainWindow
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_3D Profile", () => CreateOp(new Profile3DOp())),
         Item("_Lathe", () => CreateOp(new LatheOp())),
+        .. PluginOperationItems(),
         "-",
         Item("New Part", NewPart),
         "-",
         Item("_Generate Toolpaths", () => GenerateToolpaths(), "Ctrl+T"),
         Item("Produce G_code", () => _ = ProduceGCode(PostScope.All), "Ctrl+W"),
         Item("Edit Gcode", EditGCode),
+        .. PluginMenuItems("Machining"),
     ];
     private bool HandleShortcut(Key key, KeyModifiers mods)
     {

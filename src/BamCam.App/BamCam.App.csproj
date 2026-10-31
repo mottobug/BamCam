@@ -38,5 +38,6 @@
   <ItemGroup>
     <ProjectReference Include="..\BamCam.Core\BamCam.Core.csproj" />
     <ProjectReference Include="..\BamCam.IO\BamCam.IO.csproj" />
+    <ProjectReference Include="..\BamCam.PluginApi\BamCam.PluginApi.csproj" />
   </ItemGroup>
 </Project>
