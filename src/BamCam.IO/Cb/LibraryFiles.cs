@@ -68,6 +68,24 @@ public static class LibraryFiles
     }
 
     /// <summary>
+    /// CAM styles the drawing refers to (machining options, parts, operations) that exist in no loaded style
+    /// library. Operations using them keep the values stored in the drawing (see <see cref="ApplyStyle"/>).
+    /// </summary>
+    public static List<string> MissingStyles(CadDocument doc)
+    {
+        var names = new List<string?> { doc.Machining.Style };
+        foreach (var part in doc.Parts)
+        {
+            names.Add(part.Style);
+            names.AddRange(part.Operations.Select(o => o.Style));
+        }
+        return names.Where(n => !string.IsNullOrEmpty(n)).Select(n => n!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(n => !CamLibraries.StyleLibraries.Any(l => l.Find(n) != null))
+            .ToList();
+    }
+
+    /// <summary>
     /// Resolves the style chain for an operation (MOP style → part style → machining style → root) and
     /// writes the resolved values into every parameter that is in the Default state.
     /// Returns the names of parameters whose cached value changed.

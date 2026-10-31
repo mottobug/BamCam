@@ -143,6 +143,15 @@ public partial class LocalizationTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void Numbers_follow_the_interface_language()
+    {
+        // Independent of the regional settings of the machine running the tests.
+        Assert.Equal("1020.6", 1020.6.ToString("0.0", Tr.CultureFor("en")));
+        Assert.Equal("1020,6", 1020.6.ToString("0.0", Tr.CultureFor("de")));
+        Assert.Equal(System.Globalization.CultureInfo.InvariantCulture, Tr.CultureFor("x-unknown"));
+    }
+
+    [Fact]
     public void German_is_available_and_english_is_the_fallback()
     {
         var languages = Tr.Available();

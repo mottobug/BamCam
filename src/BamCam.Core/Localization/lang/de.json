@@ -1053,6 +1053,7 @@
   "Copper": "Kupfer",
   "Steel": "Stahl",
   "Stainless Steel": "Edelstahl",
+  "Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.": "Warnung: Der CAM-Stil „{0}“ ist auf diesem Rechner nicht vorhanden. Bearbeitungen mit diesem Stil behalten die in der Zeichnung gespeicherten Werte.",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

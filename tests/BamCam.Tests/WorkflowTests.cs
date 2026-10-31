@@ -150,6 +150,9 @@ public class WorkflowTests
             op.CutFeedrate.State = ParamState.Default;
             Assert.Empty(LibraryFiles.ApplyStyle(doc, op));
             Assert.Equal(150, op.CutFeedrate.Value);
+            Assert.Equal(["Style that does not exist"], LibraryFiles.MissingStyles(doc));
+            op.Style = "cutout+tabs";
+            Assert.Empty(LibraryFiles.MissingStyles(doc));
         }
         finally
         {

@@ -389,6 +389,8 @@ public partial class MainWindow : Window
             Log(F("Opened {0}: {1} objects, {2} layers, {3} machining operations.", path, doc.AllEntities().Count(), doc.Layers.Count, ops));
             foreach (var op in doc.Parts.SelectMany(p => p.Operations).OfType<Core.Cam.UnsupportedOp>())
                 Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
+            foreach (var style in BamCam.IO.Cb.LibraryFiles.MissingStyles(doc))
+                Log(F("Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.", style));
         }
         catch (Exception ex)
         {

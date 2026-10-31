@@ -25,6 +25,12 @@ public static class Tr
     /// <summary>Code of the active language ("en", "de", ...).</summary>
     public static string Language { get; private set; } = "en";
 
+    /// <summary>
+    /// Number and date format of the active language: the regional settings of the operating system when they
+    /// belong to the same language (de-AT, en-GB, ...), otherwise the language's neutral culture.
+    /// </summary>
+    public static CultureInfo Culture { get; private set; } = CultureFor("en");
+
     /// <summary>Raised after the language was changed.</summary>
     public static event Action? Changed;
 
@@ -34,7 +40,7 @@ public static class Tr
 
     /// <summary>Translates a composite format string ("{0}: {1} points.") and formats it.</summary>
     public static string F(string englishFormat, params object?[] args) =>
-        string.Format(CultureInfo.CurrentCulture, T(englishFormat), args);
+        string.Format(Culture, T(englishFormat), args);
 
     /// <summary>True when the active language has a translation for the text.</summary>
     public static bool Has(string english) => _map.TryGetValue(english, out var s) && s.Length > 0;
@@ -52,7 +58,23 @@ public static class Tr
         var changed = code != Language || map.Count != _map.Count;
         _map = map;
         Language = code;
+        Culture = CultureFor(code);
         if (changed) Changed?.Invoke();
+    }
+
+    /// <summary>Number format for a language code (see <see cref="Culture"/>).</summary>
+    public static CultureInfo CultureFor(string code)
+    {
+        var system = CultureInfo.CurrentCulture;
+        if (system.TwoLetterISOLanguageName.Equals(code, StringComparison.OrdinalIgnoreCase)) return system;
+        try
+        {
+            return CultureInfo.GetCultureInfo(code);
+        }
+        catch (CultureNotFoundException)
+        {
+            return CultureInfo.InvariantCulture;
+        }
     }
 
     /// <summary>Operating system language if a translation exists for it, else "en".</summary>
