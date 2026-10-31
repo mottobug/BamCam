@@ -11,8 +11,8 @@ public readonly record struct Triangle(Point3 A, Point3 B, Point3 C)
     public double MaxZ => Math.Max(A.Z, Math.Max(B.Z, C.Z));
 }
 
-/// <summary>Cutter shape used by drop-cutter calculations.</summary>
-public enum CutterShape { Flat, Ball }
+/// <summary>Cutter shape used by drop-cutter calculations (Bull = flat end with rounded corners of a corner radius).</summary>
+public enum CutterShape { Flat, Ball, Bull }
 
 /// <summary>
 /// Triangle mesh with an XY bucket grid for fast "drop cutter" queries: the lowest tool tip Z at
@@ -60,8 +60,14 @@ public sealed class Mesh
     /// Lowest tool-tip Z for a cutter of <paramref name="radius"/> centred at (x, y), or null when the
     /// cutter does not touch the mesh there.
     /// </summary>
-    public double? DropCutter(double x, double y, double radius, CutterShape shape)
+    public double? DropCutter(double x, double y, double radius, CutterShape shape, double cornerRadius = 0)
     {
+        if (shape == CutterShape.Bull)
+        {
+            cornerRadius = Math.Clamp(cornerRadius, 0, radius);
+            if (cornerRadius < 1e-9) shape = CutterShape.Flat;
+            else if (cornerRadius > radius - 1e-9) shape = CutterShape.Ball;
+        }
         if (Bounds.IsEmpty) return null;
         var (ix0, iy0) = CellOf(x - radius, y - radius);
         var (ix1, iy1) = CellOf(x + radius, y + radius);
@@ -78,7 +84,12 @@ public sealed class Mesh
             {
                 if (_stamp[i] == _query) continue;
                 _stamp[i] = _query;
-                var z = shape == CutterShape.Ball ? BallTriangle(p, radius, _tris[i]) : FlatTriangle(p, radius, _tris[i]);
+                var z = shape switch
+                {
+                    CutterShape.Ball => BallTriangle(p, radius, _tris[i]),
+                    CutterShape.Bull => BullTriangle(p, radius, cornerRadius, _tris[i]),
+                    _ => FlatTriangle(p, radius, _tris[i]),
+                };
                 if (z > best) best = z;
             }
         }
@@ -169,6 +180,75 @@ public sealed class Mesh
         var dl = w - l;
         var centre = a.Z + s * l + Math.Sqrt(Math.Max(rr * rr - dl * dl, 0));
         return centre - r;
+    }
+
+    // ---- bull nose (torus) ---------------------------------------------------------------
+    //
+    // The cutter is a ball of the corner radius rc swept over a flat disc of radius R - rc: its tip height over p
+    // is the highest ball tip height over all centres q of that disc. Vertices and facets are solved exactly,
+    // edges exactly under the flat part and numerically (sampling + refinement) on the rounded rim.
+
+    private static double BullTriangle(Point2 p, double r, double rc, Triangle t)
+    {
+        var flat = r - rc;
+        var best = double.NegativeInfinity;
+        foreach (var v in new[] { t.A, t.B, t.C })
+        {
+            var d = Point2.Distance(v.XY, p);
+            if (d <= flat) best = Math.Max(best, v.Z);
+            else if (d <= r)
+            {
+                var e = d - flat;
+                best = Math.Max(best, v.Z + Math.Sqrt(rc * rc - e * e) - rc);
+            }
+        }
+        best = Math.Max(best, BullEdge(p, flat, rc, t.A, t.B));
+        best = Math.Max(best, BullEdge(p, flat, rc, t.B, t.C));
+        best = Math.Max(best, BullEdge(p, flat, rc, t.C, t.A));
+        var n = t.Normal;
+        if (Math.Abs(n.Z) > 1e-9)
+        {
+            if (n.Z < 0) n = n * -1;
+            var nxy = new Point2(n.X, n.Y);
+            // Ball centre at the rim of the flat disc towards the uphill side, contact one corner radius along -n.
+            var q = nxy.Length < 1e-12 ? p : p - nxy.Normalized() * flat;
+            var contact = new Point2(q.X - rc * n.X, q.Y - rc * n.Y);
+            if (InsideXY(contact, t)) best = Math.Max(best, PlaneZ(t, n, contact) + rc * n.Z - rc);
+        }
+        return best;
+    }
+
+    private static double BullEdge(Point2 p, double flat, double rc, Point3 a, Point3 b)
+    {
+        // Under the flat end: the highest edge point within the disc touches the bottom.
+        var best = FlatEdge(p, flat, a, b);
+        // Rounded rim: the ball of radius rc centred on the circle of radius 'flat' around p.
+        if (Path2.DistanceToSegment(p, a.XY, b.XY) > flat + rc) return best;
+        double At(double angle) => BallEdge(p + Point2.FromAngle(angle, flat), rc, a, b);
+        const int samples = 24;
+        var bestAngle = 0.0;
+        var bestValue = double.NegativeInfinity;
+        for (var i = 0; i < samples; i++)
+        {
+            var angle = 2 * Math.PI * i / samples;
+            var v = At(angle);
+            if (v > bestValue) (bestValue, bestAngle) = (v, angle);
+        }
+        if (double.IsNegativeInfinity(bestValue)) return best;
+        // Golden section search around the best sample.
+        var lo = bestAngle - 2 * Math.PI / samples;
+        var hi = bestAngle + 2 * Math.PI / samples;
+        const double g = 0.6180339887498949;
+        var x1 = hi - g * (hi - lo);
+        var x2 = lo + g * (hi - lo);
+        var f1 = At(x1);
+        var f2 = At(x2);
+        for (var k = 0; k < 30; k++)
+        {
+            if (f1 >= f2) { hi = x2; x2 = x1; f2 = f1; x1 = hi - g * (hi - lo); f1 = At(x1); }
+            else { lo = x1; x1 = x2; f1 = f2; x2 = lo + g * (hi - lo); f2 = At(x2); }
+        }
+        return Math.Max(best, Math.Max(bestValue, Math.Max(f1, f2)));
     }
 
     // ---- helpers -------------------------------------------------------------------------

@@ -123,6 +123,9 @@ public sealed class Profile3DOp : AreaOp
     [Param(73, "Boundary")] public CamParam<BoundaryMethod> BoundaryMethod { get; set; } = new(Cam.BoundaryMethod.ShapeOutline);
     [Param(74, "Boundary")] public CamParam<double> BoundaryMargin { get; set; } = new(0);
     [Param(75, "Boundary")] public CamParam<double> BoundaryTaper { get; set; } = new(0);
+    [Param(77, "3D"), DisplayName("Corner Radius"),
+     Description("Corner radius of a bull nose cutter (Tool Profile Bull Nose); 0 = computed like a ball nose (as CamBam).")]
+    public CamParam<double> CornerRadius { get; set; } = new(0);
     [Param(76, "Cutting")] public CamParam<RegionFillStyle> RegionFillStyle { get; set; } = new(Cam.RegionFillStyle.InsideOutsideOffsets);
 
     /// <summary>Entity ids used as boundary when <see cref="BoundaryMethod"/> is SelectedShapes (no state attribute).</summary>

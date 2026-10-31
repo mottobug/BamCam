@@ -129,8 +129,18 @@ internal static class Profile3DGenerator
             .Where(p => Math.Abs(p.SignedArea()) > 1e-10)
             .Select(p => Polygons.EnsureOrientation(p, ccw: true)));
 
-    private static CutterShape Shape(MachineOp op) =>
-        op.ToolProfile.Value is ToolProfile.BallNose or ToolProfile.BullNose ? CutterShape.Ball : CutterShape.Flat;
+    /// <summary>
+    /// Cutter for the drop cutter. A bull nose without a corner radius is computed as a ball nose (as CamBam does;
+    /// never cuts too deep), with a corner radius exactly.
+    /// </summary>
+    private static CutterShape Shape(Profile3DOp op) => op.ToolProfile.Value switch
+    {
+        ToolProfile.BallNose => CutterShape.Ball,
+        ToolProfile.BullNose => op.CornerRadius.Value > 0 ? CutterShape.Bull : CutterShape.Ball,
+        _ => CutterShape.Flat,
+    };
+
+    private static double CornerRadius(GenContext ctx, Profile3DOp op) => Math.Min(op.CornerRadius.Value, ctx.ToolRadius);
 
     // ------------------------------------------------------------------ scanlines
 
@@ -140,6 +150,8 @@ internal static class Profile3DGenerator
         var r = dia / 2 + Math.Max(op.RoughingClearance.Value, 0);
         var clearance = op.RoughingClearance.Value;
         var shape = Shape(op);
+        // Roughing clearance grows the whole cutter, the corner radius included.
+        var cornerRadius = shape == CutterShape.Bull ? CornerRadius(ctx, op) + Math.Max(op.RoughingClearance.Value, 0) : 0;
         var step = Math.Max(op.StepOver.Value, 0.01) * dia;
         var res = Math.Max(op.Resolution.Value, 0.01) * dia;
         var bb = boundary.Aggregate(BoundingBox.Empty, (b, p) => b.Union(p.Bounds()));
@@ -181,7 +193,7 @@ internal static class Profile3DGenerator
                     current = null;
                     continue;
                 }
-                var z = mesh.DropCutter(p.X, p.Y, r, shape) is { } dz ? dz + clearance : double.NegativeInfinity;
+                var z = mesh.DropCutter(p.X, p.Y, r, shape, cornerRadius) is { } dz ? dz + clearance : double.NegativeInfinity;
                 z = Math.Max(z, ctx.TargetDepth);
                 if (current is { Count: > 0 } && Math.Abs(z - current[^1].Z) / res > maxSlope)
                 {

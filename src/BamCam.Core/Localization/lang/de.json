@@ -988,6 +988,8 @@
   "R12": "R12",
   "R2000": "R2000",
 
+  "Corner radius of a bull nose cutter (Tool Profile Bull Nose); 0 = computed like a ball nose (as CamBam).": "Eckradius eines Radiusfräsers (Werkzeugform Radiusfräser); 0 = wie ein Kugelfräser gerechnet (wie CamBam).",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",
