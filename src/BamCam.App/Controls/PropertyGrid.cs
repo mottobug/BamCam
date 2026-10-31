@@ -555,8 +555,14 @@ public sealed partial class PropertyGrid : DockPanel
             SelectedItem = names.FirstOrDefault(n => n.Equals(current, StringComparison.OrdinalIgnoreCase)),
             HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 20, Padding = new Thickness(4, 0),
             BorderThickness = new Thickness(0), MaxDropDownHeight = 360,
-            ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((name, _) =>
-                new TextBlock { Text = name, FontFamily = new FontFamily(name ?? ""), VerticalAlignment = VerticalAlignment.Center }),
+            // Bound (not fixed) values: the list recycles its rows while scrolling and may build them without an item.
+            ItemTemplate = new Avalonia.Controls.Templates.FuncDataTemplate<string>((_, _) =>
+            {
+                var tb = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+                tb.Bind(TextBlock.TextProperty, new Avalonia.Data.Binding("."));
+                tb.Bind(TextBlock.FontFamilyProperty, new Avalonia.Data.Binding(".") { Converter = FontNameConverter.Instance });
+                return tb;
+            }, supportsRecycling: true),
         };
         combo.SelectionChanged += (_, _) =>
         {
@@ -564,6 +570,18 @@ public sealed partial class PropertyGrid : DockPanel
         };
         combo.GotFocus += (_, _) => _help.Text = $"{node.Display}\n{node.Description}";
         return combo;
+    }
+
+    /// <summary>Font name → FontFamily for the preview; empty or missing names give the default font.</summary>
+    private sealed class FontNameConverter : Avalonia.Data.Converters.IValueConverter
+    {
+        public static readonly FontNameConverter Instance = new();
+
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            value is string { Length: > 0 } name ? new FontFamily(name) : FontFamily.Default;
+
+        public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture) =>
+            throw new NotSupportedException();
     }
 
     private static string F(double v) => v.ToString("0.######", Inv);
