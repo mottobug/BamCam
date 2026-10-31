@@ -3,6 +3,7 @@ using static BamCam.Core.Localization.Tr;
 using Avalonia.Controls;
 using BamCam.App.Drawing;
 using BamCam.App.Services;
+using BamCam.Core.Cam;
 using BamCam.Core.Model;
 
 namespace BamCam.App.Views;
@@ -141,6 +142,40 @@ public partial class MainWindow
         UpdateTitle();
         SaveSettings();
         Log(T("Options saved."));
+    }
+
+    /// <summary>Tools ▸ Speeds and Feeds for the selected machining operation (or without one, to look values up).</summary>
+    private async void ShowSpeedsFeeds()
+    {
+        var doc = _session.Document;
+        var op = _session.Inspected as MachineOp;
+        List<CuttingMaterial> materials;
+        var file = Path.Combine(Services.SystemLibrary.SystemFolder, "cutting-materials.json");
+        try
+        {
+            materials = CuttingData.Load(file);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Error opening {0}: {1}", file, ex.Message));
+            materials = CuttingData.BuiltIn.ToList();
+        }
+        var diameter = op?.EffectiveToolDiameter(doc) ?? (doc.Machining.ToolDiameter > 0 ? doc.Machining.ToolDiameter : 6);
+        var part = op == null ? null : doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
+        var tool = op == null ? null : CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc));
+        var name = op == null ? null : string.IsNullOrEmpty(op.Name) ? op.DisplayType : op.Name;
+        var window = new SpeedsFeedsWindow(materials, _settings.SpeedsFeeds, doc.Units, diameter, tool is { Flutes: > 0 } ? tool.Flutes : 2, name);
+        await window.ShowDialog(this);
+        SaveSettings();
+        if (op == null || window.Applied is not { } r) return;
+        _session.Execute(T("Speeds and Feeds"), () =>
+        {
+            op.SpindleSpeed.Set(r.SpindleSpeed);
+            op.CutFeedrate.Set(r.CutFeedrate);
+            op.PlungeFeedrate.Set(r.PlungeFeedrate);
+        });
+        _session.Inspect(op);
+        Log(F("{0}: spindle speed {1:0} rpm, cut feedrate {2:0.#}, plunge feedrate {3:0.#}.", name, r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate));
     }
 
     /// <summary>Called when the configuration is edited in the main property grid (System ▸ Configuration).</summary>

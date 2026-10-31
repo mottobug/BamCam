@@ -120,7 +120,8 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - **Drill:** canned cycles G81/G82/G83 and spiral milling.
 - **Engrave** and **NC file** (G-code back-plot).
 - **3D profile** on triangle meshes (STL):
-  - Scanline horizontal/vertical, as level roughing or finishing, with an exact drop cutter for end and ball mills.
+  - Scanline horizontal/vertical, as level roughing or finishing, with an exact drop cutter for end, ball and
+    bull nose mills (bull nose when the operation has a corner radius).
   - Waterline roughing and finishing.
   - Boundary by outline, bounding box, selected shapes, clip area, margin and taper.
   - Back face and mold.
@@ -135,18 +136,24 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   The stock that remains after the turning operations is shown in the drawing (simulation).
 - Machining operations refer to drawing objects by ID (**Primitive IDs**); edit the list as text or pick
   the objects in the drawing with **[...]**.
+- **Speeds and feeds** (Tools menu): spindle speed, cut and plunge feedrate from material, tool diameter and
+  flutes, limited to the spindle speed range; **Apply** writes them into the selected machining operation.
+  Own materials can be added in `cutting-materials.json` in the system folder
+  (`[{"Name": "...", "CuttingSpeed": 300, "ChipLoadFactor": 0.01}]`, cutting speed in m/min, chip load = factor × diameter).
+- **Images** (File ▸ Import Image): PNG, JPEG, BMP, GIF or WebP as a **height map** (brightness becomes a surface
+  for the 3D profile, e.g. for reliefs) or **traced outlines** (closed polylines or splines of the dark or light areas).
 - Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with
   rapids and cut widths, toolpaths to geometry.
 
 **G-code:** built-in post processors Default, Mach3, LinuxCNC and GRBL; existing `.cbpp` files are loaded
 (own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
+**DXF export** as R2000 (splines stay splines) or R12, selectable in the options.
 The G-code produced for the CamBam sample `snap-together-box.cb` matches the reference in all 6382 motion
 lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For the example drawings in
 `examples_to_test` it matches CamBam's output line for line or within 0.004 mm.
 
-**Not implemented yet:** additive 3D mode, exact bull nose geometry (computed as ball nose),
-bitmap objects, script objects, printing, speeds and feeds calculator. Such operations are kept
-unchanged when `.cb` files are loaded and saved.
+**Not implemented yet:** additive 3D mode, CamBam bitmap objects (images are imported as surfaces or outlines
+instead), script objects, printing. Such objects are kept unchanged when `.cb` files are loaded and saved.
 
 ## Plugins
 

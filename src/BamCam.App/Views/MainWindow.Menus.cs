@@ -107,6 +107,7 @@ public partial class MainWindow
         MainMenu.Items.Add(Sub("_Tools",
             Item("_Measure", () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)))),
             Item("Get Object _Extremas", ReportExtremas),
+            Item("_Speeds and Feeds...", ShowSpeedsFeeds),
             Item("_Options...", ShowOptions),
             Item("_Plugins...", ShowPluginManager),
             Item("_Clear Messages", () => Messages.Text = ""),

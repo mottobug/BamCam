@@ -105,6 +105,9 @@ public sealed class AppSettings
     /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
     [Browsable(false)] public List<PluginApproval> Plugins { get; set; } = [];
 
+    /// <summary>Last inputs of Tools ▸ Speeds and Feeds.</summary>
+    [Browsable(false)] public SpeedsFeedsSettings SpeedsFeeds { get; set; } = new();
+
     // ---- Window (not shown in the dialog) ----
     [Browsable(false)] public double WindowWidth { get; set; } = 1366;
     [Browsable(false)] public double WindowHeight { get; set; } = 860;
@@ -191,6 +194,7 @@ public sealed class AppSettings
         }
         RecentFiles ??= [];
         Plugins ??= [];
+        SpeedsFeeds ??= new();
         Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);
@@ -256,4 +260,13 @@ public sealed class AppSettings
         SnapToGrid = v.SnapToGrid;
         SnapToPoints = v.SnapToObjects;
     }
+}
+
+/// <summary>Machine limits and the last material of the speeds and feeds calculator.</summary>
+public sealed class SpeedsFeedsSettings
+{
+    public string Material { get; set; } = "Softwood";
+    public double MinRpm { get; set; } = 5000;
+    public double MaxRpm { get; set; } = 24000;
+    public double PlungeFactor { get; set; } = 0.3;
 }
