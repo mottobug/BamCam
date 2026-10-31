@@ -170,8 +170,10 @@ public sealed class PluginManager
 
         protected override Assembly? Load(AssemblyName name)
         {
+            // BamCam's own assemblies and everything the application already uses: always the application's copy,
+            // whatever version the plugin was built against (an installed BamCam may carry another version).
             if (name.Name is { } n && (n.StartsWith("BamCam.", StringComparison.Ordinal) || Default.Assemblies.Any(a => a.GetName().Name == n)))
-                return null;
+                return Default.Assemblies.FirstOrDefault(a => a.GetName().Name == n) ?? Default.LoadFromAssemblyName(new AssemblyName(n));
             var path = _resolver.ResolveAssemblyToPath(name) ?? System.IO.Path.Combine(_folder, name.Name + ".dll");
             return File.Exists(path) ? LoadFromAssemblyPath(path) : null;
         }
