@@ -2,7 +2,21 @@ using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Cam;
 
-public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle }
+public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle, ThreadCycle }
+
+/// <summary>
+/// Threading cycle (turning). The tool stands at the drive line (start Z, drive radius) before the move;
+/// <see cref="Move.To"/> is the thread root at the end of the thread. Radial values are radii.
+/// </summary>
+/// <param name="Pitch">Distance per spindle turn.</param>
+/// <param name="PeakOffset">Thread peak (major radius external, bore internal) minus the drive radius (negative external).</param>
+/// <param name="FirstCut">Depth of the first pass.</param>
+/// <param name="Depth">Full thread depth from the peak.</param>
+/// <param name="Degression">Depth degression (1 = equal depth per pass, 2 = equal area).</param>
+/// <param name="InfeedAngle">Compound infeed angle in degrees.</param>
+/// <param name="SpringPasses">Extra passes at full depth.</param>
+public readonly record struct ThreadCycle(double Pitch, double PeakOffset, double FirstCut, double Depth, double Degression,
+    double InfeedAngle, int SpringPasses);
 
 /// <summary>Canned drilling cycle parameters (G81/G82/G83).</summary>
 public readonly record struct DrillCycle(double RetractZ, double Peck, double Dwell);
@@ -13,7 +27,7 @@ public readonly record struct DrillCycle(double RetractZ, double Peck, double Dw
 /// is the hole bottom.
 /// </summary>
 public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Point2 Center = default,
-    string? Text = null, double Seconds = 0, DrillCycle Cycle = default)
+    string? Text = null, double Seconds = 0, DrillCycle Cycle = default, ThreadCycle Thread = default)
 {
     public static Move Rapid(Point3 to) => new(MoveKind.Rapid, to);
     public static Move Line(Point3 to, double feed) => new(MoveKind.Feed, to, feed);
@@ -22,6 +36,8 @@ public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Po
     public static Move Note(string text) => new(MoveKind.Comment, default, Text: text);
     public static Move Drill(Point3 bottom, double feed, DrillCycle cycle) =>
         new(MoveKind.DrillCycle, bottom, feed, Cycle: cycle);
+    public static Move ThreadCut(Point3 rootAtEnd, ThreadCycle cycle) =>
+        new(MoveKind.ThreadCycle, rootAtEnd, Thread: cycle);
 
     public bool IsArc => Kind is MoveKind.ArcCW or MoveKind.ArcCCW;
     public bool IsMotion => Kind is MoveKind.Rapid or MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW;
@@ -175,6 +191,19 @@ public sealed class Toolpath
         Point3? pos = StartPosition;
         foreach (var m in Moves)
         {
+            if (m.Kind == MoveKind.ThreadCycle)
+            {
+                // Shown as the final pass: from the start position down to the root, along the thread, back out.
+                if (pos is { } d)
+                {
+                    var rootStart = new Point3(d.X, m.To.Y, d.Z);
+                    yield return (d, rootStart, MoveKind.Rapid);
+                    yield return (rootStart, m.To, MoveKind.Feed);
+                    yield return (m.To, new Point3(m.To.X, d.Y, d.Z), MoveKind.Rapid);
+                    yield return (new Point3(m.To.X, d.Y, d.Z), d, MoveKind.Rapid);
+                }
+                continue;
+            }
             if (m.Kind == MoveKind.DrillCycle)
             {
                 var top = m.To with { Z = m.Cycle.RetractZ };

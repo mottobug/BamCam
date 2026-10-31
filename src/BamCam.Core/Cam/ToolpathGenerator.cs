@@ -29,6 +29,10 @@ public static class ToolpathGenerator
                 case DrillOp d: DrillGenerator.Generate(ctx, d, tp); break;
                 case Profile3DOp p3: Profile3DGenerator.Generate(ctx, p3, tp); break;
                 case LatheOp lathe: LatheGenerator.Generate(ctx, lathe, tp); break;
+                case LatheFacingOp facing: TurningGenerators.Facing(ctx, facing, tp); break;
+                case LatheGrooveOp groove: TurningGenerators.Grooving(ctx, groove, tp); break;
+                case LatheThreadOp thread: TurningGenerators.Threading(ctx, thread, tp); break;
+                case LatheDrillOp drill: TurningGenerators.Drilling(ctx, drill, tp); break;
                 case NcFileOp nc:
                 {
                     var path = ResolveNcPath(doc, nc);

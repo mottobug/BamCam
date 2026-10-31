@@ -106,6 +106,14 @@ public sealed class PostProcessorDefinition
     [Category("Lathe"), DisplayName("Lathe X Mode")] public LatheXMode LatheXMode { get; set; } = LatheXMode.Radius;
     /// <summary>Output the virtual tool point instead of the nose radius centre.</summary>
     [Category("Lathe"), DisplayName("Lathe Tool Radius Offset")] public bool LatheToolRadiusOffset { get; set; }
+    /// <summary>
+    /// Threading cycle template (empty = single passes with <see cref="ThreadPass"/>). Registers: Z thread end,
+    /// P pitch, I peak offset from the drive line (radius, negative outside), J first cut, K full depth, R degression,
+    /// Q infeed angle, H spring passes. Example (LinuxCNC): G76 {$_z} {$p} {$i} {$j} {$k} {$r} {$q} {$h}
+    /// </summary>
+    [Category("Lathe"), DisplayName("Thread Cycle")] public string ThreadCycle { get; set; } = "";
+    /// <summary>One synchronised threading pass to Z (K = pitch), used when there is no thread cycle.</summary>
+    [Category("Lathe"), DisplayName("Thread Pass")] public string ThreadPass { get; set; } = "G33 {$_z} {$k}";
     [Category("Options")] public double MinimumArcLength { get; set; } = 1e-4;
     [Category("Options")] public double MaximumArcRadius { get; set; } = 1e6;
     [Category("Options")] public string NumberFormat { get; set; } = "0.0###";
@@ -147,6 +155,23 @@ public sealed class PostProcessorDefinition
             Footer = "{$clearance}\r\n{$spindle(off)}\r\n{$cbfile.footer}\r\n{$endrewind}\r\n%",
             ArcCenterAbsolute = "G90.1",
             ArcCenterIncremental = "G91.1",
+            NumberFormat = "0.0####",
+        };
+        yield return new PostProcessorDefinition
+        {
+            Name = "LinuxCNC Turn",
+            Header = "%\r\n{$comment} {$cbfile.name} {$date} {$endcomment}\r\n{$tooltable}\r\n{$cbfile.header}\r\n" +
+                     "{$units} {$distancemode} {$lathexmode} {$velocitymode} {$cuttercomp(off)}\r\n{$arccentermode}\r\n{$toolchange(first)}\r\n{$clearance}",
+            Footer = "{$clearance}\r\n{$spindle(off)}\r\n{$cbfile.footer}\r\n{$endrewind}\r\n%",
+            Rapid = "{$g0} {$_f} {$_x} {$_z}",
+            FeedMove = "{$g1} {$_f} {$_x} {$_z}",
+            ArcCW = "{$g2} {$_f} {$_x} {$_z} {$i} {$k}",
+            ArcCCW = "{$g3} {$_f} {$_x} {$_z} {$i} {$k}",
+            ArcCenterAbsolute = "G90.1",
+            ArcCenterIncremental = "G91.1",
+            ClearancePlaneAxis = "X",
+            LatheXMode = LatheXMode.Diameter,
+            ThreadCycle = "G76 {$_z} {$p} {$i} {$j} {$k} {$r} {$q} {$h}",
             NumberFormat = "0.0####",
         };
         yield return new PostProcessorDefinition

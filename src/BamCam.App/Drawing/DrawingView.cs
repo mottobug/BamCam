@@ -578,7 +578,7 @@ public sealed partial class DrawingView : Control, IToolHost
         var b = stock.Max;
         // Turning: the stock is given in lathe coordinates around the machining origin (Z along drawing X,
         // radius across); CamBam's passes start at its end (verified with lathe-test.cb).
-        if (doc.Parts.SelectMany(p => p.Operations).OfType<LatheOp>().Any() && doc.Machining.MachiningOrigin.Point is { } o)
+        if (doc.Parts.SelectMany(p => p.Operations).OfType<TurningOp>().Any() && doc.Machining.MachiningOrigin.Point is { } o)
         {
             a += new Point3(o.X, o.Y, 0);
             b += new Point3(o.X, o.Y, 0);

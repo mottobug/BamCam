@@ -148,20 +148,13 @@ public sealed class NcFileOp : MachineOp
 /// through the machining origin. Roughing cuts straight passes per Depth Increment (radial) down to the
 /// profile plus Roughing Clearance, then one pass along the contour; finishing makes the contour pass only.
 /// </summary>
-public sealed class LatheOp : MachineOp
+public sealed class LatheOp : TurningOp
 {
     /// <summary>Value of the xsi:type attribute in drawing files.</summary>
     public const string XsiType = "MOPLathe";
 
     public override string XmlName => XsiType;
     public override string DisplayType => "Lathe";
-
-    public LatheOp()
-    {
-        // Turning always works in the XZ plane (stored as an explicit value, like CamBam does).
-        WorkPlane = new(Cam.WorkPlane.XZ) { State = ParamState.Value };
-        ToolProfile = new(Cam.ToolProfile.Lathe);
-    }
 
     [Param(41, "Depth")] public CamParam<double> DepthIncrement { get; set; } = new(0.25);
     [Param(70, "Lathe")] public CamParam<LatheCutDirection> LatheCutDirection { get; set; } = new(Cam.LatheCutDirection.RightHand);
@@ -203,7 +196,7 @@ public static class MachineOpFactory
     /// <summary>Registers an operation type added by a plugin under its <see cref="MachineOp.XmlName"/> (the xsi:type in files).</summary>
     public static void Register(string xmlName, Func<MachineOp> create)
     {
-        if (BuiltInElements.Contains(xmlName) || xmlName == LatheOp.XsiType)
+        if (BuiltInElements.Contains(xmlName) || xmlName == LatheOp.XsiType || xmlName.StartsWith("BamCamLathe", StringComparison.Ordinal))
             throw new ArgumentException($"'{xmlName}' is a built-in operation type.", nameof(xmlName));
         Plugins[xmlName] = create;
     }
@@ -223,6 +216,10 @@ public static class MachineOpFactory
         "surface3d" => new Profile3DOp(),
         "ncfile" => new NcFileOp(),
         LatheOp.XsiType => new LatheOp(),
+        "BamCamLatheFacing" => new LatheFacingOp(),
+        "BamCamLatheGroove" => new LatheGrooveOp(),
+        "BamCamLatheThread" => new LatheThreadOp(),
+        "BamCamLatheDrill" => new LatheDrillOp(),
         _ => null,
     };
 }

@@ -466,7 +466,7 @@ public sealed partial class GCodePoster
             _lastG = null;
             return path == null ? "" : File.ReadAllText(path).Replace("\r\n", "\n").TrimEnd('\n').Replace("\n", "\r\n") + "\r\n";
         }
-        if (job.Op is LatheOp) return LatheBlocks(job);
+        if (job.Op is TurningOp) return LatheBlocks(job);
         var sb = new StringBuilder();
         var mirrored = job.Copy.DeterminantXY < 0;
         var stockSurface = job.Op.StockSurface.Value;
@@ -585,6 +585,11 @@ public sealed partial class GCodePoster
                 Line($"{_post.Comment} {m.Text} {_post.EndComment}");
                 continue;
             }
+            if (m.Kind == MoveKind.ThreadCycle && pos is { } threadStart)
+            {
+                ThreadBlocks(m, Out(threadStart), Out(m.To), side, Line);
+                continue;
+            }
             if (!m.IsMotion) continue;
             var t = Out(m.To);
             var x = LatheX(t.Y * side);
@@ -641,6 +646,48 @@ public sealed partial class GCodePoster
             pos = m.To;
         }
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Threading from the drive line <paramref name="start"/> to the thread end: the post's thread cycle, or single
+    /// passes with radial infeed (depth of pass n = first cut x n^(1/degression), then spring passes); the tool
+    /// ends at the start position in both cases.
+    /// </summary>
+    private void ThreadBlocks(Move m, Point3 start, Point3 end, double side, Action<string> line)
+    {
+        var tc = m.Thread;
+        var startZ = start.X;
+        var driveX = start.Y * side;
+        if (_post.ThreadCycle.Trim().Length > 0)
+        {
+            line(MoveLine(_post.ThreadCycle, MoveKind.ThreadCycle, new Dictionary<char, double>
+            {
+                ['Z'] = end.X, ['P'] = tc.Pitch, ['I'] = tc.PeakOffset, ['J'] = tc.FirstCut, ['K'] = tc.Depth,
+                ['R'] = tc.Degression, ['Q'] = tc.InfeedAngle, ['H'] = tc.SpringPasses,
+            }, forceEmit: true));
+            // The cycle returns to the start point.
+            _last['Z'] = Num(startZ);
+            _last['X'] = Num(LatheX(driveX));
+            return;
+        }
+        var peak = driveX + tc.PeakOffset;
+        var inward = tc.PeakOffset < 0 ? -1.0 : 1.0; // external threads cut towards the axis
+        var depths = new List<double>();
+        for (var n = 1; depths.Count < 1000; n++)
+        {
+            var d = tc.FirstCut * Math.Pow(n, 1 / Math.Max(1, tc.Degression));
+            if (d >= tc.Depth - 1e-9) break;
+            depths.Add(d);
+        }
+        depths.Add(tc.Depth);
+        for (var k = 0; k < tc.SpringPasses; k++) depths.Add(tc.Depth);
+        foreach (var d in depths)
+        {
+            line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = LatheX(peak + inward * d) }, forceEmit: true));
+            line(MoveLine(_post.ThreadPass, MoveKind.Feed, new() { ['Z'] = end.X, ['K'] = tc.Pitch }, forceEmit: true));
+            line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = LatheX(driveX) }));
+            line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['Z'] = startZ }));
+        }
     }
 
     private void CutState(Move m, double z, double stockSurface, Action<string> line)
@@ -741,7 +788,7 @@ public sealed partial class GCodePoster
         var key = token.ToLowerInvariant();
         var modal = key.StartsWith('_');
         var core = modal ? key[1..] : key;
-        if (core.Length == 1 && "xyzabcfijkrpq".Contains(core[0]))
+        if (core.Length == 1 && "xyzabcfijkrpqh".Contains(core[0]))
         {
             var reg = char.ToUpperInvariant(core[0]);
             if (!regs.TryGetValue(reg, out var value))
