@@ -1033,7 +1033,7 @@
   "Plunge Factor": "Eintauchfaktor",
   "Select a machining operation to apply the values to it.": "Eine Bearbeitung auswählen, um die Werte darauf zu übernehmen.",
   "Speeds and Feeds": "Schnittdaten",
-  "Spindle speed {0:0} rpm   Cut feedrate {1:0.#} {3}   Plunge feedrate {2:0.#} {3}": "Drehzahl {0:0} U/min   Vorschub {1:0.#} {3}   Eintauchen {2:0.#} {3}",
+  "Spindle speed: {0:0} rpm\nCut feedrate: {1:0.#} {3}\nPlunge feedrate: {2:0.#} {3}": "Drehzahl: {0:0} U/min\nVorschub: {1:0.#} {3}\nEintauchvorschub: {2:0.#} {3}",
   "Starting values for carbide end mills: check them against the tool maker's data.": "Richtwerte für VHM-Schaftfräser: mit den Herstellerangaben abgleichen.",
   "_Speeds and Feeds...": "_Schnittdaten...",
   "rpm": "U/min",

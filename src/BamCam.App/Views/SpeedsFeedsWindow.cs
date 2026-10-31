@@ -161,6 +161,7 @@ public sealed class SpeedsFeedsWindow : Window
         Maximum = 1_000_000,
         Increment = increment,
         FormatString = decimals == 0 ? "0" : "0." + new string('#', decimals),
+        NumberFormat = BamCam.Core.Localization.Tr.Culture.NumberFormat,
         HorizontalAlignment = HorizontalAlignment.Stretch,
     };
 
@@ -194,7 +195,7 @@ public sealed class SpeedsFeedsWindow : Window
             return;
         }
         var unit = _units == DrawingUnits.Inches ? "in/min" : _units == DrawingUnits.Millimeters ? "mm/min" : T("units/min");
-        _result.Text = F("Spindle speed {0:0} rpm   Cut feedrate {1:0.#} {3}   Plunge feedrate {2:0.#} {3}", r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate, unit);
+        _result.Text = F("Spindle speed: {0:0} rpm\nCut feedrate: {1:0.#} {3}\nPlunge feedrate: {2:0.#} {3}", r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate, unit);
         _note.Text = Math.Abs(r.CuttingSpeed - D(_speed)) > 0.5
             ? F("Limited by the spindle speed range: effective cutting speed {0:0} m/min.", r.CuttingSpeed)
             : T("Starting values for carbide end mills: check them against the tool maker's data.");

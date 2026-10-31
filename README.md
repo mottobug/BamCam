@@ -20,6 +20,17 @@ STL and G-code, and produces G-code through a template engine that understands t
     <td>Selected polyline: edit its points with <b>[...]</b></td>
     <td>Configuration with language selection and post processors</td>
   </tr>
+  <tr>
+    <td><a href="docs/screenshots/lathe-shaft.png"><img src="docs/screenshots/lathe-shaft.png" alt="Turned shaft with facing, turning, groove, thread and drilling toolpaths"></a></td>
+    <td><a href="docs/screenshots/splines.png"><img src="docs/screenshots/splines.png" alt="Splines"></a></td>
+    <td><a href="docs/screenshots/plugins.png"><img src="docs/screenshots/plugins.png" alt="Plugin manager"></a><br><a href="docs/screenshots/speeds-feeds.png"><img src="docs/screenshots/speeds-feeds.png" alt="Speeds and feeds calculator" width="60%"></a></td>
+  </tr>
+  <tr>
+    <td>Lathe: facing, turning, relief groove, M16 thread and centre hole; the remaining stock is shown
+        (<code>examples_to_test/Shaft (turning).cb</code>)</td>
+    <td>Splines (NURBS) drawn with CamBam-style tangent handles</td>
+    <td>Plugin manager and speeds and feeds calculator</td>
+  </tr>
 </table>
 
 ## Build and run

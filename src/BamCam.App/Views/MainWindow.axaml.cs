@@ -283,6 +283,18 @@ public partial class MainWindow : Window
                 if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
                 ShowToolpathFilter();
             }
+            // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
+            Window? extra = null;
+            if (options.TryGetValue("--window", out var which))
+            {
+                extra = which switch
+                {
+                    "plugins" => new PluginManagerWindow(_plugins, _settings.Plugins),
+                    "speeds" => NewSpeedsFeedsWindow().Window,
+                    _ => null,
+                };
+                extra?.Show(this);
+            }
             if (options.Count > 0)
             {
                 View.Invalidate();
@@ -300,6 +312,13 @@ public partial class MainWindow : Window
                     using var fbmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)fw.Bounds.Width, (int)fw.Bounds.Height));
                     fbmp.Render(fw);
                     fbmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, Path.GetFileNameWithoutExtension(path) + "-filter.png"));
+                }
+                if (extra != null)
+                {
+                    using var ebmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)extra.Bounds.Width, (int)extra.Bounds.Height));
+                    ebmp.Render(extra);
+                    ebmp.Save(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, Path.GetFileNameWithoutExtension(path) + $"-{which}.png"));
+                    extra.Close();
                 }
                 File.WriteAllText(Path.ChangeExtension(path, ".log"), Messages.Text);
             }

@@ -19,7 +19,8 @@ public sealed class PluginRow(PluginInfo info, bool enabled) : INotifyPropertyCh
     public string Name => Info.Name;
     public string Vendor => Info.Vendor;
     public string Version => Info.Version;
-    public string File => Info.Path;
+    /// <summary>File name; the folder opens with "Open Plugin Folder".</summary>
+    public string File => System.IO.Path.GetFileName(Info.Path);
 
     public string State => Info.State switch
     {
@@ -56,7 +57,7 @@ public sealed class PluginManagerWindow : Window
     {
         _approvals = approvals;
         Title = T("Plugins");
-        Width = 760;
+        Width = 900;
         Height = 380;
         MinWidth = 420;
         MinHeight = 240;
@@ -71,12 +72,12 @@ public sealed class PluginManagerWindow : Window
             GridLinesVisibility = DataGridGridLinesVisibility.Horizontal, HeadersVisibility = DataGridHeadersVisibility.Column,
             Margin = new Thickness(6), IsVisible = _rows.Count > 0,
         };
-        grid.Columns.Add(new DataGridCheckBoxColumn { Header = T("Enabled"), Binding = new Binding(nameof(PluginRow.Enabled)), Width = new DataGridLength(70) });
-        grid.Columns.Add(new DataGridTextColumn { Header = T("Name"), Binding = new Binding(nameof(PluginRow.Name)), IsReadOnly = true, Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = T("Vendor"), Binding = new Binding(nameof(PluginRow.Vendor)), IsReadOnly = true, Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = T("Version"), Binding = new Binding(nameof(PluginRow.Version)), IsReadOnly = true, Width = new DataGridLength(70) });
+        grid.Columns.Add(new DataGridCheckBoxColumn { Header = T("Enabled"), Binding = new Binding(nameof(PluginRow.Enabled)), Width = new DataGridLength(90) });
+        grid.Columns.Add(new DataGridTextColumn { Header = T("Name"), Binding = new Binding(nameof(PluginRow.Name)), IsReadOnly = true, Width = DataGridLength.Auto });
+        grid.Columns.Add(new DataGridTextColumn { Header = T("Vendor"), Binding = new Binding(nameof(PluginRow.Vendor)), IsReadOnly = true, Width = DataGridLength.Auto });
+        grid.Columns.Add(new DataGridTextColumn { Header = T("Version"), Binding = new Binding(nameof(PluginRow.Version)), IsReadOnly = true, Width = DataGridLength.Auto });
         grid.Columns.Add(new DataGridTextColumn { Header = T("State"), Binding = new Binding(nameof(PluginRow.State)), IsReadOnly = true, Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
-        grid.Columns.Add(new DataGridTextColumn { Header = T("File"), Binding = new Binding(nameof(PluginRow.File)), IsReadOnly = true, Width = new DataGridLength(2, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = T("File"), Binding = new Binding(nameof(PluginRow.File)), IsReadOnly = true, Width = DataGridLength.Auto });
         foreach (var row in _rows) row.PropertyChanged += (_, _) => Apply(row);
 
         var empty = new TextBlock

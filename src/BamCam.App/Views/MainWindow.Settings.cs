@@ -147,6 +147,22 @@ public partial class MainWindow
     /// <summary>Tools ▸ Speeds and Feeds for the selected machining operation (or without one, to look values up).</summary>
     private async void ShowSpeedsFeeds()
     {
+        var (window, op, name) = NewSpeedsFeedsWindow();
+        await window.ShowDialog(this);
+        SaveSettings();
+        if (op == null || window.Applied is not { } r) return;
+        _session.Execute(T("Speeds and Feeds"), () =>
+        {
+            op.SpindleSpeed.Set(r.SpindleSpeed);
+            op.CutFeedrate.Set(r.CutFeedrate);
+            op.PlungeFeedrate.Set(r.PlungeFeedrate);
+        });
+        _session.Inspect(op);
+        Log(F("{0}: spindle speed {1:0} rpm, cut feedrate {2:0.#}, plunge feedrate {3:0.#}.", name, r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate));
+    }
+
+    private (SpeedsFeedsWindow Window, MachineOp? Op, string? Name) NewSpeedsFeedsWindow()
+    {
         var doc = _session.Document;
         var op = _session.Inspected as MachineOp;
         List<CuttingMaterial> materials;
@@ -164,18 +180,7 @@ public partial class MainWindow
         var part = op == null ? null : doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
         var tool = op == null ? null : CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc));
         var name = op == null ? null : string.IsNullOrEmpty(op.Name) ? op.DisplayType : op.Name;
-        var window = new SpeedsFeedsWindow(materials, _settings.SpeedsFeeds, doc.Units, diameter, tool is { Flutes: > 0 } ? tool.Flutes : 2, name);
-        await window.ShowDialog(this);
-        SaveSettings();
-        if (op == null || window.Applied is not { } r) return;
-        _session.Execute(T("Speeds and Feeds"), () =>
-        {
-            op.SpindleSpeed.Set(r.SpindleSpeed);
-            op.CutFeedrate.Set(r.CutFeedrate);
-            op.PlungeFeedrate.Set(r.PlungeFeedrate);
-        });
-        _session.Inspect(op);
-        Log(F("{0}: spindle speed {1:0} rpm, cut feedrate {2:0.#}, plunge feedrate {3:0.#}.", name, r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate));
+        return (new SpeedsFeedsWindow(materials, _settings.SpeedsFeeds, doc.Units, diameter, tool is { Flutes: > 0 } ? tool.Flutes : 2, name), op, name);
     }
 
     /// <summary>Called when the configuration is edited in the main property grid (System ▸ Configuration).</summary>
