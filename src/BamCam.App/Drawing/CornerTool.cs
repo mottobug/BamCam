@@ -13,8 +13,12 @@ namespace BamCam.App.Drawing;
 /// overcut. Typing changes the value, Space switches the kind, "-" makes the fillet inverted; each corner is one
 /// undoable step. Esc ends.
 /// </summary>
-public sealed class CornerTool(PolylineEntity target) : ViewTool
+public sealed class CornerTool(PolylineEntity polyline) : ViewTool
 {
+    // By id: undo and redo replace the drawing's objects by copies.
+    private readonly int _id = polyline.Id;
+    private PolylineEntity? Target => Host.Session.Document.FindEntity(_id) as PolylineEntity;
+
     /// <summary>Last used kind and values (kept for the next use of the tool).</summary>
     public static CornerKind Kind { get; set; } = CornerKind.Fillet;
     public static double FilletRadius { get; set; } = 2;
@@ -53,7 +57,7 @@ public sealed class CornerTool(PolylineEntity target) : ViewTool
         }
     }
 
-    private Path2 WorldPath => target.ToPaths().First();
+    private Path2? WorldPath => Target?.ToPaths().First();
 
     public override void PointerMoved(Point screen, Point2 world, KeyModifiers mods)
     {
@@ -65,7 +69,7 @@ public sealed class CornerTool(PolylineEntity target) : ViewTool
     {
         if (!props.IsLeftButtonPressed) return;
         AcceptTyped();
-        var path = WorldPath;
+        if (Target is not { } target || WorldPath is not { } path) return;
         var index = CornerOps.NearestVertex(path, Host.View.ToWorld(screen), Host.View.ToWorldLength(8));
         if (index < 0) return;
         var (result, error) = CornerOps.Apply(path, index, Kind, Kind == CornerKind.Fillet ? FilletRadius : Math.Abs(Value));
@@ -141,7 +145,7 @@ public sealed class CornerTool(PolylineEntity target) : ViewTool
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         // Corner markers, the one under the cursor highlighted.
-        var path = WorldPath;
+        if (WorldPath is not { } path) return;
         var hot = CornerOps.NearestVertex(path, _cursor, view.ToWorldLength(8));
         var pen = new Pen(Brushes.Yellow, 1);
         var hotPen = new Pen(Brushes.Orange, 2);
