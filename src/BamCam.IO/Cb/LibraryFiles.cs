@@ -59,6 +59,10 @@ public static class LibraryFiles
                     case "AxialDepthOfCut": tool.AxialDepthOfCut = CbFormat.ParseDouble(v); break;
                     case "RadialDepthOfCut": tool.RadialDepthOfCut = CbFormat.ParseDouble(v); break;
                     case "Comment": tool.Comment = v; break;
+                    case "LatheToolType":
+                        if (CbFormat.TryParseEnum(typeof(LatheToolType), v, out var lt)) tool.LatheToolType = (LatheToolType)lt;
+                        break;
+                    case "TipOrientation": tool.TipOrientation = CbFormat.ParseInt(v); break;
                     default: tool.Extensions.Add(new XElement(c)); break;
                 }
             }
@@ -68,7 +72,43 @@ public static class LibraryFiles
     }
 
     /// <summary>
-    /// CAM styles the drawing refers to (machining options, parts, operations) that exist in no loaded style
+    /// Writes a tool library in the CamBam format. The lathe values (LatheToolType, TipOrientation) are BamCam
+    /// additions and only written when set; unknown elements read from the file are written back.
+    /// </summary>
+    public static void SaveTools(ToolLibrary lib, string path)
+    {
+        string D(double v) => CbFormat.Double(v);
+        var root = new XElement("ToolLibrary");
+        if (lib.ToolNameFormat.Length > 0) root.Add(new XAttribute("ToolNameFormat", lib.ToolNameFormat));
+        root.Add(new XAttribute("NumberFormat", lib.NumberFormat));
+        foreach (var t in lib.Tools.OrderBy(t => t.Index))
+        {
+            var el = new XElement("ToolDefinition", new XAttribute("Name", t.Name),
+                new XElement("Index", t.Index),
+                new XElement("Diameter", D(t.Diameter)),
+                new XElement("ToolProfile", t.ToolProfile),
+                new XElement("Flutes", t.Flutes),
+                new XElement("FluteLength", D(t.FluteLength)),
+                new XElement("Length", D(t.Length)),
+                new XElement("ShankDiameter", D(t.ShankDiameter)),
+                new XElement("HelixAngle", D(t.HelixAngle)),
+                new XElement("VeeAngle", D(t.VeeAngle)),
+                new XElement("MaxRampAngle", D(t.MaxRampAngle)),
+                new XElement("ToothLoad", D(t.ToothLoad)),
+                new XElement("AxialDepthOfCut", D(t.AxialDepthOfCut)),
+                new XElement("RadialDepthOfCut", D(t.RadialDepthOfCut)));
+            if (t.Comment.Length > 0) el.Add(new XElement("Comment", t.Comment));
+            if (t.LatheToolType != LatheToolType.None) el.Add(new XElement("LatheToolType", t.LatheToolType));
+            if (t.TipOrientation != 0) el.Add(new XElement("TipOrientation", t.TipOrientation));
+            foreach (var x in t.Extensions) el.Add(new XElement(x));
+            root.Add(el);
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+        lib.SourcePath = path;
+    }
+
+    /// <summary>    /// CAM styles the drawing refers to (machining options, parts, operations) that exist in no loaded style
     /// library. Operations using them keep the values stored in the drawing (see <see cref="ApplyStyle"/>).
     /// </summary>
     public static List<string> MissingStyles(CadDocument doc)
@@ -119,7 +159,7 @@ public static class LibraryFiles
         var cascadeTool = part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
         if (cascadeTool > 0)
         {
-            var tool = CamLibraries.FindTool(doc, part, cascadeTool);
+            var tool = CamLibraries.FindTool(doc, part, cascadeTool, op is TurningOp);
             void Set<T>(CamParam<T> p, T value, string name)
             {
                 if (p.State != ParamState.Default || Equals(p.Value, value)) return;

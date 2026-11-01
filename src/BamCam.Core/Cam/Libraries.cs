@@ -43,6 +43,9 @@ public sealed class CamStyleLibrary
     }
 }
 
+/// <summary>Kind of lathe tool (BamCam addition to the tool library).</summary>
+public enum LatheToolType { None, Turning, Grooving, Threading, Drilling }
+
 public sealed class ToolDefinition
 {
     [Category("Tool")] public int Index { get; set; }
@@ -61,10 +64,27 @@ public sealed class ToolDefinition
     [Category("Tool"), DisplayName("Radial Depth Of Cut")] public double RadialDepthOfCut { get; set; }
     [Category("Tool")] public string Comment { get; set; } = "";
 
+    [Category("Lathe"), DisplayName("Lathe Tool Type"),
+     Description("Kind of lathe tool; turning operations warn when the tool does not fit. Diameter is the nose diameter (2 x nose radius) of turning and threading tools, the blade width of grooving tools and the drill diameter.")]
+    public LatheToolType LatheToolType { get; set; }
+
+    [Category("Lathe"), DisplayName("Tip Orientation"),
+     Description("Imaginary tool tip number (1-9) to enter in the control's tool table when the machine compensates the nose radius (G41/G42); 3 = external turning towards the chuck. Kept for reference, not used in the tool path.")]
+    public int TipOrientation { get; set; }
+
     [Browsable(false)]
     public List<XElement> Extensions { get; } = [];
 
     public override string ToString() => $"{Index}: {Name}";
+
+    /// <summary>Copy with its own list of preserved unknown elements.</summary>
+    public ToolDefinition Clone()
+    {
+        var copy = new ToolDefinition();
+        foreach (var p in typeof(ToolDefinition).GetProperties().Where(p => p.CanWrite)) p.SetValue(copy, p.GetValue(this));
+        copy.Extensions.AddRange(Extensions.Select(x => new XElement(x)));
+        return copy;
+    }
 }
 
 public sealed class ToolLibrary
@@ -84,12 +104,15 @@ public static class CamLibraries
     public static List<CamStyleLibrary> StyleLibraries { get; } = [];
     public static List<ToolLibrary> ToolLibraries { get; } = [];
 
-    /// <summary>Tool lookup: Part tool library → Machining tool library → Default-{units}.</summary>
-    public static ToolDefinition? FindTool(Model.CadDocument doc, Part? part, int index)
+    /// <summary>
+    /// Tool lookup: Part tool library → Machining tool library → (turning operations) BamCam-Lathe-{units} →
+    /// Default-{units}.
+    /// </summary>
+    public static ToolDefinition? FindTool(Model.CadDocument doc, Part? part, int index, bool lathe = false)
     {
         if (index <= 0) return null;
         var units = doc.Units == Model.DrawingUnits.Inches ? "in" : "mm";
-        foreach (var name in new[] { part?.ToolLibrary, doc.Machining.ToolLibrary, $"Default-{units}" })
+        foreach (var name in new[] { part?.ToolLibrary, doc.Machining.ToolLibrary, lathe ? LatheLibraryName(doc.Units) : null, $"Default-{units}" })
         {
             if (string.IsNullOrEmpty(name)) continue;
             var lib = ToolLibraries.FirstOrDefault(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -97,6 +120,53 @@ public static class CamLibraries
         }
         return null;
     }
+
+    /// <summary>Name of BamCam's lathe tool library for the drawing units.</summary>
+    public static string LatheLibraryName(Model.DrawingUnits units) =>
+        units == Model.DrawingUnits.Inches ? "BamCam-Lathe-in" : "BamCam-Lathe-mm";
+
+    /// <summary>
+    /// Lathe tool templates (BamCam-Lathe-mm / -in), written to the tool folder when missing: turning tools for
+    /// roughing and finishing, grooving and parting blades, a 60° threading tool and a drill.
+    /// </summary>
+    public static ToolLibrary LatheTemplates(bool inches)
+    {
+        var lib = new ToolLibrary { Name = LatheLibraryName(inches ? Model.DrawingUnits.Inches : Model.DrawingUnits.Millimeters), NumberFormat = "0.0##" };
+        void Add(int index, string name, double diameter, LatheToolType type, int tip, ToolProfile profile = ToolProfile.Lathe) =>
+            lib.Tools.Add(new ToolDefinition
+            {
+                Index = index, Name = name, Diameter = diameter, ToolProfile = profile, LatheToolType = type, TipOrientation = tip,
+            });
+        if (inches)
+        {
+            Add(1, "Turning R1/32 (roughing)", 0.0625, LatheToolType.Turning, 3);
+            Add(2, "Turning R1/64 (finishing)", 0.03125, LatheToolType.Turning, 3);
+            Add(3, "Grooving 1/8", 0.125, LatheToolType.Grooving, 3);
+            Add(4, "Parting 1/16", 0.0625, LatheToolType.Grooving, 3);
+            Add(5, "Threading 60°", 0.008, LatheToolType.Threading, 8);
+            Add(6, "Drill 1/4", 0.25, LatheToolType.Drilling, 0, ToolProfile.Drill);
+        }
+        else
+        {
+            Add(1, "Turning R0.8 (roughing)", 1.6, LatheToolType.Turning, 3);
+            Add(2, "Turning R0.4 (finishing)", 0.8, LatheToolType.Turning, 3);
+            Add(3, "Grooving 3 mm", 3, LatheToolType.Grooving, 3);
+            Add(4, "Parting 2 mm", 2, LatheToolType.Grooving, 3);
+            Add(5, "Threading 60°", 0.2, LatheToolType.Threading, 8);
+            Add(6, "Drill 5 mm", 5, LatheToolType.Drilling, 0, ToolProfile.Drill);
+        }
+        return lib;
+    }
+
+    /// <summary>The tool type a turning operation needs, or None for other operations.</summary>
+    public static LatheToolType RequiredLatheTool(MachineOp op) => op switch
+    {
+        LatheOp or LatheFacingOp => LatheToolType.Turning,
+        LatheGrooveOp => LatheToolType.Grooving,
+        LatheThreadOp => LatheToolType.Threading,
+        LatheDrillOp => LatheToolType.Drilling,
+        _ => LatheToolType.None,
+    };
 
     /// <summary>Style library lookup: explicit name, then {Material}-{units}, then Standard-{units}.</summary>
     public static CamStyleLibrary? FindStyleLibrary(Model.CadDocument doc, Part? part)

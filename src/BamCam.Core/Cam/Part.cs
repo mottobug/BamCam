@@ -256,7 +256,7 @@ public abstract class MachineOp
         if (ToolDiameter.Value > 0) return ToolDiameter.Value;
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(this));
         var number = EffectiveToolNumber(doc);
-        if (CamLibraries.FindTool(doc, part, number) is { Diameter: > 0 } tool) return tool.Diameter;
+        if (CamLibraries.FindTool(doc, part, number, this is TurningOp) is { Diameter: > 0 } tool) return tool.Diameter;
         if (part is { ToolDiameter: > 0 }) return part.ToolDiameter;
         if (doc.Machining.ToolDiameter > 0) return doc.Machining.ToolDiameter;
         return doc.Units == DrawingUnits.Inches ? 0.125 : 3;

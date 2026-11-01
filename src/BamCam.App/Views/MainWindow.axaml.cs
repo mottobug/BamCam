@@ -60,11 +60,12 @@ public partial class MainWindow : Window
         Properties.ValueChanging += (_, _) =>
         {
             // Configuration edits are not part of the drawing's undo history.
-            if (Properties.SelectedObject is not AppSettings) _session.BeginEdit();
+            if (Properties.SelectedObject is not (AppSettings or Core.Cam.ToolDefinition)) _session.BeginEdit();
         };
         Properties.ValueChanged += (_, key) =>
         {
             if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
+            else if (Properties.SelectedObject is Core.Cam.ToolDefinition tool) OnToolEdited(tool);
             else OnPropertyEdited();
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };

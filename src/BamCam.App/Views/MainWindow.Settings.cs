@@ -178,7 +178,7 @@ public partial class MainWindow
         }
         var diameter = op?.EffectiveToolDiameter(doc) ?? (doc.Machining.ToolDiameter > 0 ? doc.Machining.ToolDiameter : 6);
         var part = op == null ? null : doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
-        var tool = op == null ? null : CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc));
+        var tool = op == null ? null : CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc), op is TurningOp);
         var name = op == null ? null : string.IsNullOrEmpty(op.Name) ? op.DisplayType : op.Name;
         return (new SpeedsFeedsWindow(materials, _settings.SpeedsFeeds, doc.Units, diameter, tool is { Flutes: > 0 } ? tool.Flutes : 2, name), op, name);
     }

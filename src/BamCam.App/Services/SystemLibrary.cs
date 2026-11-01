@@ -67,6 +67,15 @@ public sealed class SystemLibrary
         {
             var own = Path.Combine(SystemFolder, sub);
             Directory.CreateDirectory(own);
+            if (sub == "tools")
+                foreach (var template in new[] { CamLibraries.LatheTemplates(false), CamLibraries.LatheTemplates(true) })
+                {
+                    // Lathe tool templates; an existing file (perhaps edited) is never overwritten.
+                    var path = Path.Combine(own, template.Name + ".xml");
+                    if (File.Exists(path)) continue;
+                    try { LibraryFiles.SaveTools(template, path); }
+                    catch (Exception ex) { LoadMessages.Add(F("Could not save tool library '{0}': {1}", template.Name, ex.Message)); }
+                }
             foreach (var folder in CamBamFolders(sub).Prepend(own))
             foreach (var file in Directory.GetFiles(folder, "*.xml"))
             {

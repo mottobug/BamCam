@@ -145,6 +145,12 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   finish pass), **threading** (external/internal, metric depth by default; G76 cycle when the post defines one,
   e.g. the built-in *LinuxCNC Turn* post, otherwise single G33 passes) and **axial drilling** with pecks.
   The stock that remains after the turning operations is shown in the drawing (simulation).
+  **Nose radius compensation** either computed (virtual tool tip, as CamBam) or by the machine: the contour pass
+  is then output on the part contour between G42/G41 and G40.
+  **Lathe tool library** `BamCam-Lathe-mm` / `-in` (created in the system folder `tools`): turning, grooving,
+  parting, threading and drilling tools with tool type and tip orientation. Turning operations find their tool
+  number there, and warn when the tool type does not fit. Tools of BamCam's own libraries can be edited, added
+  (right-click on the library) and deleted in the System tab.
 - Machining operations refer to drawing objects by ID (**Primitive IDs**); edit the list as text or pick
   the objects in the drawing with **[...]**.
 - **Speeds and feeds** (Tools menu): spindle speed, cut and plunge feedrate from material, tool diameter and

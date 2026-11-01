@@ -313,7 +313,7 @@ public sealed partial class GCodePoster
     {
         var number = j.Op.ToolNumber.Value;
         var part = _doc.Parts.FirstOrDefault(p => p.Operations.Contains(j.Op));
-        var comment = CamLibraries.FindTool(_doc, part, number)?.Comment ?? "";
+        var comment = CamLibraries.FindTool(_doc, part, number, j.Op is TurningOp)?.Comment ?? "";
         return new(number, j.Op.EffectiveToolDiameter(_doc), j.Op.ToolProfile.Value, comment);
     }
 

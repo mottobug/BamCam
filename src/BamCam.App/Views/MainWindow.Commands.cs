@@ -425,7 +425,7 @@ public partial class MainWindow
             }
             if (op is DepthOp depth && (depth.TargetDepth.Value >= depth.StockSurface.Value && (stockEmpty || depth.TargetDepth.State != ParamState.Auto)))
                 depth.TargetDepth.Set(doc.Units == DrawingUnits.Inches ? -0.04 : -1);
-            if (op.ToolDiameter.Value <= 0 && CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc)) == null)
+            if (op.ToolDiameter.Value <= 0 && CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc), op is TurningOp) == null)
                 op.ToolDiameter.Set(doc.Units == DrawingUnits.Inches ? 0.125 : 3);
         });
         _session.Inspect(op);

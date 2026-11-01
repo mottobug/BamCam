@@ -471,9 +471,19 @@ public partial class MainWindow
         var tools = new TreeViewItem { Header = T("Tools"), IsExpanded = true };
         foreach (var lib in CamLibraries.ToolLibraries)
         {
-            var li = new TreeViewItem { Header = lib.Name, Tag = lib };
+            var li = new TreeViewItem { Header = lib.Name + (IsOwnLibrary(lib) ? "" : "  " + T("(read-only)")), Tag = lib };
             ToolTip.SetTip(li, lib.SourcePath);
-            foreach (var t in lib.Tools.OrderBy(t => t.Index)) li.Items.Add(new TreeViewItem { Header = t.ToString(), Tag = t });
+            if (IsOwnLibrary(lib)) li.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Tool", () => NewTool(lib, null)) } };
+            foreach (var t in lib.Tools.OrderBy(t => t.Index))
+            {
+                var ti = new TreeViewItem { Header = t.ToString(), Tag = t };
+                if (IsOwnLibrary(lib))
+                    ti.ContextMenu = new ContextMenu
+                    {
+                        ItemsSource = new[] { Item("Duplicate Tool", () => NewTool(lib, t)), Item("Delete Tool", () => DeleteTool(lib, t)) },
+                    };
+                li.Items.Add(ti);
+            }
             tools.Items.Add(li);
         }
         SystemTree.Items.Add(tools);

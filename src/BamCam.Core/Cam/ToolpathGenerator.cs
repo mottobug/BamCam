@@ -55,6 +55,11 @@ public static class ToolpathGenerator
         {
             tp.Warnings.Add(Tr.F("{0}: toolpath generation failed: {1}", op.Name, ex.Message));
         }
+        if (op is TurningOp && CamLibraries.RequiredLatheTool(op) is var needed &&
+            CamLibraries.FindTool(doc, ctx.Part, op.EffectiveToolNumber(doc), lathe: true) is { LatheToolType: not LatheToolType.None } tool &&
+            tool.LatheToolType != needed)
+            tp.Warnings.Add(Tr.F("{0}: tool {1} \"{2}\" is a {3} tool; this operation needs a {4} tool.",
+                op.Name, tool.Index, tool.Name, Tr.T(tool.LatheToolType.ToString()), Tr.T(needed.ToString())));
         if (op is not NcFileOp) tp.TrimTrailingRetracts();
         if (tp.Moves.Count == 0 && tp.Warnings.Count == 0)
             tp.Warnings.Add(Tr.F("{0}: no toolpath was generated (check the selected drawing objects).", op.Name));
