@@ -146,7 +146,8 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   e.g. the built-in *LinuxCNC Turn* post, otherwise single G33 passes) and **axial drilling** with pecks.
   The stock that remains after the turning operations is shown in the drawing (simulation).
   **Internal turning** (boring): the lathe operation can cut a bore wall instead of the outside, starting from the
-  pre-drilled hole (Stock Surface = its radius) and retracting towards the axis.
+  pre-drilled hole (Stock Surface = its radius) and retracting towards the axis
+  (example: `examples_to_test/Bushing (boring).cb`).
   **Constant cutting speed** (G96) for turning, facing and grooving with a spindle speed limit; the codes come
   from the post processor (G50 + G96 + G97 by default, `G96 D… S…` in the *LinuxCNC Turn* post).
   **Nose radius compensation** either computed (virtual tool tip, as CamBam) or by the machine: the contour pass
