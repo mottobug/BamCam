@@ -19,7 +19,9 @@ public class DrawToolTests
         public void Invalidate() { }
         public void SetPrompt(string? text) => Prompt = text;
         public void EndTool() { }
-        public IReadOnlyList<Entity> HitTest(Point screen, double pixelTolerance = 5) => [];
+        /// <summary>Objects returned by the next hit test.</summary>
+        public List<Entity> Hits { get; } = [];
+        public IReadOnlyList<Entity> HitTest(Point screen, double pixelTolerance = 5) => Hits;
         public IReadOnlyList<Entity> WindowSelect(Point a, Point b, bool crossing) => [];
     }
 
@@ -102,6 +104,28 @@ public class DrawToolTests
         tool.PointerPressed(corner, new Point2(10, 0), Left, KeyModifiers.None);
         var arc = Assert.Single(square.ToPaths().First().Segments(), s => s.IsArc).ToArc();
         Assert.Equal(3, arc.Radius, 9);
+    }
+
+    [Fact]
+    public void Trim_extend_with_all_objects_as_boundaries_after_Enter()
+    {
+        var host = new Host();
+        var doc = host.Session.Document;
+        doc.AddEntity(RectEntity.FromCorners(new Point2(0, 0), new Point2(50, 30), 0));
+        var line = new LineEntity();
+        line.Points.AddRange([new Point3(10, 15, 0), new Point3(20, 15, 0)]);
+        doc.AddEntity(line);
+        var tool = new TrimExtendTool();
+        tool.Attach(host);
+        tool.KeyDown(Key.Enter, KeyModifiers.None); // nothing picked: every object is a boundary
+        host.Hits.Add(line);
+        var end = host.View.ToScreen(new Point2(19, 15));
+        tool.PointerPressed(end, new Point2(19, 15), Left, KeyModifiers.None);
+        Assert.Equal(new Point3(50, 15, 0), line.Points[^1]);
+        // A click near the other end extends it to the left side of the rectangle.
+        var start = host.View.ToScreen(new Point2(11, 15));
+        tool.PointerPressed(start, new Point2(11, 15), Left, KeyModifiers.None);
+        Assert.Equal(new Point3(0, 15, 0), line.Points[0]);
     }
 
     [Fact]

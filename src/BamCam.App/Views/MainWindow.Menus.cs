@@ -173,7 +173,7 @@ public partial class MainWindow
         Item("_Join...", Join, "Ctrl+J"),
         Item("_Offset...", () => Offset(false)),
         Item("Open Offset...", () => Offset(true)),
-        Item("_Trim / Extend", () => View.SetTool(new TrimExtendTool(Selected)), "Ctrl+OemPlus"),
+        Item("_Trim / Extend", () => View.SetTool(new TrimExtendTool()), "Ctrl+OemPlus"),
         Item("_Union", () => BooleanOp("Union"), "Ctrl+U"),
         Item("_Subtract", () => BooleanOp("Subtract")),
         Item("_Intersection", () => BooleanOp("Intersection")),

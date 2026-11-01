@@ -9,27 +9,26 @@ using static BamCam.Core.Localization.Tr;
 namespace BamCam.App.Drawing;
 
 /// <summary>
-/// Trim / extend: pick boundary objects (Enter or middle click accepts; objects selected beforehand are taken as
-/// boundaries), then click lines, arcs or open polylines near an end to extend them to the next boundary, or
-/// Shift+click a piece to trim it away. Each click is one undoable step; Esc ends.
+/// Trim / extend: pick boundary objects (Enter or middle click accepts; with none picked every object is a boundary),
+/// then click lines, arcs or open polylines near an end to extend them to the next boundary, or Shift+click a piece
+/// to trim it away. Each click is one undoable step; Esc ends. A selection made beforehand is not used: it usually
+/// holds the object to be extended, which cannot be its own boundary.
 /// </summary>
 public sealed class TrimExtendTool : ViewTool
 {
     // By id: undo and redo replace the drawing's objects by copies.
-    private readonly HashSet<int> _boundaries;
-    private bool _picking;
+    private readonly HashSet<int> _boundaries = [];
+    private bool _picking = true;
+    /// <summary>No boundary picked: every (visible) object is a boundary.</summary>
+    private bool _all;
 
-    public TrimExtendTool(IEnumerable<Entity> selected)
-    {
-        _boundaries = selected.Where(IsBoundary).Select(e => e.Id).ToHashSet();
-        _picking = _boundaries.Count == 0;
-    }
-
-    private IEnumerable<Entity> Boundaries => Host.Session.Document.AllEntities().Where(e => _boundaries.Contains(e.Id));
+    private IEnumerable<Entity> Boundaries => Host.Session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities)
+        .Where(e => IsBoundary(e) && (_all || _boundaries.Contains(e.Id)));
 
     public override string Prompt => _picking
-        ? T("Trim / Extend: click the boundary objects  [Enter / middle click = done, Esc = cancel]")
-        : T("Click lines or arcs near the end to extend them, Shift+click a piece to trim it  [Esc = end]");
+        ? F("Trim / Extend: click the boundary objects ({0} picked)  [Enter / middle click = continue; nothing picked = all objects are boundaries; Esc = cancel]", _boundaries.Count)
+        : (_all ? T("All objects are boundaries.") : F("{0} boundary objects.", _boundaries.Count)) + "  " +
+          T("Click lines or arcs near the end to extend them, Shift+click a piece to trim it  [Esc = end]");
 
     private static bool IsBoundary(Entity e) => e is not (PointListEntity or SurfaceEntity or TextEntity);
 
@@ -41,6 +40,7 @@ public sealed class TrimExtendTool : ViewTool
         if (_picking)
         {
             if (IsBoundary(hit) && !_boundaries.Remove(hit.Id)) _boundaries.Add(hit.Id);
+            Host.SetPrompt(Prompt);
             Host.Invalidate();
             return;
         }
@@ -128,9 +128,10 @@ public sealed class TrimExtendTool : ViewTool
             Host.EndTool();
             return true;
         }
-        if (key is Key.Enter or Key.Return && _picking && _boundaries.Count > 0)
+        if (key is Key.Enter or Key.Return && _picking)
         {
             _picking = false;
+            _all = _boundaries.Count == 0;
             Host.SetPrompt(Prompt);
             Host.Invalidate();
             return true;
@@ -145,6 +146,8 @@ public sealed class TrimExtendTool : ViewTool
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
+        // With all objects as boundaries nothing needs highlighting.
+        if (_all) return;
         var pen = new Pen(Brushes.Orange, 2.5);
         foreach (var b in Boundaries)
         foreach (var path in b.ToPaths())
