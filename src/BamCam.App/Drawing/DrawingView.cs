@@ -88,12 +88,16 @@ public sealed partial class DrawingView : Control, IToolHost
     /// <summary>Raised on right-click without drag, so the window can show a context menu.</summary>
     public event EventHandler<Point>? ContextMenuRequested;
 
+    /// <summary>Raised after the active tool changed (the toolbar shows it).</summary>
+    public event EventHandler? ToolChanged;
+
     public void SetTool(ViewTool? tool)
     {
         _tool.OnDetached();
         _tool = tool ?? new SelectTool();
         _tool.Attach(this);
         InvalidateVisual();
+        ToolChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public void EndTool() => SetTool(null);

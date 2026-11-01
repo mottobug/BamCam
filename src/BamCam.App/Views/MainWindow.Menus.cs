@@ -17,6 +17,7 @@ public partial class MainWindow
     private readonly Dictionary<(Key, KeyModifiers), Action> _shortcuts = [];
     private readonly List<(MenuItem Item, Func<bool> IsChecked)> _checkItems = [];
     private readonly List<(ToggleButton Button, Func<bool> IsChecked)> _toggleButtons = [];
+    private readonly List<(Button Button, Func<ViewTool, bool> IsActive)> _toolButtons = [];
     private MenuItem? _postMenu;
 
     /// <summary>True while the main menu is built: shortcuts and check items are registered only then (context menus reuse the same builders).</summary>
@@ -369,6 +370,27 @@ public partial class MainWindow
         return b;
     }
 
+    /// <summary>Toolbar button that starts a drawing tool and is highlighted while that tool is active.</summary>
+    private Button ToolModeButton(string iconKey, string tip, Action start, Func<ViewTool, bool> isActive)
+    {
+        var b = ToolButton(iconKey, tip, start);
+        _toolButtons.Add((b, isActive));
+        return b;
+    }
+
+    /// <summary>Highlights the button of the active drawing tool (same look as a checked toggle button).</summary>
+    private void RefreshToolButtons()
+    {
+        var accent = this.FindResource("ToggleButtonBackgroundChecked") as IBrush ?? Brushes.DodgerBlue;
+        foreach (var (button, isActive) in _toolButtons)
+        {
+            var active = isActive(View.Tool);
+            if (active) button.Background = accent;
+            else button.ClearValue(BackgroundProperty);
+            if (button.Content is Path icon) icon.Stroke = active ? Brushes.White : Brushes.Black;
+        }
+    }
+
     private ComboBox? _unitsCombo;
     private bool _unitsHooked;
 
@@ -379,6 +401,7 @@ public partial class MainWindow
         var p = ToolbarPanel;
         p.Children.Clear();
         _toggleButtons.Clear();
+        _toolButtons.Clear();
         p.Children.Add(ToolButton("IconNew", "New", NewDrawing));
         p.Children.Add(ToolButton("IconOpen", "Open", OpenDialog));
         p.Children.Add(ToolButton("IconSave", "Save", () => _ = Save()));
@@ -417,14 +440,14 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconFit", "Zoom to fit", () => View.ZoomToFit()));
         RefreshChecks();
         p.Children.Add(ToolSeparator());
-        p.Children.Add(ToolButton("IconLine", "Line", () => View.SetTool(new PolylineTool(linesOnly: true))));
-        p.Children.Add(ToolButton("IconPolyline", "Polyline (P)", () => View.SetTool(new PolylineTool())));
-        p.Children.Add(ToolButton("IconArc", "Arc (A)", () => View.SetTool(new ArcTool())));
-        p.Children.Add(ToolButton("IconSpline", "Spline", () => View.SetTool(new SplineTool())));
-        p.Children.Add(ToolButton("IconCircle", "Circle (C)", () => View.SetTool(new CircleTool())));
-        p.Children.Add(ToolButton("IconRect", "Rectangle (R)", () => View.SetTool(new RectangleTool())));
-        p.Children.Add(ToolButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool())));
-        p.Children.Add(ToolButton("IconText", "Text (T)", DrawText));
+        p.Children.Add(ToolModeButton("IconLine", "Line", () => View.SetTool(new PolylineTool(linesOnly: true)), t => t is PolylineTool { LinesOnly: true }));
+        p.Children.Add(ToolModeButton("IconPolyline", "Polyline (P)", () => View.SetTool(new PolylineTool()), t => t is PolylineTool { LinesOnly: false }));
+        p.Children.Add(ToolModeButton("IconArc", "Arc (A)", () => View.SetTool(new ArcTool()), t => t is ArcTool));
+        p.Children.Add(ToolModeButton("IconSpline", "Spline", () => View.SetTool(new SplineTool()), t => t is SplineTool));
+        p.Children.Add(ToolModeButton("IconCircle", "Circle (C)", () => View.SetTool(new CircleTool()), t => t is CircleTool));
+        p.Children.Add(ToolModeButton("IconRect", "Rectangle (R)", () => View.SetTool(new RectangleTool()), t => t is RectangleTool));
+        p.Children.Add(ToolModeButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool()), t => t is PointListTool));
+        p.Children.Add(ToolModeButton("IconText", "Text (T)", DrawText, t => t is TextTool));
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
@@ -434,5 +457,6 @@ public partial class MainWindow
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths()));
         p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All)));
+        RefreshToolButtons();
     }
 }

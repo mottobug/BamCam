@@ -116,6 +116,9 @@ public abstract class DrawTool : ViewTool
 /// <summary>Polyline / line tool: click vertices, Enter or middle click finishes, C closes.</summary>
 public sealed class PolylineTool(bool linesOnly = false) : DrawTool
 {
+    /// <summary>Line tool (single lines) rather than polyline.</summary>
+    public bool LinesOnly => linesOnly;
+
     private readonly List<Point2> _pts = [];
 
     public override string Prompt => _pts.Count == 0

@@ -77,6 +77,7 @@ public partial class MainWindow : Window
 
         BuildMenu();
         BuildToolbar();
+        View.ToolChanged += (_, _) => RefreshToolButtons();
 
         _system.Reload();
         _system.DefaultPostName = _settings.DefaultPostProcessor;
@@ -284,6 +285,15 @@ public partial class MainWindow : Window
                 if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
                 ShowToolpathFilter();
             }
+            // --tool line|polyline|circle|rectangle: starts a drawing tool (toolbar highlight).
+            if (options.TryGetValue("--tool", out var toolName))
+                View.SetTool(toolName switch
+                {
+                    "line" => new PolylineTool(linesOnly: true),
+                    "circle" => new CircleTool(),
+                    "rectangle" => new RectangleTool(),
+                    _ => new PolylineTool(),
+                });
             // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
             Window? extra = null;
             if (options.TryGetValue("--window", out var which))
