@@ -265,6 +265,7 @@ public sealed partial class GCodePoster
             case "mop.peckdistance": return op is DrillOp dp ? Num(dp.PeckDistance.Value) : "";
             case "mop.dwell": return op is DrillOp dw ? Num(dw.Dwell.Value) : "";
             case "mop.holediameter": return op is DrillOp dh ? Num(dh.HoleDiameter.Value) : "";
+            case "mop.cutdata": return op is PlasmaOp pc ? pc.CutData.Value : "";
             case "mop.first.x": return First()?.X is { } fx ? Num(fx) : "";
             case "mop.first.y": return First()?.Y is { } fy ? Num(fy) : "";
             case "mop.first.z": return First()?.Z is { } fz ? Num(fz) : "";

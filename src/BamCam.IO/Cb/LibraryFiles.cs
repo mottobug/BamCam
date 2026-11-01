@@ -108,7 +108,50 @@ public static class LibraryFiles
         lib.SourcePath = path;
     }
 
-    /// <summary>    /// CAM styles the drawing refers to (machining options, parts, operations) that exist in no loaded style
+    /// <summary>Reads a plasma cut data table (BamCam format: one Entry element per row, values as child elements).</summary>
+    public static PlasmaCutTable LoadCutData(string path)
+    {
+        var root = XDocument.Load(path).Root ?? throw new InvalidDataException(Tr.T("Empty cut data table"));
+        var table = new PlasmaCutTable { Name = Path.GetFileNameWithoutExtension(path), SourcePath = path };
+        if (CbFormat.TryParseEnum(typeof(DrawingUnits), (string?)root.Attribute("Units") ?? "", out var units)) table.Units = (DrawingUnits)units;
+        foreach (var e in root.Elements("Entry"))
+        {
+            var entry = new PlasmaCutData { Name = (string?)e.Attribute("Name") ?? "" };
+            foreach (var prop in CutDataProperties)
+            {
+                if (e.Element(prop.Name) is not { } el) continue;
+                prop.SetValue(entry, prop.PropertyType == typeof(double) ? CbFormat.ParseDouble(el.Value) : el.Value);
+            }
+            table.Entries.Add(entry);
+        }
+        return table;
+    }
+
+    public static void SaveCutData(PlasmaCutTable table, string path)
+    {
+        var root = new XElement("PlasmaCutData", new XAttribute("Units", table.Units));
+        foreach (var entry in table.Entries)
+        {
+            var el = new XElement("Entry", new XAttribute("Name", entry.Name));
+            foreach (var prop in CutDataProperties)
+            {
+                var value = prop.GetValue(entry);
+                if (value is string s && s.Length == 0) continue;
+                el.Add(new XElement(prop.Name, value is double d ? CbFormat.Double(d) : value));
+            }
+            root.Add(el);
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+        table.SourcePath = path;
+    }
+
+    private static readonly System.Reflection.PropertyInfo[] CutDataProperties = typeof(PlasmaCutData).GetProperties()
+        .Where(p => p.CanWrite && p.Name != nameof(PlasmaCutData.Name) && (p.PropertyType == typeof(double) || p.PropertyType == typeof(string)))
+        .ToArray();
+
+    /// <summary>
+    /// CAM styles the drawing refers to (machining options, parts, operations) that exist in no loaded style
     /// library. Operations using them keep the values stored in the drawing (see <see cref="ApplyStyle"/>).
     /// </summary>
     public static List<string> MissingStyles(CadDocument doc)
@@ -128,9 +171,18 @@ public static class LibraryFiles
     /// <summary>
     /// Resolves the style chain for an operation (MOP style → part style → machining style → root) and
     /// writes the resolved values into every parameter that is in the Default state.
+    /// Plasma operations then take the values of their cut data entry (which win over the style).
     /// Returns the names of parameters whose cached value changed.
     /// </summary>
     public static List<string> ApplyStyle(CadDocument doc, MachineOp op)
+    {
+        var changed = ApplyStyleValues(doc, op);
+        if (op is PlasmaOp plasma && CamLibraries.FindCutData(doc, plasma.CutData.Value) is { } data)
+            changed.AddRange(data.ApplyTo(plasma).Except(changed));
+        return changed;
+    }
+
+    private static List<string> ApplyStyleValues(CadDocument doc, MachineOp op)
     {
         var changed = new List<string>();
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));

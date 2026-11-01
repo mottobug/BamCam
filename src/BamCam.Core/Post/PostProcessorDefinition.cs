@@ -226,7 +226,7 @@ public sealed class PostProcessorDefinition
             // G92 from probing is cleared again at the end, so that the work coordinates are as before.
             Footer = "{$clearance}\r\n{$spindle(off)}\r\nG92.1\r\n{$cbfile.footer}\r\n{$endrewind}",
             // No spindle codes: the torch is switched per cut.
-            MOP = "{$comment} {$mop.name} {$endcomment}\r\n{$mop.header}\r\n{$blocks}\r\n{$mop.footer}",
+            MOP = "{$comment} {$mop.name} {$mop.cutdata} {$endcomment}\r\n{$mop.header}\r\n{$blocks}\r\n{$mop.footer}",
             ToolChange = "",
             ToolTableItem = "",
             CannedCycleStart = "",

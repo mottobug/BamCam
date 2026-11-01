@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Runtime.Serialization;
 using BamCam.Core.Geometry;
+using BamCam.Core.Model;
 
 namespace BamCam.Core.Cam;
 
@@ -45,12 +46,22 @@ public sealed class PlasmaOp : MachineOp
     public override string XmlName => "BamCamPlasma";
     public override string DisplayType => "Plasma";
 
+    /// <summary>No milling tool and no spindle: the kerf width and the torch commands take their place.</summary>
+    public override IReadOnlySet<string> HiddenParameters => Hidden;
+
+    private static readonly HashSet<string> Hidden =
+    [
+        nameof(ToolDiameter), nameof(ToolNumber), nameof(ToolProfile), nameof(RoughingFinishing), nameof(RoughingClearance),
+        nameof(SpindleDirection), nameof(SpindleSpeed), nameof(SpindleRange), nameof(MaxCrossoverDistance), nameof(OptimisationMode),
+    ];
+
     public PlasmaOp()
     {
         // The torch is switched per shape (Torch On / Torch Off of the post), never with the operation's spindle codes.
         SpindleDirection = new(Cam.SpindleDirection.Off, ParamState.Value);
         SpindleSpeed = new(0, ParamState.Value);
-        CutFeedrate = new(2000, ParamState.Value);
+        // Default state: taken from the cut data (or a CAM style) unless typed in.
+        CutFeedrate = new(2000);
         PlungeFeedrate = new(1000, ParamState.Value);
         ClearancePlane = new(10, ParamState.Value);
     }
@@ -58,7 +69,7 @@ public sealed class PlasmaOp : MachineOp
     /// <summary>Starting values for inch drawings.</summary>
     public void UseInchDefaults()
     {
-        CutFeedrate.Set(80);
+        CutFeedrate.Value = 80;
         PlungeFeedrate.Set(40);
         ClearancePlane.Set(0.4);
         KerfWidth.Value = 0.06;
@@ -71,6 +82,16 @@ public sealed class PlasmaOp : MachineOp
         LeadOutLength.Value = 0.08;
         Overcut.Value = 0.02;
     }
+
+    [Param(59, "Plasma"), DisplayName("Cut Data"), Choices(nameof(CutDataChoices), Browse = true),
+     Description("Entry of the plasma cut data tables (System tab) for material, thickness and current. Its kerf width, feedrate and heights are used wherever this operation keeps the default value; values typed here override them.")]
+    public CamParam<string> CutData { get; set; } = new("");
+
+    /// <summary>Entries of all plasma cut data tables, for the drop-down list.</summary>
+    public static IEnumerable<KeyValuePair<string, string>> CutDataChoices() =>
+        CamLibraries.PlasmaTables.SelectMany(t => t.Entries).Select(e => e.Name).Where(n => n.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase).Select(n => new KeyValuePair<string, string>(n, n))
+            .Prepend(new KeyValuePair<string, string>("", Localization.Tr.T("(none)")));
 
     [Param(60, "Plasma"), DisplayName("Kerf Width"),
      Description("Width of the cut. The torch runs half of it beside the drawn line, so that parts get their drawn size.")]

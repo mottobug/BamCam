@@ -540,6 +540,7 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp())));
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
         p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp())));
+        p.Children.Add(ToolButton("IconPlasma", "Plasma", () => CreateOp(new PlasmaOp())));
         p.Children.Add(ToolSeparator());
         // Toolbar buttons of plugin commands with an icon.
         var pluginButtons = _plugins.Commands.Where(c => !string.IsNullOrWhiteSpace(c.Command.Icon)).ToList();

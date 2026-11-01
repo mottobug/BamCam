@@ -227,6 +227,12 @@ public abstract class MachineOp
     [Browsable(false)]
     public List<XElement> Extensions { get; } = [];
 
+    /// <summary>Common parameters that mean nothing for this kind of operation; not shown in the properties.</summary>
+    [Browsable(false)]
+    public virtual IReadOnlySet<string> HiddenParameters => NoHiddenParameters;
+
+    private static readonly HashSet<string> NoHiddenParameters = [];
+
     // ---- Common parameters (§6.2.1) -----------------------------------------------------
 
     [Param(10, "Tool")] public CamParam<WorkPlane> WorkPlane { get; set; } = new(Cam.WorkPlane.XY);

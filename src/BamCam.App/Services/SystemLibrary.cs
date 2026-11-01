@@ -49,10 +49,13 @@ public sealed class SystemLibrary
         }
     }
 
+    public static string PlasmaFolder => Path.Combine(SystemFolder, "plasma");
+
     private void LoadLibraries()
     {
         CamLibraries.StyleLibraries.Clear();
         CamLibraries.ToolLibraries.Clear();
+        LoadCutData();
 
         // Translation tables of a local CamBam: drawings saved by a localised CamBam contain translated values.
         var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
@@ -99,6 +102,31 @@ public sealed class SystemLibrary
                     LoadMessages.Add(F("Could not load library '{0}': {1}", file, ex.Message));
                 }
             }
+        }
+    }
+
+    /// <summary>Plasma cut data tables; the starting tables are written once and never overwritten.</summary>
+    private void LoadCutData()
+    {
+        CamLibraries.PlasmaTables.Clear();
+        try
+        {
+            Directory.CreateDirectory(PlasmaFolder);
+            foreach (var template in new[] { PlasmaCutTable.Template(false), PlasmaCutTable.Template(true) })
+            {
+                var path = Path.Combine(PlasmaFolder, template.Name + ".xml");
+                if (!File.Exists(path)) LibraryFiles.SaveCutData(template, path);
+            }
+        }
+        catch (Exception ex)
+        {
+            LoadMessages.Add(F("Could not save cut data table: {0}", ex.Message));
+        }
+        if (!Directory.Exists(PlasmaFolder)) return;
+        foreach (var file in Directory.GetFiles(PlasmaFolder, "*.xml"))
+        {
+            try { CamLibraries.PlasmaTables.Add(LibraryFiles.LoadCutData(file)); }
+            catch (Exception ex) { LoadMessages.Add(F("Could not load library '{0}': {1}", file, ex.Message)); }
         }
     }
 

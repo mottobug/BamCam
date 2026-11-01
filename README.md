@@ -155,7 +155,8 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - **Plasma** (also laser / oxy-fuel): kerf compensation (outlines outside, holes inside), holes before the outline
   around them, arc or line lead-ins and lead-outs through the scrap, torch on / off per cut with pierce height,
   pierce delay and cut height, either fixed or measured by probing with the torch switch (G38.2), THC on / off and
-  slower small holes.
+  slower small holes; plasma cut data tables (material, thickness, current → kerf, feedrate, heights) linked to
+  the operations.
 - **3D profile** on triangle meshes (STL):
   - Scanline horizontal/vertical, as level roughing or finishing, with an exact drop cutter for end, ball and
     bull nose mills (bull nose when the operation has a corner radius).

@@ -100,6 +100,13 @@ Special operations:
   - *Probe*: before every pierce the torch moves down with G38.2 until its switch triggers, Z is set to the
     surface (minus the *Switch Offset* of a floating head) and the heights count from there.
 
+  *Cut Data* picks a row of the plasma cut data tables (System tab ▸ Plasma Cut Data, files in the `plasma`
+  folder of the system folder): material, thickness, current, nozzle, kerf width, feedrate, pierce height, pierce
+  delay and cut height. The operation takes these values wherever it keeps the default (italic) value, also after
+  the table changes; a value typed into the operation wins. The tables start with a few rough values for 30 to 45
+  A cutters: replace them with the cut chart of your plasma cutter (right-click: new, duplicate, delete entry).
+  The toolbar button with the torch inserts a plasma operation.
+
   *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
   Size*, which are also cut slower). Use the post processor *GRBL Plasma* (torch `M3 S1000` / `M5`, pierce delay
   `G4 P…`, probing `G38.2` and `G92`) or set the *Plasma* templates of your own post: Torch On, Torch Off, Pierce

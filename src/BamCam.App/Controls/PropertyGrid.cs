@@ -39,6 +39,9 @@ public sealed partial class PropertyGrid : DockPanel
     /// <summary>Raised when the [...] button of a point list property is clicked (target object, property).</summary>
     public event EventHandler<(object Target, PropertyInfo Property)>? CollectionEditRequested;
 
+    /// <summary>Raised when the [...] button of a list with <see cref="ChoicesAttribute.Browse"/> is clicked (target object, property).</summary>
+    public event EventHandler<(object Target, PropertyInfo Property)>? BrowseRequested;
+
     /// <summary>Raised after a value was changed.</summary>
     public event EventHandler<string>? ValueChanged;
 
@@ -102,6 +105,8 @@ public sealed partial class PropertyGrid : DockPanel
         public IReadOnlyList<KeyValuePair<string, string>>? Choices { get; init; }
         /// <summary>Font family name: edited with a list of the installed fonts.</summary>
         public bool IsFontName { get; init; }
+        /// <summary>Action of a [...] button next to a drop-down list (opens where its entries are edited).</summary>
+        public Action? Browse { get; init; }
         public bool IsComposite => IsCompositeType(Type);
     }
 
@@ -130,6 +135,7 @@ public sealed partial class PropertyGrid : DockPanel
             if (prop.GetIndexParameters().Length > 0) continue;
             if (prop.GetCustomAttribute<BrowsableAttribute>() is { Browsable: false }) continue;
             if (prop.Name is "EqualityContract") continue;
+            if (target is MachineOp op && op.HiddenParameters.Contains(prop.Name)) continue;
 
             var categoryKey = CategoryOf(prop);
             var category = Tr.T(categoryKey);
@@ -152,7 +158,8 @@ public sealed partial class PropertyGrid : DockPanel
                         param.State = ParamState.Value;
                         param.RawXml = null;
                     },
-                    Param = param, Depth = depth,
+                    Param = param, Depth = depth, Choices = choices?.GetChoices(target.GetType()),
+                    Browse = choices is { Browse: true } ? BrowseAction(target, prop) : null,
                 };
                 continue;
             }
@@ -224,6 +231,8 @@ public sealed partial class PropertyGrid : DockPanel
             };
         }
     }
+
+    private Action BrowseAction(object target, PropertyInfo prop) => () => BrowseRequested?.Invoke(this, (target, prop));
 
     private static bool IsRecord(Type t) => t.GetMethod("<Clone>$") != null;
 
@@ -491,7 +500,15 @@ public sealed partial class PropertyGrid : DockPanel
                 var selected = choices[combo.SelectedIndex].Key;
                 if (selected != current) Apply(node, t.IsEnum ? Enum.Parse(t, selected) : selected);
             };
-            return combo;
+            if (node.Browse is not { } browse) return combo;
+            var panel = new DockPanel();
+            var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+            ToolTip.SetTip(button, Tr.T("Show and edit the entries"));
+            button.Click += (_, _) => browse();
+            DockPanel.SetDock(button, Dock.Right);
+            panel.Children.Add(button);
+            panel.Children.Add(combo);
+            return panel;
         }
 
         if (t == typeof(RgbColor) && value is RgbColor color)

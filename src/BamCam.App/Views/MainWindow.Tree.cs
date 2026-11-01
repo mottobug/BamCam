@@ -487,12 +487,33 @@ public partial class MainWindow
             tools.Items.Add(li);
         }
         SystemTree.Items.Add(tools);
+
+        var plasma = new TreeViewItem { Header = T("Plasma Cut Data"), IsExpanded = false };
+        foreach (var table in CamLibraries.PlasmaTables)
+        {
+            var ti = new TreeViewItem { Header = table.Name, Tag = table };
+            ToolTip.SetTip(ti, table.SourcePath);
+            ti.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Entry", () => NewCutData(table, null)) } };
+            foreach (var entry in table.Entries)
+            {
+                ti.Items.Add(new TreeViewItem
+                {
+                    Header = entry.ToString(), Tag = entry,
+                    ContextMenu = new ContextMenu
+                    {
+                        ItemsSource = new[] { Item("Duplicate Entry", () => NewCutData(table, entry)), Item("Delete Entry", () => DeleteCutData(table, entry)) },
+                    },
+                });
+            }
+            plasma.Items.Add(ti);
+        }
+        SystemTree.Items.Add(plasma);
     }
 
     private void OnSystemTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         var tag = (SystemTree.SelectedItem as TreeViewItem)?.Tag;
-        if (tag is PostProcessorDefinition or ToolDefinition or AppSettings) Properties.SelectedObject = tag;
+        if (tag is PostProcessorDefinition or ToolDefinition or PlasmaCutData or AppSettings) Properties.SelectedObject = tag;
     }
 
     private ContextMenu ShowViewContextMenu(Point p)

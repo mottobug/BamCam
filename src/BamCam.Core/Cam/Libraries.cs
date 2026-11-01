@@ -103,6 +103,17 @@ public static class CamLibraries
 {
     public static List<CamStyleLibrary> StyleLibraries { get; } = [];
     public static List<ToolLibrary> ToolLibraries { get; } = [];
+    public static List<PlasmaCutTable> PlasmaTables { get; } = [];
+
+    /// <summary>Plasma cut data by name: tables in the drawing's units first, then all others.</summary>
+    public static PlasmaCutData? FindCutData(Model.CadDocument doc, string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return null;
+        var inches = doc.Units == Model.DrawingUnits.Inches;
+        foreach (var table in PlasmaTables.OrderBy(t => (t.Units == Model.DrawingUnits.Inches) == inches ? 0 : 1))
+            if (table.Find(name) is { } entry) return entry;
+        return null;
+    }
 
     /// <summary>
     /// Tool lookup: Part tool library → Machining tool library → (turning operations) BamCam-Lathe-{units} →

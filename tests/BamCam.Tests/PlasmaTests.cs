@@ -145,6 +145,71 @@ public class PlasmaTests
     }
 
     [Fact]
+    public void Cut_data_tables_round_trip_through_files()
+    {
+        var table = PlasmaCutTable.Template(inches: false);
+        var path = Path.Combine(Path.GetTempPath(), $"bamcam-plasma-{Guid.NewGuid():N}.xml");
+        try
+        {
+            LibraryFiles.SaveCutData(table, path);
+            var back = LibraryFiles.LoadCutData(path);
+            Assert.Equal(DrawingUnits.Millimeters, back.Units);
+            Assert.Equal(table.Entries.Count, back.Entries.Count);
+            var entry = Assert.IsType<PlasmaCutData>(back.Find("Mild steel 3 mm 45 A"));
+            Assert.Equal(1.5, entry.KerfWidth, 9);
+            Assert.Equal(3000, entry.CutFeedrate, 9);
+            Assert.Equal(45, entry.Current, 9);
+            Assert.Equal(DrawingUnits.Inches, PlasmaCutTable.Template(inches: true).Units);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Collection(nameof(GlobalLibrariesCollection))]
+    public class LinkedCutData
+    {
+        [Fact]
+        public void Default_values_follow_the_cut_data_and_typed_values_win()
+        {
+            var table = new PlasmaCutTable { Name = "test" };
+            var data = new PlasmaCutData { Name = "Steel 4", KerfWidth = 1.8, CutFeedrate = 2400, PierceHeight = 4, PierceDelay = 0.4, CutHeight = 1.2 };
+            table.Entries.Add(data);
+            CamLibraries.PlasmaTables.Add(table);
+            try
+            {
+                var (doc, op) = Plate();
+                op.KerfWidth.State = ParamState.Default; // Plate() typed the kerf width
+                op.CutData.Set("Steel 4");
+                op.PierceDelay.Set(0.9);
+                var changed = LibraryFiles.ApplyStyle(doc, op);
+                Assert.Contains(nameof(PlasmaOp.KerfWidth), changed);
+                Assert.Equal(1.8, op.KerfWidth.Value, 9);
+                Assert.Equal(2400, op.CutFeedrate.Value, 9);
+                Assert.Equal(1.2, op.CutHeight.Value, 9);
+                Assert.Equal(0.9, op.PierceDelay.Value, 9); // typed in the operation
+
+                // Linked: a changed table value reaches the operation the next time styles are applied.
+                data.CutFeedrate = 2100;
+                LibraryFiles.ApplyStyle(doc, op);
+                Assert.Equal(2100, op.CutFeedrate.Value, 9);
+
+                var tp = ToolpathGenerator.Generate(doc, op);
+                var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "GRBL Plasma");
+                var text = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text;
+                Assert.Contains("( plasma Steel 4 )", text);
+                Assert.Contains("F2100.0", text);
+                Assert.Contains(PlasmaOp.CutDataChoices(), c => c.Key == "Steel 4");
+            }
+            finally
+            {
+                CamLibraries.PlasmaTables.Remove(table);
+            }
+        }
+    }
+
+    [Fact]
     public void Operation_round_trips_through_cb_files()
     {
         var (doc, op) = Plate(o =>

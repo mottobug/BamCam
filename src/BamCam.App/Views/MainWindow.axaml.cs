@@ -56,16 +56,21 @@ public partial class MainWindow : Window
         View.ContextMenuRequested += (_, p) => _ = ShowViewContextMenu(p);
         View.EntityDoubleClicked += (_, ent) => EditInView(ent);
         Properties.CollectionEditRequested += (_, e) => EditPoints(e.Target, e.Property);
+        Properties.BrowseRequested += (_, e) =>
+        {
+            if (e.Target is Core.Cam.PlasmaOp plasma) ShowCutData(plasma);
+        };
 
         Properties.ValueChanging += (_, _) =>
         {
             // Configuration edits are not part of the drawing's undo history.
-            if (Properties.SelectedObject is not (AppSettings or Core.Cam.ToolDefinition)) _session.BeginEdit();
+            if (Properties.SelectedObject is not (AppSettings or Core.Cam.ToolDefinition or Core.Cam.PlasmaCutData)) _session.BeginEdit();
         };
         Properties.ValueChanged += (_, key) =>
         {
             if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
             else if (Properties.SelectedObject is Core.Cam.ToolDefinition tool) OnToolEdited(tool);
+            else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
             else OnPropertyEdited();
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
