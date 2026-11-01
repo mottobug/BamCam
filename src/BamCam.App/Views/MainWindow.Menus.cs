@@ -265,6 +265,7 @@ public partial class MainWindow
     [
         Item("_Profile", () => CreateOp(new ProfileOp())),
         Item("P_ocket", () => CreateOp(new PocketOp())),
+        Item("_Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp())),
         Item("_Drill", () => CreateOp(new DrillOp())),
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_V-Engrave", () => CreateOp(new VEngraveOp())),
@@ -538,6 +539,7 @@ public partial class MainWindow
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
+        p.Children.Add(ToolButton("IconTrochoidal", "Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp())));
         p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp())));
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
         p.Children.Add(ToolButton("IconVEngrave", "V-Engrave", () => CreateOp(new VEngraveOp())));

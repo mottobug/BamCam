@@ -170,7 +170,8 @@ public static class MedialAxis
         var t = len2 < 1e-18 ? 0 : Math.Clamp(Point2.Dot(p.P - a.P, ab) / len2, 0, 1);
         var onLine = a.P + ab * t;
         var r = a.R + (b.R - a.R) * t;
-        return Math.Max(Point2.Distance(onLine, p.P), Math.Abs(r - p.R));
+        // A radius interpolated too large would let the tool (or the cone) touch the outline: allowed only a tenth.
+        return Math.Max(Point2.Distance(onLine, p.P), Math.Max(p.R - r, 10 * (r - p.R)));
     }
 
     /// <summary>Even-odd point-in-polygon test with the edges sorted into horizontal bands.</summary>

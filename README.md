@@ -148,6 +148,8 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - **Profile:** inside/outside, cut width with several passes, collision detection, corner overcut,
   holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins.
 - **Pocket:** offset and hatch fills, islands.
+- **Trochoidal pocket** (high speed clearing): circles along the centre lines of the pocket, each reaching at most
+  the step over into new material; helix entry, islands, final pass along the walls.
 - **Drill:** canned cycles G81/G82/G83 and spiral milling.
 - **Engrave** and **NC file** (G-code back-plot).
 - **V-engrave** (V-carving) of text, regions and closed polylines: the V-bit follows the centre lines (medial axis)

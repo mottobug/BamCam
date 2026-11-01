@@ -92,6 +92,12 @@ Special operations:
   threading and drilling; the remaining stock is shown in the drawing. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
+- **Trochoidal pocket** (Machining ▸ Trochoidal Pocket, toolbar button with the loops) for high speed clearing:
+  the tool enters with a helix (*Ramp Angle*) at the widest place and clears the pocket in circles along its
+  centre lines; each circle reaches at most *Step Over* (a fraction of the tool diameter, e.g. 0.15) beyond the
+  last one, also in corners and slots. That allows deep cuts with a small step over and a high feedrate. Islands
+  are left standing; *Final Pass* cuts along all walls at the end of each depth level. Places narrower than *Min
+  Circle Radius* are left to the final pass. Example: `examples_to_test/Trochoidal pocket.cb`.
 - **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
   closed polylines, set the *V Angle* of the bit (and its *Tip Diameter* if it has a flat tip) and the *Target
   Depth*. The bit follows the centre lines of each shape and goes exactly as deep as the shape is wide, so the cone
