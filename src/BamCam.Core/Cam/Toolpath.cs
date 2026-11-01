@@ -2,7 +2,10 @@ using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Cam;
 
-public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle, ThreadCycle, CutterComp }
+public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle, ThreadCycle, CutterComp, Torch }
+
+/// <summary>Plasma torch commands, see <see cref="Move.TorchSwitch"/> and <see cref="Move.TorchProbe"/>.</summary>
+public enum TorchAction { On, Off, ThcOn, ThcOff, Probe }
 
 /// <summary>Side of the machine's tool radius compensation (G41 left, G42 right, G40 off).</summary>
 public enum CutterSide { Off, Left, Right }
@@ -31,7 +34,8 @@ public readonly record struct DrillCycle(double RetractZ, double Peck, double Dw
 /// </summary>
 public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Point2 Center = default,
     string? Text = null, double Seconds = 0, DrillCycle Cycle = default, ThreadCycle Thread = default,
-    CutterSide Side = CutterSide.Off, IReadOnlyList<Move>? Programmed = null)
+    CutterSide Side = CutterSide.Off, IReadOnlyList<Move>? Programmed = null, TorchAction Torch = TorchAction.On,
+    double ProbeZ = 0)
 {
     public static Move Rapid(Point3 to) => new(MoveKind.Rapid, to);
     public static Move Line(Point3 to, double feed) => new(MoveKind.Feed, to, feed);
@@ -52,6 +56,17 @@ public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Po
         new(MoveKind.CutterComp, default, Side: side, Programmed: programmed);
 
     public static Move CompOff() => new(MoveKind.CutterComp, default, Side: CutterSide.Off);
+
+    /// <summary>Switches the plasma torch or its height control; for <see cref="TorchAction.On"/> with the pierce delay in seconds.</summary>
+    public static Move TorchSwitch(TorchAction action, double pierceDelay = 0) =>
+        new(MoveKind.Torch, default, Torch: action, Seconds: pierceDelay);
+
+    /// <summary>
+    /// Probes the material surface straight down, at most to <paramref name="lowest"/>, until the torch switch triggers;
+    /// the control then takes the current Z as <paramref name="zAtTrigger"/>.
+    /// </summary>
+    public static Move TorchProbe(Point3 lowest, double feed, double zAtTrigger) =>
+        new(MoveKind.Torch, lowest, feed, Torch: TorchAction.Probe, ProbeZ: zAtTrigger);
 
     public bool IsArc => Kind is MoveKind.ArcCW or MoveKind.ArcCCW;
     public bool IsMotion => Kind is MoveKind.Rapid or MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW;

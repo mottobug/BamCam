@@ -123,6 +123,24 @@ public sealed class PostProcessorDefinition
     [Category("Lathe"), DisplayName("Spindle Speed Limit")] public string SpindleSpeedLimit { get; set; } = "G50 {$s}";
     /// <summary>Back to constant spindle speed after the operation. Register: S spindle speed of the operation.</summary>
     [Category("Lathe"), DisplayName("Constant Spindle Speed")] public string ConstantSpindleSpeed { get; set; } = "G97 {$s}";
+    // ---- Plasma (used by plasma operations only) ----
+    [Category("Plasma"), DisplayName("Torch On"), Description("Switches the torch on at the pierce point.")]
+    public string TorchOn { get; set; } = "M3";
+    [Category("Plasma"), DisplayName("Torch Off"), Description("Switches the torch off at the end of a cut.")]
+    public string TorchOff { get; set; } = "M5";
+    [Category("Plasma"), DisplayName("Pierce Delay"), Description("Wait after Torch On. Register: P pierce delay in seconds.")]
+    public string PierceDelay { get; set; } = "G4 {$p}";
+    [Category("Plasma"), DisplayName("Torch Probe"),
+     Description("Probing move down to the material until the torch switch triggers. Registers: Z lowest Z, F probe feedrate.")]
+    public string TorchProbe { get; set; } = "G38.2 {$z} {$f}";
+    [Category("Plasma"), DisplayName("Torch Probe Set Z"),
+     Description("Sets the Z coordinate at the probed position (stock surface minus switch offset). Register: Z.")]
+    public string TorchProbeSetZ { get; set; } = "G92 {$z}";
+    [Category("Plasma"), DisplayName("Torch Height Control On"), Description("Switches the THC on when the torch has reached cut height (empty when the THC switches itself).")]
+    public string ThcOn { get; set; } = "";
+    [Category("Plasma"), DisplayName("Torch Height Control Off"), Description("Switches the THC off before the torch is switched off.")]
+    public string ThcOff { get; set; } = "";
+
     [Category("Options")] public double MinimumArcLength { get; set; } = 1e-4;
     [Category("Options")] public double MaximumArcRadius { get; set; } = 1e6;
     [Category("Options")] public string NumberFormat { get; set; } = "0.0###";
@@ -199,6 +217,24 @@ public sealed class PostProcessorDefinition
             DrillPeck = "",
             VelocityModeExactStop = "",
             VelocityModeConstantVelocity = "",
+            NumberFormat = "0.0##",
+        };
+        yield return new PostProcessorDefinition
+        {
+            Name = "GRBL Plasma",
+            Header = "{$comment} {$cbfile.name} {$date} {$endcomment}\r\n{$cbfile.header}\r\n{$units} {$distancemode} G17\r\n{$clearance}",
+            // G92 from probing is cleared again at the end, so that the work coordinates are as before.
+            Footer = "{$clearance}\r\n{$spindle(off)}\r\nG92.1\r\n{$cbfile.footer}\r\n{$endrewind}",
+            // No spindle codes: the torch is switched per cut.
+            MOP = "{$comment} {$mop.name} {$endcomment}\r\n{$mop.header}\r\n{$blocks}\r\n{$mop.footer}",
+            ToolChange = "",
+            ToolTableItem = "",
+            CannedCycleStart = "",
+            CannedCycleEnd = "",
+            DrillPeck = "",
+            VelocityModeExactStop = "",
+            VelocityModeConstantVelocity = "",
+            TorchOn = "M3 S1000",
             NumberFormat = "0.0##",
         };
     }

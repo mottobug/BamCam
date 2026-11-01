@@ -269,6 +269,7 @@ public partial class MainWindow
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_3D Profile", () => CreateOp(new Profile3DOp())),
         Item("Drag _Knife", () => CreateOp(new DragKnifeOp())),
+        Item("Pl_asma", () => CreateOp(new PlasmaOp())),
         Sub("_Lathe",
             Item("_Turning", () => CreateOp(new LatheOp())),
             Item("_Facing", () => CreateOp(new LatheFacingOp())),

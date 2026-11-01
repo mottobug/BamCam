@@ -72,7 +72,7 @@ Everything can be undone with `Ctrl+Z`.
 ## 4. Machining
 
 1. **Select** the objects to machine.
-2. **Add an operation** (Machining menu or toolbar): profile, pocket, drill, engrave, 3D profile, drag knife, or a
+2. **Add an operation** (Machining menu or toolbar): profile, pocket, drill, engrave, 3D profile, drag knife, plasma, or a
    lathe operation (Machining ▸ Lathe).
 3. **Set it up** in the properties: tool diameter (or a tool number from the library), depths, feeds, spindle
    speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation.
@@ -92,6 +92,20 @@ Special operations:
   threading and drilling; the remaining stock is shown in the drawing. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
+- **Plasma** (Machining ▸ Plasma) for plasma, laser and oxy-fuel cutters: select all outlines and holes of the parts
+  in one operation and set the *Kerf Width*. BamCam cuts holes before the outline around them, outlines outside
+  and holes inside the line, and enters through the scrap with a lead-in arc. Per cut the torch moves to *Pierce
+  Height*, is switched on, waits *Pierce Delay*, moves down to *Cut Height* and cuts. *Height Control*:
+  - *Fixed Heights*: the heights are above the stock surface (Z 0 on the material).
+  - *Probe*: before every pierce the torch moves down with G38.2 until its switch triggers, Z is set to the
+    surface (minus the *Switch Offset* of a floating head) and the heights count from there.
+
+  *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
+  Size*, which are also cut slower). Use the post processor *GRBL Plasma* (torch `M3 S1000` / `M5`, pierce delay
+  `G4 P…`, probing `G38.2` and `G92`) or set the *Plasma* templates of your own post: Torch On, Torch Off, Pierce
+  Delay, Torch Probe, Torch Probe Set Z, THC on / off. On GRBL switch laser mode off (`$32=0`), otherwise `M3`
+  only switches the torch while the machine moves. Try a new setup in the air first (torch off or without
+  material). Example: `examples_to_test/Plasma (bracket).cb`.
 
 ## 5. Printing and export
 

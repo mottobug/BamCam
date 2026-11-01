@@ -137,7 +137,7 @@ internal static class DragKnifeGenerator
     }
 
     /// <summary>The first <paramref name="length"/> of the closed shape again (to cut beyond the start).</summary>
-    private static IEnumerable<Segment> Overcut(List<Segment> segments, double length)
+    internal static IEnumerable<Segment> Overcut(List<Segment> segments, double length)
     {
         foreach (var s in segments)
         {
@@ -162,7 +162,7 @@ internal static class DragKnifeGenerator
         }
     }
 
-    private static Point2 StartTangent(Segment s)
+    internal static Point2 StartTangent(Segment s)
     {
         if (!s.IsArc) return (s.End.XY - s.Start.XY).Normalized();
         var arc = s.ToArc();
@@ -170,7 +170,7 @@ internal static class DragKnifeGenerator
         return arc.Sweep > 0 ? new Point2(-radial.Y, radial.X) : new Point2(radial.Y, -radial.X);
     }
 
-    private static Point2 EndTangent(Segment s)
+    internal static Point2 EndTangent(Segment s)
     {
         if (!s.IsArc) return (s.End.XY - s.Start.XY).Normalized();
         var arc = s.ToArc();

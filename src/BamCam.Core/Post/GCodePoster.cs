@@ -518,6 +518,9 @@ public sealed partial class GCodePoster
                     continue;
                 case MoveKind.Dwell:
                     continue;
+                case MoveKind.Torch:
+                    TorchBlocks(m, Line);
+                    continue;
                 case MoveKind.DrillCycle:
                 {
                     if (!inCanned)
@@ -746,6 +749,26 @@ public sealed partial class GCodePoster
             line(MoveLine(_post.ThreadPass, MoveKind.Feed, new() { ['Z'] = end.X, ['K'] = tc.Pitch }, forceEmit: true));
             line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['X'] = LatheX(driveX) }));
             line(MoveLine(_post.Rapid, MoveKind.Rapid, new() { ['Z'] = startZ }));
+        }
+    }
+
+    /// <summary>Plasma torch commands: on with pierce delay, off, THC on / off, probing the material.</summary>
+    private void TorchBlocks(Move m, Action<string> line)
+    {
+        switch (m.Torch)
+        {
+            case TorchAction.On:
+                line(Expand(_post.TorchOn));
+                if (m.Seconds > 0) line(MoveLine(_post.PierceDelay, MoveKind.Torch, new() { ['P'] = m.Seconds }, forceEmit: true));
+                break;
+            case TorchAction.Off: line(Expand(_post.TorchOff)); break;
+            case TorchAction.ThcOn: line(Expand(_post.ThcOn)); break;
+            case TorchAction.ThcOff: line(Expand(_post.ThcOff)); break;
+            case TorchAction.Probe:
+                line(MoveLine(_post.TorchProbe, MoveKind.Torch, new() { ['Z'] = Out(m.To).Z, ['F'] = m.Feed }, forceEmit: true));
+                // The probe stops somewhere above its lowest Z; from here on Z is the value set at the trigger point.
+                line(MoveLine(_post.TorchProbeSetZ, MoveKind.Torch, new() { ['Z'] = Out(m.To with { Z = m.ProbeZ }).Z }, forceEmit: true));
+                break;
         }
     }
 

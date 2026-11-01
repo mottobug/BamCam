@@ -152,6 +152,10 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - **Engrave** and **NC file** (G-code back-plot).
 - **Drag knife** (vinyl / foil cutting): the path moves forward by the blade offset, with swivel arcs around
   corners above the swivel angle and an overcut at the end of closed shapes.
+- **Plasma** (also laser / oxy-fuel): kerf compensation (outlines outside, holes inside), holes before the outline
+  around them, arc or line lead-ins and lead-outs through the scrap, torch on / off per cut with pierce height,
+  pierce delay and cut height, either fixed or measured by probing with the torch switch (G38.2), THC on / off and
+  slower small holes.
 - **3D profile** on triangle meshes (STL):
   - Scanline horizontal/vertical, as level roughing or finishing, with an exact drop cutter for end, ball and
     bull nose mills (bull nose when the operation has a corner radius).
@@ -189,7 +193,7 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with
   rapids and cut widths, toolpaths to geometry.
 
-**G-code:** built-in post processors Default, Mach3, LinuxCNC and GRBL; existing `.cbpp` files are loaded
+**G-code:** built-in post processors Default, Mach3, LinuxCNC, LinuxCNC Turn, GRBL and GRBL Plasma; existing `.cbpp` files are loaded
 (own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
 **DXF export** as R2000 (splines stay splines) or R12, selectable in the options.
 **Post-build command** of a post processor (as in CamBam): an external program run on the written G-code file,
