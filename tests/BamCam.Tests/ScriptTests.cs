@@ -18,6 +18,24 @@ public class ScriptTests
     }
 
     [Fact]
+    public void Examples_in_the_script_documentation_run()
+    {
+        // docs/scripts.md next to the repository root (tests run in tests/BamCam.Tests/bin/...).
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "docs", "scripts.md"))) dir = dir.Parent;
+        Assert.NotNull(dir);
+        var text = File.ReadAllText(Path.Combine(dir!.FullName, "docs", "scripts.md")).Replace("\r\n", "\n");
+        var blocks = System.Text.RegularExpressions.Regex.Matches(text, "```csharp\n(.*?)```", System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.True(blocks.Count >= 4);
+        foreach (System.Text.RegularExpressions.Match block in blocks)
+        {
+            var (paths, error) = ScriptRunner.Run(block.Groups[1].Value);
+            Assert.True(error == null, $"{error}\n{block.Groups[1].Value}");
+            Assert.NotEmpty(paths!);
+        }
+    }
+
+    [Fact]
     public void Compile_and_run_errors_are_reported()
     {
         var (paths, error) = ScriptRunner.Run("Add(Circle(0, 0, ));");

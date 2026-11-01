@@ -43,6 +43,11 @@ STL and G-code, and produces G-code through a template engine that understands t
   </tr>
 </table>
 
+## Documentation
+
+- [User guide](docs/user-guide.md): from the first start to G-code, all drawing and machining functions, shortcuts.
+- [Script objects](docs/scripts.md), [writing plugins](docs/plugins.md), [porting CamBam plugins](docs/porting-cambam-plugins.md).
+
 ## Build and run
 
 Requirement: .NET SDK 10.
