@@ -58,6 +58,14 @@ public partial class MainWindow
         return item;
     }
 
+    /// <summary>Check item for one kind of object snap point.</summary>
+    private MenuItem SnapKindCheck(string header, Core.Cad.SnapKinds kind)
+    {
+        var s = View.Settings;
+        return Check(header, () => s.ObjectSnapKinds.HasFlag(kind),
+            v => s.ObjectSnapKinds = v ? s.ObjectSnapKinds | kind : s.ObjectSnapKinds & ~kind);
+    }
+
     private MenuItem RecentMenu()
     {
         _recentMenu = new MenuItem { Header = T("_Recent Files") };
@@ -216,6 +224,12 @@ public partial class MainWindow
             "-",
             Check("Snap to _Grid", () => s.SnapToGrid, v => s.SnapToGrid = v, "Ctrl+G"),
             Check("Snap to _Objects", () => s.SnapToObjects, v => s.SnapToObjects = v),
+            Sub("Object Snap _Modes",
+                SnapKindCheck("_End Points", Core.Cad.SnapKinds.EndPoint),
+                SnapKindCheck("_Mid Points", Core.Cad.SnapKinds.MidPoint),
+                SnapKindCheck("Circle _Centers", Core.Cad.SnapKinds.Center),
+                SnapKindCheck("_Quadrants", Core.Cad.SnapKinds.Quadrant),
+                SnapKindCheck("_Intersections", Core.Cad.SnapKinds.Intersection)),
         ];
     }
 

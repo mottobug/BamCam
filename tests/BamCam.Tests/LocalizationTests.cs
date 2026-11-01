@@ -22,7 +22,7 @@ public partial class LocalizationTests(ITestOutputHelper output)
     private static readonly string Root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
 
     // Literal arguments: T("..."), F("...", …), Tr.T(...), menu helpers, toolbar buttons, attributes and type names.
-    [GeneratedRegex("""(?:ToolButton\("\w+",|\[Param\(\d+,|\b(?:T|F|Tr\.T|Tr\.F|Item|Check|Sub|Category|DisplayName|Description)\s*\()\s*"((?:[^"\\]|\\.)*)"(?!\s*\+)""")]
+    [GeneratedRegex("""(?:ToolButton\("\w+",|\[Param\(\d+,|\b(?:T|F|Tr\.T|Tr\.F|Item|Check|SnapKindCheck|Sub|Category|DisplayName|Description)\s*\()\s*"((?:[^"\\]|\\.)*)"(?!\s*\+)""")]
     private static partial Regex LiteralCall();
 
     [GeneratedRegex("""\b(?:TypeName|DisplayType)\s*=>\s*"((?:[^"\\]|\\.)*)";""")]

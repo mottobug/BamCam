@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using BamCam.App.Services;
+using BamCam.Core.Cad;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
@@ -28,7 +29,7 @@ public sealed partial class DrawingView : Control, IToolHost
     private double _rotYaw0, _rotPitch0;
 
     private Point _cursorScreen;
-    private Point2? _snapMarker;
+    private SnapPoint? _snapMarker;
 
     public DrawingView()
     {
@@ -346,30 +347,15 @@ public sealed partial class DrawingView : Control, IToolHost
     public Point2 Snap(Point2 world, Point screen)
     {
         _snapMarker = null;
-        if (Settings.SnapToObjects && _session != null)
+        if (Settings.SnapToObjects && Settings.ObjectSnapKinds != SnapKinds.None && _session != null)
         {
-            const double radius = 8;
-            var best = radius;
-            Point2? found = null;
-            foreach (var layer in _session.Document.Layers)
-            {
-                if (!layer.Visible) continue;
-                foreach (var ent in layer.Entities)
-                foreach (var sp in SnapPoints(ent))
-                {
-                    var s = _view.ToScreen(sp);
-                    var d = Math.Abs(s.X - screen.X) + Math.Abs(s.Y - screen.Y);
-                    if (d < best)
-                    {
-                        best = d;
-                        found = sp;
-                    }
-                }
-            }
-            if (found != null)
+            // Catch radius of 8 pixels in drawing units.
+            var radius = Point2.Distance(_view.ToWorld(screen), _view.ToWorld(new Point(screen.X + 8, screen.Y)));
+            var entities = _session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities);
+            if (ObjectSnap.Find(entities, _view.ToWorld(screen), radius, Settings.ObjectSnapKinds) is { } found)
             {
                 _snapMarker = found;
-                return found.Value;
+                return found.Point;
             }
         }
         if (Settings.SnapToGrid)
@@ -378,29 +364,6 @@ public sealed partial class DrawingView : Control, IToolHost
             return new Point2(Math.Round(world.X / g) * g, Math.Round(world.Y / g) * g);
         }
         return world;
-    }
-
-    private static IEnumerable<Point2> SnapPoints(Entity e)
-    {
-        switch (e)
-        {
-            case CircleEntity c:
-                var center = c.Transform.Transform(c.Center).XY;
-                yield return center;
-                break;
-            case ArcEntity a:
-                yield return a.Transform.Transform(a.Center).XY;
-                break;
-            case PointListEntity pl:
-                foreach (var p in pl.WorldPoints()) yield return p.XY;
-                yield break;
-            case TextEntity:
-            case SurfaceEntity:
-                yield break;
-        }
-        foreach (var path in e.ToPaths())
-        foreach (var v in path.Vertices)
-            yield return v.XY;
     }
 
     public IReadOnlyList<Entity> HitTest(Point screen, double pixelTolerance = 5)
@@ -806,9 +769,43 @@ public sealed partial class DrawingView : Control, IToolHost
 
     private void RenderSnapMarker(DrawingContext dc)
     {
-        if (_snapMarker is not { } p) return;
-        var s = _view.ToScreen(p);
-        dc.DrawRectangle(null, new Pen(Brushes.Yellow, 1), new Rect(s.X - 5, s.Y - 5, 10, 10));
+        if (_snapMarker is not { } m) return;
+        var s = _view.ToScreen(m.Point);
+        var pen = new Pen(Brushes.Yellow, 1.5);
+        // Marker shapes as usual in CAD: square end point, triangle middle, circle centre, diamond quadrant, cross intersection.
+        switch (m.Kind)
+        {
+            case SnapKinds.MidPoint:
+                dc.DrawGeometry(null, pen, Polygon(new(s.X, s.Y - 6), new(s.X + 6, s.Y + 5), new(s.X - 6, s.Y + 5)));
+                break;
+            case SnapKinds.Center:
+                dc.DrawEllipse(null, pen, s, 6, 6);
+                dc.DrawLine(pen, new Point(s.X - 2, s.Y), new Point(s.X + 2, s.Y));
+                dc.DrawLine(pen, new Point(s.X, s.Y - 2), new Point(s.X, s.Y + 2));
+                break;
+            case SnapKinds.Quadrant:
+                dc.DrawGeometry(null, pen, Polygon(new(s.X, s.Y - 7), new(s.X + 7, s.Y), new(s.X, s.Y + 7), new(s.X - 7, s.Y)));
+                break;
+            case SnapKinds.Intersection:
+                dc.DrawLine(pen, new Point(s.X - 6, s.Y - 6), new Point(s.X + 6, s.Y + 6));
+                dc.DrawLine(pen, new Point(s.X - 6, s.Y + 6), new Point(s.X + 6, s.Y - 6));
+                break;
+            default:
+                dc.DrawRectangle(null, pen, new Rect(s.X - 5, s.Y - 5, 10, 10));
+                break;
+        }
+    }
+
+    private static StreamGeometry Polygon(params Point[] points)
+    {
+        var g = new StreamGeometry();
+        using (var ctx = g.Open())
+        {
+            ctx.BeginFigure(points[0], false);
+            foreach (var p in points.Skip(1)) ctx.LineTo(p);
+            ctx.EndFigure(true);
+        }
+        return g;
     }
 }
 
@@ -824,6 +821,8 @@ public sealed class ViewSettings
     public bool ToolpathVisibilitySelectedOnly { get; set; }
     public bool SnapToGrid { get; set; } = true;
     public bool SnapToObjects { get; set; }
+    /// <summary>Which object points <see cref="SnapToObjects"/> catches.</summary>
+    public SnapKinds ObjectSnapKinds { get; set; } = SnapKinds.All;
     public bool SelectFade { get; set; } = true;
     /// <summary>Show nest copies while their Part is selected.</summary>
     public bool ShowNests { get; set; } = true;

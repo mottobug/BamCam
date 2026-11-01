@@ -80,6 +80,8 @@ public sealed class AppSettings
     public bool RepeatCommands { get; set; } = true;
     [Category("Drawing"), DisplayName("Snap To Grid")] public bool SnapToGrid { get; set; } = true;
     [Category("Drawing"), DisplayName("Snap To Points")] public bool SnapToPoints { get; set; }
+    /// <summary>Kinds of object snap points (View ▸ Object Snap Modes).</summary>
+    [Browsable(false)] public BamCam.Core.Cad.SnapKinds ObjectSnap { get; set; } = BamCam.Core.Cad.SnapKinds.All;
     [Category("Drawing"), DisplayName("Spline To Polyline Tolerance"),
      Description("Largest deviation of the lines and arcs used for splines (display, toolpaths, export as polylines).")]
     public double SplineTolerance { get; set; } = 0.001;
@@ -229,6 +231,7 @@ public sealed class AppSettings
         v.TabDragToolpathRefresh = TabDragToolpathRefresh;
         v.SnapToGrid = SnapToGrid;
         v.SnapToObjects = SnapToPoints;
+        v.ObjectSnapKinds = ObjectSnap;
         v.Background = C(ViewBackColor);
         v.GridMinorColor = C(GridMinorColor);
         v.GridMajorColor = C(GridMajorColor);
@@ -259,6 +262,7 @@ public sealed class AppSettings
         ShowNests = v.ShowNests;
         SnapToGrid = v.SnapToGrid;
         SnapToPoints = v.SnapToObjects;
+        ObjectSnap = v.ObjectSnapKinds;
     }
 }
 
