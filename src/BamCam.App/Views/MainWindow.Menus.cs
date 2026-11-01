@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -15,6 +16,7 @@ public partial class MainWindow
 {
     private readonly Dictionary<(Key, KeyModifiers), Action> _shortcuts = [];
     private readonly List<(MenuItem Item, Func<bool> IsChecked)> _checkItems = [];
+    private readonly List<(ToggleButton Button, Func<bool> IsChecked)> _toggleButtons = [];
     private MenuItem? _postMenu;
 
     /// <summary>True while the main menu is built: shortcuts and check items are registered only then (context menus reuse the same builders).</summary>
@@ -64,9 +66,16 @@ public partial class MainWindow
         return _recentMenu;
     }
 
+    /// <summary>Updates the check marks of the View menu and the toggle buttons of the toolbar.</summary>
     private void RefreshChecks()
     {
         foreach (var (item, get) in _checkItems) item.IsChecked = get();
+        foreach (var (button, get) in _toggleButtons)
+        {
+            button.IsChecked = get();
+            // The checked button has the accent background: draw its icon light.
+            if ((button.Content as Panel)?.Children[0] is Path icon) icon.Stroke = get() ? Brushes.White : Brushes.Black;
+        }
     }
 
     private static MenuItem Sub(string header, params object[] items)
@@ -310,6 +319,39 @@ public partial class MainWindow
         return b;
     }
 
+    /// <summary>Toolbar button for an on/off view setting: shows its state and stays in step with the View menu.</summary>
+    /// <remarks><paramref name="dotKey"/>: optional red mark on the icon (the snap point of the snap buttons).</remarks>
+    private ToggleButton ToggleToolButton(string iconKey, string tip, Func<bool> get, Action<bool> set, string? shortcut = null, string? dotKey = null)
+    {
+        // The 24 x 24 icon box scaled to 18 px, the same for both layers so that they stay aligned.
+        Path Layer(string key, IBrush stroke, IBrush? fill)
+        {
+            var geo = ((Geometry)this.FindResource(key)!).Clone();
+            geo.Transform = new ScaleTransform(0.75, 0.75);
+            return new Path
+            {
+                Data = geo, Stroke = stroke, Fill = fill, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.None,
+                StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
+            };
+        }
+        var icon = new Grid();
+        icon.Children.Add(Layer(iconKey, Brushes.Black, null));
+        if (dotKey != null) icon.Children.Add(Layer(dotKey, Brushes.Red, Brushes.Red));
+        var b = new ToggleButton { Content = icon };
+        ToolTip.SetTip(b, shortcut == null ? T(tip) : $"{T(tip)} ({shortcut})");
+        b.Click += (_, _) =>
+        {
+            set(!get());
+            RefreshChecks();
+            SaveSettings();
+            View.Invalidate();
+            UpdateTitle();
+            View.Focus();
+        };
+        _toggleButtons.Add((b, get));
+        return b;
+    }
+
     private ComboBox? _unitsCombo;
     private bool _unitsHooked;
 
@@ -319,6 +361,7 @@ public partial class MainWindow
     {
         var p = ToolbarPanel;
         p.Children.Clear();
+        _toggleButtons.Clear();
         p.Children.Add(ToolButton("IconNew", "New", NewDrawing));
         p.Children.Add(ToolButton("IconOpen", "Open", OpenDialog));
         p.Children.Add(ToolButton("IconSave", "Save", () => _ = Save()));
@@ -349,10 +392,13 @@ public partial class MainWindow
             _session.DocumentReplaced += (_, _) => _unitsCombo!.SelectedIndex = _session.Document.Units == Core.Model.DrawingUnits.Inches ? 1 : 0;
         }
         p.Children.Add(units);
-        p.Children.Add(ToolButton("IconAxis", "Show axis", () => { View.Settings.ShowAxis = !View.Settings.ShowAxis; RefreshChecks(); View.Invalidate(); }));
-        p.Children.Add(ToolButton("IconGrid", "Show grid", () => { View.Settings.ShowGrid = !View.Settings.ShowGrid; RefreshChecks(); View.Invalidate(); }));
-        p.Children.Add(ToolButton("IconSnap", "Snap to grid", () => { View.Settings.SnapToGrid = !View.Settings.SnapToGrid; RefreshChecks(); UpdateTitle(); }));
+        var s = View.Settings;
+        p.Children.Add(ToggleToolButton("IconAxis", "Show axis", () => s.ShowAxis, v => s.ShowAxis = v));
+        p.Children.Add(ToggleToolButton("IconGrid", "Show grid", () => s.ShowGrid, v => s.ShowGrid = v));
+        p.Children.Add(ToggleToolButton("IconSnap", "Snap to grid", () => s.SnapToGrid, v => s.SnapToGrid = v, "Ctrl+G", "IconSnapDot"));
+        p.Children.Add(ToggleToolButton("IconSnapObjects", "Snap to objects", () => s.SnapToObjects, v => s.SnapToObjects = v, dotKey: "IconSnapObjectsDot"));
         p.Children.Add(ToolButton("IconFit", "Zoom to fit", () => View.ZoomToFit()));
+        RefreshChecks();
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconLine", "Line", () => View.SetTool(new PolylineTool(linesOnly: true))));
         p.Children.Add(ToolButton("IconPolyline", "Polyline (P)", () => View.SetTool(new PolylineTool())));

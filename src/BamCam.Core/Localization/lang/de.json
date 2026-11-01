@@ -1083,6 +1083,7 @@
   "Surface Speed": "Schnittgeschwindigkeit",
   "Turning Side": "Drehseite",
   "{0}: internal turning needs Stock Surface (radius of the pre-drilled hole) below the bore and Clearance Plane below Stock Surface.": "{0}: Innendrehen braucht eine Rohteiloberfläche (Radius der Vorbohrung) kleiner als die Bohrung und eine Sicherheitsebene kleiner als die Rohteiloberfläche.",
+  "Snap to objects": "An Objekten fangen",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

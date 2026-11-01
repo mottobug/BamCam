@@ -33,7 +33,11 @@
     <StreamGeometry x:Key="IconGrid">M3,3 L21,3 L21,21 L3,21 Z M9,3 L9,21 M15,3 L15,21 M3,9 L21,9 M3,15 L21,15</StreamGeometry>
     <StreamGeometry x:Key="IconAxis">M4,20 L4,3 M4,20 L21,20 M4,3 L2,6 M4,3 L6,6 M21,20 L18,18 M21,20 L18,22</StreamGeometry>
     <StreamGeometry x:Key="IconFit">M3,8 L3,3 L8,3 M16,3 L21,3 L21,8 M21,16 L21,21 L16,21 M8,21 L3,21 L3,16 M8,8 L16,8 L16,16 L8,16 Z</StreamGeometry>
-    <StreamGeometry x:Key="IconSnap">M12,3 L12,21 M3,12 L21,12 M8,8 L16,8 L16,16 L8,16 Z</StreamGeometry>
+    <!-- Snapping: grid with a point on a grid node, circle with a point on its rim. -->
+    <StreamGeometry x:Key="IconSnap">M3,3 L21,3 L21,21 L3,21 Z M12,3 L12,21 M3,12 L21,12</StreamGeometry>
+    <StreamGeometry x:Key="IconSnapDot">M9.5,12 A2.5,2.5 0 1 1 14.5,12 A2.5,2.5 0 1 1 9.5,12 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSnapObjects">M4,13 A8,8 0 1 1 20,13 A8,8 0 1 1 4,13 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSnapObjectsDot">M15.2,7.3 A2.5,2.5 0 1 1 20.2,7.3 A2.5,2.5 0 1 1 15.2,7.3 Z</StreamGeometry>
   </Window.Resources>
 
   <DockPanel>
