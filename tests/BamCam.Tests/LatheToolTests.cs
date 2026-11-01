@@ -6,6 +6,7 @@ using BamCam.IO.Cb;
 
 namespace BamCam.Tests;
 
+[Collection(GlobalLibrariesCollection.Name)]
 public class LatheToolTests
 {
     [Fact]

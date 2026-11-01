@@ -7,6 +7,7 @@ using BamCam.IO.Dxf;
 
 namespace BamCam.Tests;
 
+[Collection(GlobalLibrariesCollection.Name)]
 public class WorkflowTests
 {
     private static CadDocument PlateWithHoles()

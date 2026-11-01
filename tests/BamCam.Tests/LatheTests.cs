@@ -9,6 +9,7 @@ using Xunit.Abstractions;
 
 namespace BamCam.Tests;
 
+[Collection(GlobalLibrariesCollection.Name)]
 public partial class LatheTests(ITestOutputHelper output)
 {
     private static readonly string Dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test"));
