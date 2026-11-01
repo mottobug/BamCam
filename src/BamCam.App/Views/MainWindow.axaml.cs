@@ -301,6 +301,13 @@ public partial class MainWindow : Window
                 if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
                 ShowToolpathFilter();
             }
+            // --align-menu: opens the align menu of the toolbar and logs whether it is open.
+            if (options.ContainsKey("--align-menu") && _alignButton != null)
+            {
+                var menu = ShowAlignMenu(_alignButton);
+                await Task.Delay(300);
+                Log($"--align-menu: open={menu.IsOpen}, items={menu.Items.Count}");
+            }
             // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
             Window? extra = null;
             if (options.TryGetValue("--window", out var which))

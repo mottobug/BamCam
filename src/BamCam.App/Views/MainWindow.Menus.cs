@@ -431,6 +431,17 @@ public partial class MainWindow
         return items.ToArray();
     }
 
+    private Button? _alignButton;
+
+    /// <summary>Opens the align menu below the toolbar button, built fresh so that the reference check is current.</summary>
+    private MenuFlyout ShowAlignMenu(Control anchor)
+    {
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
+        foreach (var item in AlignMenuItems()) menu.Items.Add(item);
+        menu.ShowAt(anchor);
+        return menu;
+    }
+
     private MenuItem AlignSubmenu()
     {
         var sub = Sub("A_lign");
@@ -512,10 +523,9 @@ public partial class MainWindow
         {
             Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { IconPath("IconAlignLeft"), arrow } },
         };
-        var flyout = new MenuFlyout();
-        flyout.Opening += (_, _) => flyout.ItemsSource = AlignMenuItems();
-        align.Flyout = flyout;
+        align.Click += (_, _) => ShowAlignMenu(align);
         ToolTip.SetTip(align, T("Align"));
+        _alignButton = align;
         p.Children.Add(align);
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
