@@ -1097,7 +1097,7 @@
   "Corner overcut": "Eckfreischnitt",
   "Corner overcut, tool radius": "Eckfreischnitt, Werkzeugradius",
   "Fillet": "Abrunden",
-  "Fillet / Chamfer: select one polyline (other shapes: Edit > Convert To > Polyline).": "Abrunden / Fasen: eine Polylinie auswählen (andere Formen: Bearbeiten > Konvertieren > Polylinie).",
+  "Fillet / Chamfer: select one polyline, rectangle or line first.": "Abrunden / Fasen: zuerst eine Polylinie, ein Rechteck oder eine Linie auswählen.",
   "Fillet, radius": "Abrunden, Radius",
   "Inverted fillet, radius": "Umgekehrte Rundung, Radius",
   "This corner cannot be changed": "Diese Ecke lässt sich nicht ändern",
