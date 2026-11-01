@@ -94,6 +94,9 @@ public sealed class MyPlugin : IBamCamPlugin
 }
 ```
 
+A command with an `Icon` (SVG path data in a 24 x 24 box, drawn as lines, e.g. `"M4,20 L12,4 L20,20 Z"`) also gets
+a toolbar button.
+
 `host.Language` gives the active user interface language ("en", "de", ...) for the plugin's own texts.
 
 ### Commands

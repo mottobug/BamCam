@@ -43,7 +43,12 @@ public partial class MainWindow
                 ? F("Plugin loaded: {0} {1} ({2})", plugin.Name, plugin.Version, plugin.Vendor)
                 : F("Plugin {0} could not be loaded: {1}", plugin.Name, plugin.Error ?? ""));
         }
-        if (_plugins.Commands.Count > 0 || _plugins.Operations.Count > 0) BuildMenu();
+        if (_plugins.Commands.Count > 0 || _plugins.Operations.Count > 0 || _plugins.Exporters.Count > 0)
+        {
+            BuildMenu();
+            // Plugin commands with an icon get toolbar buttons.
+            if (_plugins.Commands.Any(c => !string.IsNullOrWhiteSpace(c.Command.Icon))) BuildToolbar();
+        }
     }
 
     /// <summary>Menu items of plugin commands for a top-level menu ("Plugins", "Draw", "Edit", "Machining").</summary>

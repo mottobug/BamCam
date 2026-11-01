@@ -26,6 +26,7 @@ public sealed class SamplePlugin : IBamCamPlugin
             Header = german ? "_Stern (2 Klicks)" : "_Star (2 clicks)",
             Menu = "Draw",
             Description = german ? "Mausbeispiel: Mittelpunkt und Außenradius klicken" : "Mouse tool example: click centre and outer radius",
+            Icon = "M12,2 L14.6,9 L22,9 L16,13.6 L18.2,21 L12,16.6 L5.8,21 L8,13.6 L2,9 L9.4,9 Z", // toolbar button
             Execute = ctx =>
             {
                 ctx.StartTool(new StarTool(german));

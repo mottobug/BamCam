@@ -78,6 +78,12 @@ public sealed class PluginCommand
     /// <summary>When true the command is only run with selected drawing objects (otherwise BamCam asks to select some).</summary>
     public bool RequiresSelection { get; init; }
 
+    /// <summary>
+    /// Optional toolbar button: the icon as SVG path data in a 24 x 24 box, drawn as lines, e.g.
+    /// "M4,20 L12,4 L20,20 Z". Commands with an icon also get a button in the toolbar (tooltip: header and description).
+    /// </summary>
+    public string? Icon { get; init; }
+
     /// <summary>The action. Changes to the drawing must go through <see cref="ICommandContext.Change"/> to be undoable.</summary>
     public required Func<ICommandContext, Task> Execute { get; init; }
 }

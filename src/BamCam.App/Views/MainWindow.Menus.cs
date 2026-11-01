@@ -534,6 +534,34 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
         p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp())));
         p.Children.Add(ToolSeparator());
+        // Toolbar buttons of plugin commands with an icon.
+        var pluginButtons = _plugins.Commands.Where(c => !string.IsNullOrWhiteSpace(c.Command.Icon)).ToList();
+        if (pluginButtons.Count > 0)
+        {
+            foreach (var entry in pluginButtons)
+            {
+                Geometry geo;
+                try { geo = Geometry.Parse(entry.Command.Icon!); }
+                catch (FormatException) { continue; } // a broken icon must not break the toolbar
+                var b = new Button
+                {
+                    Content = new Path
+                    {
+                        Data = geo, Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.Uniform,
+                        StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
+                    },
+                };
+                var tip = entry.Command.Header.Replace("_", "") + (entry.Command.Description is { } d ? "\n" + d : "");
+                ToolTip.SetTip(b, $"{tip}\n({entry.Plugin.Name})");
+                b.Click += (_, _) =>
+                {
+                    _ = RunPluginCommand(entry);
+                    View.Focus();
+                };
+                p.Children.Add(b);
+            }
+            p.Children.Add(ToolSeparator());
+        }
         p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths()));
         p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All)));
         RefreshToolButtons();
