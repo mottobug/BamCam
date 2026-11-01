@@ -198,6 +198,13 @@ public partial class MainWindow
         Item("_Array Copy...", ArrayCopy),
         Item("_Polar Array Copy...", PolarArrayCopy),
         Item("_Center (Extents)", CenterExtents),
+        Sub("A_lign",
+            Item("_Left", () => AlignSelection(Core.Cad.AlignEdge.Left)),
+            Item("_Center (Horizontal)", () => AlignSelection(Core.Cad.AlignEdge.CenterX)),
+            Item("_Right", () => AlignSelection(Core.Cad.AlignEdge.Right)),
+            Item("_Top", () => AlignSelection(Core.Cad.AlignEdge.Top)),
+            Item("_Middle (Vertical)", () => AlignSelection(Core.Cad.AlignEdge.CenterY)),
+            Item("_Bottom", () => AlignSelection(Core.Cad.AlignEdge.Bottom))),
         Item("Apply Transformations", ApplyTransformations),
     ];
 
@@ -448,6 +455,22 @@ public partial class MainWindow
         p.Children.Add(ToolModeButton("IconRect", "Rectangle (R)", () => View.SetTool(new RectangleTool()), t => t is RectangleTool));
         p.Children.Add(ToolModeButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool()), t => t is PointListTool));
         p.Children.Add(ToolModeButton("IconText", "Text (T)", DrawText, t => t is TextTool));
+        p.Children.Add(ToolSeparator());
+        p.Children.Add(ToolButton("IconAlignLeft", "Align left", () => AlignSelection(Core.Cad.AlignEdge.Left)));
+        p.Children.Add(ToolButton("IconAlignCenterX", "Align centres horizontally", () => AlignSelection(Core.Cad.AlignEdge.CenterX)));
+        p.Children.Add(ToolButton("IconAlignRight", "Align right", () => AlignSelection(Core.Cad.AlignEdge.Right)));
+        p.Children.Add(ToolButton("IconAlignTop", "Align top", () => AlignSelection(Core.Cad.AlignEdge.Top)));
+        p.Children.Add(ToolButton("IconAlignCenterY", "Align centres vertically", () => AlignSelection(Core.Cad.AlignEdge.CenterY)));
+        p.Children.Add(ToolButton("IconAlignBottom", "Align bottom", () => AlignSelection(Core.Cad.AlignEdge.Bottom)));
+        var alignTo = new ComboBox
+        {
+            ItemsSource = AlignReferences.Select(r => T(r.Text)).ToList(),
+            SelectedIndex = Math.Max(0, Array.FindIndex(AlignReferences, r => r.Value == AlignTo)),
+            Width = 185, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+        };
+        ToolTip.SetTip(alignTo, T("Align to"));
+        alignTo.SelectionChanged += (_, _) => { if (alignTo.SelectedIndex >= 0) AlignTo = AlignReferences[alignTo.SelectedIndex].Value; };
+        p.Children.Add(alignTo);
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));

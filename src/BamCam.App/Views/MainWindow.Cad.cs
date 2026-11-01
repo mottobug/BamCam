@@ -41,4 +41,41 @@ public partial class MainWindow
         }
         View.SetTool(new CornerTool(polyline));
     }
+
+    /// <summary>Reference of the align commands (toolbar list), kept in the settings.</summary>
+    private AlignReference AlignTo
+    {
+        get => _settings.AlignReference;
+        set
+        {
+            _settings.AlignReference = value;
+            SaveSettings();
+        }
+    }
+
+    /// <summary>Aligns the selected objects (as CamBam's Align Toolbar plugin).</summary>
+    private void AlignSelection(AlignEdge edge)
+    {
+        var selected = Selected;
+        if (selected.Count == 0)
+        {
+            Log(T("Align: select the objects first (in order: the last or first selected one can be the reference)."));
+            return;
+        }
+        var ok = false;
+        _session.Execute(T("Align"), () => ok = Align.Apply(_session.Document, selected, edge, AlignTo));
+        if (!ok)
+            Log(AlignTo == AlignReference.Stock ? T("Align: there is no stock.")
+                : T("Align: select at least two objects to align them to the first or last one."));
+    }
+
+    private static readonly (AlignReference Value, string Text)[] AlignReferences =
+    [
+        (AlignReference.LastSelected, "To last selected"),
+        (AlignReference.FirstSelected, "To first selected"),
+        (AlignReference.Selection, "To selection"),
+        (AlignReference.Drawing, "To drawing"),
+        (AlignReference.Origin, "To origin"),
+        (AlignReference.Stock, "To stock"),
+    ];
 }

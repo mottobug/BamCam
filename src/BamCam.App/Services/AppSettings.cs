@@ -110,6 +110,9 @@ public sealed class AppSettings
     /// <summary>Post-build commands the user allowed to run (program and argument template).</summary>
     [Browsable(false)] public List<string> ApprovedPostBuildCommands { get; set; } = [];
 
+    /// <summary>Reference of the align commands.</summary>
+    [Browsable(false)] public BamCam.Core.Cad.AlignReference AlignReference { get; set; } = BamCam.Core.Cad.AlignReference.LastSelected;
+
     /// <summary>Last inputs of Tools ▸ Speeds and Feeds.</summary>
     [Browsable(false)] public SpeedsFeedsSettings SpeedsFeeds { get; set; } = new();
 

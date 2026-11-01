@@ -12,6 +12,8 @@ public sealed class DocumentSession
     private readonly Stack<string> _undo = new();
     private readonly Stack<string> _redo = new();
     private readonly HashSet<Entity> _selection = [];
+    /// <summary>The selection in the order it was made (first / last selected object for aligning).</summary>
+    private readonly List<Entity> _order = [];
 
     public DocumentSession(CadDocument document) => Document = document;
 
@@ -23,7 +25,24 @@ public sealed class DocumentSession
 
     public Dictionary<MachineOp, Toolpath> Toolpaths { get; } = [];
 
-    public IReadOnlyCollection<Entity> Selection => _selection;
+    /// <summary>Selected objects in the order they were selected.</summary>
+    public IReadOnlyCollection<Entity> Selection => _order;
+
+    private void AddToSelection(Entity e)
+    {
+        if (_selection.Add(e)) _order.Add(e);
+    }
+
+    private void RemoveFromSelection(Entity e)
+    {
+        if (_selection.Remove(e)) _order.Remove(e);
+    }
+
+    private void ClearSelectionSilently()
+    {
+        _selection.Clear();
+        _order.Clear();
+    }
 
     /// <summary>The object shown in the property grid (entity, layer, part, MOP or document).</summary>
     public object? Inspected { get; private set; }
@@ -42,7 +61,7 @@ public sealed class DocumentSession
         Document = document;
         _undo.Clear();
         _redo.Clear();
-        _selection.Clear();
+        ClearSelectionSilently();
         Toolpaths.Clear();
         Inspected = null;
         DocumentReplaced?.Invoke(this, EventArgs.Empty);
@@ -104,11 +123,12 @@ public sealed class DocumentSession
     {
         restored.FilePath = Document.FilePath;
         restored.IsModified = true;
-        var selectedIds = _selection.Select(e => e.Id).ToHashSet();
+        var selectedIds = _order.Select(e => e.Id).ToList();
         Document = restored;
-        _selection.Clear();
-        foreach (var e in Document.AllEntities())
-            if (selectedIds.Contains(e.Id)) _selection.Add(e);
+        ClearSelectionSilently();
+        var byId = Document.AllEntities().GroupBy(e => e.Id).ToDictionary(g => g.Key, g => g.First());
+        foreach (var id in selectedIds)
+            if (byId.TryGetValue(id, out var e)) AddToSelection(e);
         Toolpaths.Clear();
         Inspected = null;
         DocumentReplaced?.Invoke(this, EventArgs.Empty);
@@ -120,11 +140,11 @@ public sealed class DocumentSession
 
     public void Select(IEnumerable<Entity> entities, bool add = false, bool toggle = false)
     {
-        if (!add && !toggle) _selection.Clear();
+        if (!add && !toggle) ClearSelectionSilently();
         foreach (var e in entities)
         {
-            if (toggle && !_selection.Add(e)) _selection.Remove(e);
-            else _selection.Add(e);
+            if (toggle && _selection.Contains(e)) RemoveFromSelection(e);
+            else AddToSelection(e);
         }
         OnSelectionChanged();
     }
@@ -132,7 +152,7 @@ public sealed class DocumentSession
     public void ClearSelection()
     {
         if (_selection.Count == 0) return;
-        _selection.Clear();
+        ClearSelectionSilently();
         OnSelectionChanged();
     }
 
@@ -143,7 +163,7 @@ public sealed class DocumentSession
 
     private void OnSelectionChanged()
     {
-        Inspected = _selection.Count == 1 ? _selection.First() : Inspected is Entity ? null : Inspected;
+        Inspected = _order.Count == 1 ? _order[0] : Inspected is Entity ? null : Inspected;
         SelectionChanged?.Invoke(this, EventArgs.Empty);
         InspectedChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -157,7 +177,7 @@ public sealed class DocumentSession
     private void PruneSelection()
     {
         var before = _selection.Count;
-        _selection.RemoveWhere(e => e.Layer == null || !Document.Layers.Contains(e.Layer));
+        foreach (var e in _order.Where(e => e.Layer == null || !Document.Layers.Contains(e.Layer)).ToList()) RemoveFromSelection(e);
         if (before != _selection.Count) OnSelectionChanged();
     }
 
