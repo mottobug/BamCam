@@ -188,8 +188,13 @@ lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For t
 scale; paper size, orientation, toolpaths, layer colours, caption) and opens it in the PDF viewer; File ▸ Export ▸
 PDF saves it.
 
+**Script objects** (Draw ▸ Script Object): drawing objects whose outlines come from a C# script stored in the
+drawing (Edit ▸ Edit Script; helpers `Circle`, `Rect`, `Line`, `Arc`, `Polyline`, `Add`). A script from another
+drawing runs only after the user allowed it; until then the outlines saved with the drawing are shown. CamBam's
+Python scripts do not run.
+
 **Not implemented yet:** additive 3D mode, CamBam bitmap objects (images are imported as surfaces or outlines
-instead), script objects. Such objects are kept unchanged when `.cb` files are loaded and saved.
+instead). Such objects are kept unchanged when `.cb` files are loaded and saved.
 
 ## Plugins
 

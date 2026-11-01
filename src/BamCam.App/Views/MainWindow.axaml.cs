@@ -78,6 +78,7 @@ public partial class MainWindow : Window
         BuildMenu();
         BuildToolbar();
         View.ToolChanged += (_, _) => RefreshToolButtons();
+        InitScripts();
 
         _system.Reload();
         _system.DefaultPostName = _settings.DefaultPostProcessor;
@@ -158,6 +159,7 @@ public partial class MainWindow : Window
     private void OnPropertyEdited()
     {
         if (_session.Inspected is TextEntity t) t.InvalidateOutlines();
+        if (_session.Inspected is ScriptEntity edited) AllowScript(edited.Script); // typed by the user in the properties
         if (_session.Inspected is ParametricEntity parametric) parametric.Invalidate();
         if (_session.Inspected is Core.Cam.MachineOp op)
         {
@@ -445,6 +447,7 @@ public partial class MainWindow : Window
                 Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
             foreach (var style in BamCam.IO.Cb.LibraryFiles.MissingStyles(doc))
                 Log(F("Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.", style));
+            _ = AskForScripts(doc);
         }
         catch (Exception ex)
         {

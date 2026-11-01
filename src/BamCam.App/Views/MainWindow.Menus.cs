@@ -188,6 +188,7 @@ public partial class MainWindow
             Item("_Reverse", ReversePolylines),
             Item("_Clean", CleanPolylines),
             Item("_Fillet / Chamfer", FilletChamfer)),
+        Item("Edit Scr_ipt...", EditSelectedScript),
         Sub("_Transform", TransformMenuItems()),
         .. PluginMenuItems("Edit"),
     ];
@@ -254,6 +255,7 @@ public partial class MainWindow
             Item("_Centers", CenterPoints)),
         Item("_Text...", DrawText),
         Item("Text on Pol_yline", TextOnPolyline),
+        Item("Script O_bject", NewScriptObject),
         .. PluginMenuItems("Draw"),
     ];
 

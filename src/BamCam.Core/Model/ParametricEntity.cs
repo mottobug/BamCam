@@ -104,7 +104,10 @@ public abstract class ParametricEntity : Entity
 /// <summary>Registry of parametric object types (built-in and from plugins).</summary>
 public static class ParametricEntities
 {
-    private static readonly Dictionary<string, Func<ParametricEntity>> Types = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, Func<ParametricEntity>> Types = new(StringComparer.Ordinal)
+    {
+        [ScriptEntity.Type] = () => new ScriptEntity(),
+    };
 
     public static void Register(string type, Func<ParametricEntity> create) => Types[type] = create;
 

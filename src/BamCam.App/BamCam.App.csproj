@@ -8,6 +8,8 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Only the UI languages' resources of libraries (the C# script compiler brings many). -->
+    <SatelliteResourceLanguages>en;de</SatelliteResourceLanguages>
     <AssemblyName>BamCam</AssemblyName>
     <RootNamespace>BamCam.App</RootNamespace>
     <ApplicationIcon>Assets\bamcam.ico</ApplicationIcon>
@@ -33,6 +35,7 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
     <PackageReference Include="Avalonia.Diagnostics" Version="11.3.22" Condition="'$(Configuration)' == 'Debug'" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" Version="4.12.0" />
   </ItemGroup>
 
   <ItemGroup>

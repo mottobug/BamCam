@@ -107,6 +107,9 @@ public sealed class AppSettings
     /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
     [Browsable(false)] public List<PluginApproval> Plugins { get; set; } = [];
 
+    /// <summary>Script object texts (SHA-256) the user allowed to run.</summary>
+    [Browsable(false)] public List<string> ApprovedScripts { get; set; } = [];
+
     /// <summary>Post-build commands the user allowed to run (program and argument template).</summary>
     [Browsable(false)] public List<string> ApprovedPostBuildCommands { get; set; } = [];
 
@@ -204,6 +207,7 @@ public sealed class AppSettings
         Plugins ??= [];
         SpeedsFeeds ??= new();
         ApprovedPostBuildCommands ??= [];
+        ApprovedScripts ??= [];
         Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);
