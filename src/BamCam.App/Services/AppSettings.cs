@@ -107,6 +107,9 @@ public sealed class AppSettings
     /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
     [Browsable(false)] public List<PluginApproval> Plugins { get; set; } = [];
 
+    /// <summary>Post-build commands the user allowed to run (program and argument template).</summary>
+    [Browsable(false)] public List<string> ApprovedPostBuildCommands { get; set; } = [];
+
     /// <summary>Last inputs of Tools ▸ Speeds and Feeds.</summary>
     [Browsable(false)] public SpeedsFeedsSettings SpeedsFeeds { get; set; } = new();
 
@@ -197,6 +200,7 @@ public sealed class AppSettings
         RecentFiles ??= [];
         Plugins ??= [];
         SpeedsFeeds ??= new();
+        ApprovedPostBuildCommands ??= [];
         Language = (Language ?? "").Trim().ToLowerInvariant();
         MaxRecentFiles = Math.Clamp(MaxRecentFiles, 0, 50);
         FileBackups = Math.Clamp(FileBackups, 0, 20);

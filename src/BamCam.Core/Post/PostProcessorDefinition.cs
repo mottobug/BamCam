@@ -131,8 +131,12 @@ public sealed class PostProcessorDefinition
     [Category("Options")] public bool UpperCase { get; set; }
 
     // ---- Post build ----
-    [Category("Post Build")] public string PostBuildCommand { get; set; } = "";
-    [Category("Post Build")] public string PostBuildCommandArgs { get; set; } = "";
+    [Category("Post Build"), DisplayName("Post-Build Command"),
+     Description("Program run after the G-code file has been written, e.g. to add line numbers. BamCam asks once before it runs a command.")]
+    public string PostBuildCommand { get; set; } = "";
+    [Category("Post Build"), DisplayName("Post-Build Command Args"),
+     Description("Arguments of the post-build command: {$outfile} = the G-code file, {$cbfile.name} = the drawing name. Put file names in double quotes.")]
+    public string PostBuildCommandArgs { get; set; } = "";
 
     /// <summary>Properties read from a file that this version does not model (name → raw text).</summary>
     [Browsable(false)]

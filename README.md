@@ -175,6 +175,9 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 **G-code:** built-in post processors Default, Mach3, LinuxCNC and GRBL; existing `.cbpp` files are loaded
 (own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
 **DXF export** as R2000 (splines stay splines) or R12, selectable in the options.
+**Post-build command** of a post processor (as in CamBam): an external program run on the written G-code file,
+arguments with `{$outfile}` and `{$cbfile.name}`; started without a shell, after the user allowed the command once,
+with exit code and output in the message window.
 The G-code produced for the CamBam sample `snap-together-box.cb` matches the reference in all 6382 motion
 lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For the example drawings in
 `examples_to_test` it matches CamBam's output line for line or within 0.004 mm.

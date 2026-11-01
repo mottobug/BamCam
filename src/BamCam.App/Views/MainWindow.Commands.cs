@@ -607,6 +607,56 @@ public partial class MainWindow
         catch (Exception ex)
         {
             Log(F("Could not write {0}: {1}", path, ex.Message));
+            return;
+        }
+        await RunPostBuild(post, path!, doc.Name);
+    }
+
+    /// <summary>
+    /// Runs the post processor's post-build command on the written G-code file (as CamBam does). A command is run only
+    /// after the user allowed it once (a post processor file from elsewhere could start any program); it is started
+    /// directly, without a shell, and its exit code and error output go to the message window.
+    /// </summary>
+    private async Task RunPostBuild(PostProcessorDefinition post, string outFile, string drawingName)
+    {
+        if (PostBuild.Prepare(post, outFile, drawingName) is not { } command) return;
+        var shown = command.Program + " " + string.Join(" ", command.Arguments.Select(a => a.Contains(' ') ? $"\"{a}\"" : a));
+        var key = PostBuild.ApprovalKey(post);
+        if (!_settings.ApprovedPostBuildCommands.Contains(key))
+        {
+            var answer = await Dialogs.Ask(this, T("Post-Build Command"),
+                F("The post processor '{0}' wants to run this program after writing the G-code:\n\n{1}\n\nOnly allow programs you know. Allow it (remembered for this command)?", post.Name, shown),
+                withCancel: false);
+            if (answer != true)
+            {
+                Log(F("Post-build command not run: {0}", shown));
+                return;
+            }
+            _settings.ApprovedPostBuildCommands.Add(key);
+            SaveSettings();
+        }
+        try
+        {
+            SetStatus(F("Running post-build command: {0}", Path.GetFileName(command.Program)));
+            var result = await ProgramRunner.RunAsync(command.Program, command.Arguments,
+                Path.GetDirectoryName(Path.GetFullPath(outFile)) ?? "", TimeSpan.FromSeconds(60));
+            if (result.ExitCode is not { } exitCode)
+            {
+                Log(F("Post-build command still running after {0} s; BamCam does not wait for it any longer: {1}", 60, shown));
+                return;
+            }
+            Log(exitCode == 0
+                ? F("Post-build command finished: {0}", shown)
+                : F("Post-build command failed (exit code {0}): {1}", exitCode, shown));
+            foreach (var line in result.Output.Split('\n').Select(l => l.TrimEnd()).Where(l => l.Length > 0).Take(20)) Log("  " + line);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Post-build command could not be run: {0} ({1})", shown, ex.Message));
+        }
+        finally
+        {
+            SetStatus(T("Ready"));
         }
     }
 
