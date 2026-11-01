@@ -10,8 +10,11 @@ public partial class MainWindow
     private void InitScripts()
     {
         ScriptEntity.Runner = ScriptRunner.Run;
-        ScriptEntity.IsAllowed = hash => _settings.ApprovedScripts.Contains(hash);
+        ScriptEntity.IsAllowed = hash => _settings.ApprovedScripts.Contains(hash) || _triedScripts.Contains(hash);
     }
+
+    /// <summary>Script texts run while editing (allowed for this session only; the final one is saved).</summary>
+    private readonly HashSet<string> _triedScripts = [];
 
     /// <summary>Remembers that the user allows this script text (written or confirmed by the user).</summary>
     private void AllowScript(string script)
@@ -73,9 +76,27 @@ public partial class MainWindow
 
     private async Task EditScript(ScriptEntity script)
     {
-        var text = await Dialogs.EditText(this, T("Edit Script"), script.Script);
-        if (text == null || text == script.Script) return;
-        AllowScript(text); // written by the user
+        var original = script.Script;
+        // Run shows the result in the drawing at once (without an undo step); OK makes it one step, Cancel undoes it.
+        (int? Outlines, string? Error) Try(string text)
+        {
+            _triedScripts.Add(ScriptEntity.Hash(text)); // written by the user
+            script.Script = text;
+            script.Invalidate();
+            View.Invalidate();
+            return script.IsComputed ? (script.ToPaths().Count(), null) : (null, script.Status);
+        }
+        var editor = new ScriptEditorWindow(original, Try);
+        await editor.ShowDialog(this);
+        script.Script = original;
+        script.Invalidate();
+        var text = editor.Result;
+        if (text == null || text == original)
+        {
+            View.Invalidate();
+            return;
+        }
+        AllowScript(text);
         _session.Execute(T("Edit script"), () =>
         {
             script.Script = text;

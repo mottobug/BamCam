@@ -27,7 +27,7 @@ public static class ScriptRunner
         try
         {
             var run = Task.Run(() => script.RunAsync(context));
-            if (!run.Wait(TimeLimit)) return (null, $"The script runs longer than {TimeLimit.TotalSeconds:0} s.");
+            if (!run.Wait(TimeLimit)) return (null, BamCam.Core.Localization.Tr.F("The script runs longer than {0} s.", TimeLimit.TotalSeconds));
             return (context.Paths, null);
         }
         catch (AggregateException ex)
@@ -44,6 +44,7 @@ public static class ScriptRunner
         if (errors.Count == 0) return (script, null);
         var first = errors[0];
         var line = first.Location.GetLineSpan().StartLinePosition.Line + 1;
-        return (null, $"Line {line}: {first.GetMessage()}" + (errors.Count > 1 ? $" (+{errors.Count - 1} more)" : ""));
+        return (null, BamCam.Core.Localization.Tr.F("Line {0}: {1}", line, first.GetMessage()) +
+                      (errors.Count > 1 ? BamCam.Core.Localization.Tr.F(" (+{0} more)", errors.Count - 1) : ""));
     }
 }

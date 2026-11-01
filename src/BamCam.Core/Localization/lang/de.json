@@ -1253,6 +1253,13 @@
   "Updates": "Updates",
   "_Update to {0}...": "_Update auf {0}...",
   "released {0}": "veröffentlicht am {0}",
+  " (+{0} more)": " (+{0} weitere)",
+  "Add(...) adds an outline. Helpers: Circle(x, y, r), Rect(x, y, w, h), Line(x1, y1, x2, y2), Arc(x, y, r, start, sweep), Polyline(closed, x1, y1, ...). See docs/scripts.md.": "Add(...) fügt eine Kontur hinzu. Hilfsfunktionen: Circle(x, y, r), Rect(x, y, w, h), Line(x1, y1, x2, y2), Arc(x, y, r, start, sweep), Polyline(closed, x1, y1, ...). Siehe docs/scripts.md.",
+  "Line {0}, column {1}": "Zeile {0}, Spalte {1}",
+  "Line {0}: {1}": "Zeile {0}: {1}",
+  "Run (Ctrl+Enter)": "Ausführen (Strg+Enter)",
+  "The script runs longer than {0} s.": "Das Skript läuft länger als {0} s.",
+  "{0} outlines.": "{0} Konturen.",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

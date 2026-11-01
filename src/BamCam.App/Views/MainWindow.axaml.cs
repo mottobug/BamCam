@@ -323,9 +323,16 @@ public partial class MainWindow : Window
                 {
                     "plugins" => new PluginManagerWindow(_plugins, _settings.Plugins),
                     "speeds" => NewSpeedsFeedsWindow().Window,
+                    "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
+                        t => (null, Core.Model.ScriptEntity.Runner!(t).Error)),
                     _ => null,
                 };
                 extra?.Show(this);
+                if (extra is ScriptEditorWindow scriptEditor)
+                {
+                    await Task.Delay(300);
+                    scriptEditor.Run();
+                }
             }
             if (options.Count > 0)
             {

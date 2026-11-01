@@ -22,7 +22,7 @@ public class ScriptTests
     {
         var (paths, error) = ScriptRunner.Run("Add(Circle(0, 0, ));");
         Assert.Null(paths);
-        Assert.StartsWith("Line 1:", error);
+        Assert.StartsWith(BamCam.Core.Localization.Tr.F("Line {0}: {1}", 1, ""), error);
 
         var (_, runError) = ScriptRunner.Run("throw new InvalidOperationException(\"boom\");");
         Assert.Equal("boom", runError);
