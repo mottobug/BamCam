@@ -50,6 +50,20 @@ public class ObjectSnapTests
         Assert.True(mid.AlmostEquals(Point2.FromAngle(Math.PI / 4, 5)), mid.ToString());
     }
 
+    [Theory]
+    [InlineData(1e-16)]
+    [InlineData(-1e-16)]
+    [InlineData(1e-12)]
+    public void Arc_contains_its_start_angle_despite_rounding(double startError)
+    {
+        // A quarter arc starting at 0° whose start angle came out a rounding error off (platform dependent).
+        var arc = new Arc2(Point2.Zero, 5, startError, Math.PI / 2);
+        Assert.True(arc.ContainsAngle(0));
+        Assert.True(arc.ContainsAngle(Math.PI / 2));
+        Assert.False(arc.ContainsAngle(Math.PI));
+        Assert.False(arc.ContainsAngle(-0.1));
+    }
+
     [Fact]
     public void Polyline_segments_have_middle_points_and_arc_centres()
     {

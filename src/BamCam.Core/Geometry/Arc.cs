@@ -47,7 +47,8 @@ public readonly record struct Arc2(Point2 Center, double Radius, double StartAng
         var s = Sweep >= 0 ? StartAngle : StartAngle + Sweep;
         var span = Math.Abs(Sweep);
         var d = Angles.Normalize(angle - s);
-        return d <= span + Tolerance.Epsilon;
+        // An angle a rounding error before the start wraps round to almost 2π: it is the start point.
+        return d <= span + Tolerance.Epsilon || d >= Angles.TwoPi - Tolerance.Epsilon;
     }
 
     /// <summary>Converts a polyline bulge (tan(sweep/4)) between two points into an arc.</summary>
