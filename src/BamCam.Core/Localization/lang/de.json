@@ -1102,7 +1102,7 @@
   "Inverted fillet, radius": "Umgekehrte Rundung, Radius",
   "This corner cannot be changed": "Diese Ecke lässt sich nicht ändern",
   "_Fillet / Chamfer": "_Abrunden / Fasen",
-  "click corners  [type value, Space = fillet / chamfer / overcut, - = inverted fillet, Esc = end]": "Ecken anklicken  [Wert eintippen, Leertaste = Abrunden / Fase / Freischnitt, - = umgekehrte Rundung, Esc = Ende]",
+  "click a corner to apply it.  Typing a number changes the value at once; Space = fillet / chamfer / overcut, - = inverted fillet, Esc = end": "Ecke anklicken, um es anzuwenden.  Eine getippte Zahl gilt sofort als neuer Wert; Leertaste = Abrunden / Fase / Freischnitt, - = umgekehrte Rundung, Esc = Ende",
   "end point": "Endpunkt",
   "arc segment": "Bogensegment",
   "too large": "Wert zu groß für die Kanten",

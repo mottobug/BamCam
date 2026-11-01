@@ -96,6 +96,8 @@ public sealed partial class DrawingView : Control, IToolHost
         _tool.OnDetached();
         _tool = tool ?? new SelectTool();
         _tool.Attach(this);
+        // Typed values and keys of the tool must reach it, also when it was started from the tree or a menu.
+        if (tool != null) Focus();
         InvalidateVisual();
         ToolChanged?.Invoke(this, EventArgs.Empty);
     }

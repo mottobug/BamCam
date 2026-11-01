@@ -87,6 +87,24 @@ public class DrawToolTests
     }
 
     [Fact]
+    public void Corner_tool_uses_the_value_typed_just_before_the_click()
+    {
+        var host = new Host();
+        var square = new PolylineEntity(Path2.FromPoints([new(0, 0), new(10, 0), new(10, 10), new(0, 10)], closed: true));
+        host.Session.Document.AddEntity(square);
+        BamCam.App.Drawing.CornerTool.Kind = BamCam.Core.Cad.CornerKind.Fillet;
+        BamCam.App.Drawing.CornerTool.FilletRadius = 1;
+        var tool = new BamCam.App.Drawing.CornerTool(square);
+        tool.Attach(host);
+        Type(tool, "3");
+        var corner = host.View.ToScreen(new Point2(10, 0));
+        tool.PointerMoved(corner, new Point2(10, 0), KeyModifiers.None);
+        tool.PointerPressed(corner, new Point2(10, 0), Left, KeyModifiers.None);
+        var arc = Assert.Single(square.ToPaths().First().Segments(), s => s.IsArc).ToArc();
+        Assert.Equal(3, arc.Radius, 9);
+    }
+
+    [Fact]
     public void Circle_with_typed_diameter()
     {
         var (host, tool) = Start(new CircleTool());

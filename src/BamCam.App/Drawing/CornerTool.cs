@@ -52,8 +52,8 @@ public sealed class CornerTool(PolylineEntity polyline) : ViewTool
                 CornerKind.Chamfer => T("Chamfer, distance"),
                 _ => T("Corner overcut, tool radius"),
             };
-            var value = _typed.Length > 0 ? _typed + "_" : Math.Abs(Value).ToString("0.###", Culture);
-            return $"{what} {value}:  {T("click corners  [type value, Space = fillet / chamfer / overcut, - = inverted fillet, Esc = end]")}";
+            var value = _typed.Length > 0 ? _typed.Replace(".", Culture.NumberFormat.NumberDecimalSeparator) + "_" : Math.Abs(Value).ToString("0.###", Culture);
+            return $"{what} {value}  –  {T("click a corner to apply it.  Typing a number changes the value at once; Space = fillet / chamfer / overcut, - = inverted fillet, Esc = end")}";
         }
     }
 
@@ -128,17 +128,25 @@ public sealed class CornerTool(PolylineEntity polyline) : ViewTool
             default:
                 return false;
         }
+        // The value applies at once (preview and next click), no Enter needed.
+        ApplyTyped();
         Host.SetPrompt(Prompt);
         Host.Invalidate();
         return true;
     }
 
-    /// <summary>Takes over a typed value (keeping the sign of an inverted fillet).</summary>
-    private void AcceptTyped()
+    /// <summary>Uses the typed value (keeping the sign of an inverted fillet).</summary>
+    private void ApplyTyped()
     {
         if (_typed.Length == 0) return;
         if (double.TryParse(_typed, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0)
             Value = Kind == CornerKind.Fillet && FilletRadius < 0 ? -v : v;
+    }
+
+    /// <summary>Ends typing: the next digit starts a new value.</summary>
+    private void AcceptTyped()
+    {
+        ApplyTyped();
         _typed = "";
     }
 
