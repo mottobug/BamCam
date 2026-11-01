@@ -145,6 +145,10 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   finish pass), **threading** (external/internal, metric depth by default; G76 cycle when the post defines one,
   e.g. the built-in *LinuxCNC Turn* post, otherwise single G33 passes) and **axial drilling** with pecks.
   The stock that remains after the turning operations is shown in the drawing (simulation).
+  **Internal turning** (boring): the lathe operation can cut a bore wall instead of the outside, starting from the
+  pre-drilled hole (Stock Surface = its radius) and retracting towards the axis.
+  **Constant cutting speed** (G96) for turning, facing and grooving with a spindle speed limit; the codes come
+  from the post processor (G50 + G96 + G97 by default, `G96 D… S…` in the *LinuxCNC Turn* post).
   **Nose radius compensation** either computed (virtual tool tip, as CamBam) or by the machine: the contour pass
   is then output on the part contour between G42/G41 and G40.
   **Lathe tool library** `BamCam-Lathe-mm` / `-in` (created in the system folder `tools`): turning, grooving,

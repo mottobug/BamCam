@@ -579,6 +579,16 @@ public sealed partial class GCodePoster
         double side = motion.Count > 0 && motion.Average() < 0 ? -1 : 1;
         Point3? pos = null;
         var compensated = false;
+        var css = job.Op is SurfaceSpeedTurningOp { SurfaceSpeed.Value: > 0 } cssOp ? cssOp : null;
+        if (css != null)
+        {
+            var max = css.MaxSpindleSpeed.Value;
+            if (max > 0 && _post.SpindleSpeedLimit.Trim().Length > 0)
+                Line(MoveLine(_post.SpindleSpeedLimit, MoveKind.Comment, new() { ['S'] = max }, forceEmit: true));
+            var regs = new Dictionary<char, double> { ['S'] = css.SurfaceSpeed.Value };
+            if (max > 0) regs['D'] = max;
+            Line(MoveLine(_post.ConstantSurfaceSpeed, MoveKind.Comment, regs, forceEmit: true));
+        }
         foreach (var move in job.Toolpath.Moves)
         {
             if (move.Kind == MoveKind.CutterComp)
@@ -598,6 +608,8 @@ public sealed partial class GCodePoster
             }
             if (!compensated) Emit(move);
         }
+        if (css != null)
+            Line(MoveLine(_post.ConstantSpindleSpeed, MoveKind.Comment, new() { ['S'] = css.SpindleSpeed.Value }, forceEmit: true));
         return sb.ToString();
 
         void Emit(Move m)
@@ -809,7 +821,8 @@ public sealed partial class GCodePoster
         var key = token.ToLowerInvariant();
         var modal = key.StartsWith('_');
         var core = modal ? key[1..] : key;
-        if (core.Length == 1 && "xyzabcfijkrpqh".Contains(core[0]))
+        // S and D are registers only where a template line sets them (constant cutting speed); elsewhere {$s} is the macro.
+        if (core.Length == 1 && ("xyzabcfijkrpqh".Contains(core[0]) || core[0] is 's' or 'd' && regs.ContainsKey(char.ToUpperInvariant(core[0]))))
         {
             var reg = char.ToUpperInvariant(core[0]);
             if (!regs.TryGetValue(reg, out var value))
@@ -818,7 +831,8 @@ public sealed partial class GCodePoster
                 if (modal) return "";
                 return _last.TryGetValue(reg, out var lv) && lv != null ? reg + lv : "";
             }
-            var text = Num(value);
+            // Speeds (S, D) are whole numbers.
+            var text = reg is 'S' or 'D' ? Math.Round(value).ToString(CultureInfo.InvariantCulture) : Num(value);
             if (modal && _last.TryGetValue(reg, out var last) && last == text) return "";
             _last[reg] = text;
             return reg + text;

@@ -15,6 +15,24 @@ public abstract class TurningOp : MachineOp
     }
 }
 
+/// <summary>
+/// Turning operations that may cut with constant cutting speed (G96): turning, facing, grooving. Threading and
+/// drilling on the axis always run with constant spindle speed.
+/// </summary>
+public abstract class SurfaceSpeedTurningOp : TurningOp
+{
+    [Param(80, "Spindle"), DisplayName("Surface Speed"),
+     Description("Constant cutting speed (G96) in m/min (ft/min in inch drawings); 0 = constant spindle speed. The Spindle Speed starts the spindle and applies again after the operation (G97).")]
+    public CamParam<double> SurfaceSpeed { get; set; } = new(0);
+
+    [Param(81, "Spindle"), DisplayName("Max Spindle Speed"),
+     Description("Spindle speed limit (rpm) with constant cutting speed; 0 = no limit (not recommended: towards the axis the speed rises sharply).")]
+    public CamParam<double> MaxSpindleSpeed { get; set; } = new(0);
+}
+
+/// <summary>Outside of the part (external turning) or inside a bore (internal turning, boring).</summary>
+public enum TurningSide { External, Internal }
+
 /// <summary>Who allows for the tool nose radius: BamCam in the tool path, or the control (G41/G42).</summary>
 public enum NoseCompensation { Computed, Machine }
 
@@ -25,7 +43,7 @@ public enum ThreadType { External, Internal }
 /// Facing: turns the end of the part flat. The selected drawing objects mark the end face (their largest lathe Z);
 /// the stock in front of it is removed in axial steps from the stock radius down to the inner radius.
 /// </summary>
-public sealed class LatheFacingOp : TurningOp
+public sealed class LatheFacingOp : SurfaceSpeedTurningOp
 {
     public override string XmlName => "BamCamLatheFacing";
     public override string DisplayType => "Lathe Facing";
@@ -42,7 +60,7 @@ public sealed class LatheFacingOp : TurningOp
 /// drawing objects outline the groove: their Z range is the groove width, their smallest radius the groove bottom
 /// (0 = parting off). The tool reference point is the left (chuck side) corner of the blade.
 /// </summary>
-public sealed class LatheGrooveOp : TurningOp
+public sealed class LatheGrooveOp : SurfaceSpeedTurningOp
 {
     public override string XmlName => "BamCamLatheGroove";
     public override string DisplayType => "Lathe Grooving";

@@ -71,7 +71,8 @@ public static class TurningSimulation
                     // Round nose: the output point is the virtual tip; the nose centre lies one radius above it and
                     // one radius against the cutting direction (right hand: towards +Z).
                     var dir = op is LatheOp lathe && lathe.LatheCutDirection.Value == LatheCutDirection.LeftHand ? 1.0 : -1.0;
-                    var toCenter = new Point2(-dir * r, r);
+                    // Internal turning: the tip is on the outward side of the nose.
+                    var toCenter = new Point2(-dir * r, op is LatheOp { TurningSide.Value: TurningSide.Internal } ? -r : r);
                     foreach (var chain in cuts)
                     {
                         var path = Path2.FromPoints(chain.Select(p => p + toCenter), false);

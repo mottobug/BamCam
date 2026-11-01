@@ -36,13 +36,24 @@ internal static class LatheGenerator
         // roughing with increment 0.25 → 0.35, finishing with 0.4 → 0.5).
         var approach = Math.Max(0, increment) + 0.1;
         var stock = ctx.Stock;
+        var bore = op.TurningSide.Value == TurningSide.Internal;
 
         foreach (var source in sources)
         {
             var side = source.Flatten(ToolpathGenerator.ChordTolerance).Average(p => p.Y - origin.Y) < 0 ? -1.0 : 1.0;
-            Point3 ToDrawing(double z, double x) => new(origin.X + z, origin.Y + x * side, 0);
             var mirror = Matrix4.Translation(-origin.X, -origin.Y, 0) * Matrix4.Scale(1, side, 1);
             var profile = source.Transformed(mirror);
+            // Internal turning works in a frame mirrored at the largest profile radius k (x' = k - x): the material
+            // between bore wall and k then lies between the profile and the "axis" x' = 0, as in external turning,
+            // and the tool tip is on the outward side of the nose.
+            var k = bore ? profile.Flatten(ToolpathGenerator.ChordTolerance).Max(p => p.Y) : 0;
+            if (bore) profile = profile.Transformed(Matrix4.Scale(1, -1, 1) * Matrix4.Translation(0, k, 0));
+            Point3 ToDrawing(double z, double x) => new(origin.X + z, origin.Y + (bore ? k - x : x) * side, 0);
+            var stockSurface = bore ? k - ctx.StockSurface : ctx.StockSurface;
+            // Inside a bore the clearance radius lies below the stock surface (ctx.Clearance is raised above it).
+            var clearanceX = bore ? k - op.ClearancePlane.Value : ctx.Clearance;
+            if (bore && (ctx.StockSurface >= k || op.ClearancePlane.Value >= ctx.StockSurface))
+                tp.Warnings.Add(Tr.F("{0}: internal turning needs Stock Surface (radius of the pre-drilled hole) below the bore and Clearance Plane below Stock Surface.", op.Name));
 
             var d = r + clearance;
             var outline = Outline(profile, d);
@@ -54,14 +65,14 @@ internal static class LatheGenerator
             }
             if (dir > 0) contour = contour.Reversed();
 
-            var moves = new LatheMoves(tp, ToDrawing, ctx.Clearance, ctx.PlungeFeed, ctx.CutFeed, r, dir, side);
+            var moves = new LatheMoves(tp, ToDrawing, clearanceX, ctx.PlungeFeed, ctx.CutFeed, r, dir, bore ? -side : side);
             if (roughing && increment > 0)
             {
                 var pts = profile.Flatten(ToolpathGenerator.ChordTolerance);
                 var zMin = pts.Min(p => p.X);
                 var zMax = (stock.IsEmpty ? pts.Max(p => p.X) + d : stock.PMax.X) + r;
                 var ring = ExactOutline(profile, outline, d);
-                for (var tip = ctx.StockSurface - increment; tip + r > 1e-9; tip -= increment)
+                for (var tip = stockSurface - increment; tip + r > 1e-9; tip -= increment)
                 {
                     foreach (var (from, to) in FreeIntervals(ring, tip + r, zMin, zMax, dir))
                         moves.StraightPass(from, to, tip, approach, leadOut);
@@ -77,8 +88,10 @@ internal static class LatheGenerator
                     continue;
                 }
                 if (dir > 0) programmed = programmed.Reversed();
-                // External turning towards the chuck (right hand) has the tool on the right of the path: G42.
-                moves.CompensatedContourPass(contour, programmed, dir < 0 ? CutterSide.Right : CutterSide.Left, approach, leadOut);
+                // External turning towards the chuck (right hand) has the tool on the right of the path: G42; boring
+                // towards the chuck G41.
+                var right = (dir < 0) ^ bore;
+                moves.CompensatedContourPass(contour, programmed, right ? CutterSide.Right : CutterSide.Left, approach, leadOut);
             }
             else
             {

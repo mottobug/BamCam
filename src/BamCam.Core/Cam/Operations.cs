@@ -151,7 +151,7 @@ public sealed class NcFileOp : MachineOp
 /// through the machining origin. Roughing cuts straight passes per Depth Increment (radial) down to the
 /// profile plus Roughing Clearance, then one pass along the contour; finishing makes the contour pass only.
 /// </summary>
-public sealed class LatheOp : TurningOp
+public sealed class LatheOp : SurfaceSpeedTurningOp
 {
     /// <summary>Value of the xsi:type attribute in drawing files.</summary>
     public const string XsiType = "MOPLathe";
@@ -167,6 +167,10 @@ public sealed class LatheOp : TurningOp
     [Param(73, "Lathe"), DisplayName("Nose Compensation"),
      Description("Computed: the tool path allows for the nose radius (virtual tool tip). Machine: the contour pass is output on the part contour with G41/G42, and the control offsets it by the nose radius and tip orientation of its tool table. Roughing passes stay computed.")]
     public CamParam<NoseCompensation> NoseCompensation { get; set; } = new(Cam.NoseCompensation.Computed);
+
+    [Param(74, "Lathe"), DisplayName("Turning Side"),
+     Description("External: the profile is the outside of the part. Internal (boring): the profile is the wall of a bore; Stock Surface is the radius of the pre-drilled hole and Clearance Plane a radius inside it, where the tool retracts to.")]
+    public CamParam<TurningSide> TurningSide { get; set; } = new(Cam.TurningSide.External);
 }
 
 /// <summary>

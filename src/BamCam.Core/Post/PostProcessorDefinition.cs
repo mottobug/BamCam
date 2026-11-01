@@ -114,6 +114,15 @@ public sealed class PostProcessorDefinition
     [Category("Lathe"), DisplayName("Thread Cycle")] public string ThreadCycle { get; set; } = "";
     /// <summary>One synchronised threading pass to Z (K = pitch), used when there is no thread cycle.</summary>
     [Category("Lathe"), DisplayName("Thread Pass")] public string ThreadPass { get; set; } = "G33 {$_z} {$k}";
+    /// <summary>
+    /// Constant cutting speed at the start of a turning operation with Surface Speed. Registers: S cutting speed
+    /// (m/min, ft/min in inch drawings), D maximum spindle speed (only when the operation sets one).
+    /// </summary>
+    [Category("Lathe"), DisplayName("Constant Surface Speed")] public string ConstantSurfaceSpeed { get; set; } = "G96 {$s}";
+    /// <summary>Spindle speed limit before G96 (Fanuc: G50 S…); empty when the limit is part of the G96 line. Register: S.</summary>
+    [Category("Lathe"), DisplayName("Spindle Speed Limit")] public string SpindleSpeedLimit { get; set; } = "G50 {$s}";
+    /// <summary>Back to constant spindle speed after the operation. Register: S spindle speed of the operation.</summary>
+    [Category("Lathe"), DisplayName("Constant Spindle Speed")] public string ConstantSpindleSpeed { get; set; } = "G97 {$s}";
     [Category("Options")] public double MinimumArcLength { get; set; } = 1e-4;
     [Category("Options")] public double MaximumArcRadius { get; set; } = 1e6;
     [Category("Options")] public string NumberFormat { get; set; } = "0.0###";
@@ -172,6 +181,9 @@ public sealed class PostProcessorDefinition
             ClearancePlaneAxis = "X",
             LatheXMode = LatheXMode.Diameter,
             ThreadCycle = "G76 {$_z} {$p} {$i} {$j} {$k} {$r} {$q} {$h}",
+            // LinuxCNC limits the spindle speed with the D word of G96.
+            ConstantSurfaceSpeed = "G96 {$d} {$s}",
+            SpindleSpeedLimit = "",
             NumberFormat = "0.0####",
         };
         yield return new PostProcessorDefinition

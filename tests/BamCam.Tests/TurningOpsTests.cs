@@ -150,6 +150,102 @@ public class TurningOpsTests
     }
 
     [Fact]
+    public void Constant_surface_speed_wraps_the_operation_in_G96_and_G97()
+    {
+        var (doc, shape) = Drawing(new(-30, 8), new(0, 8));
+        var op = Add(doc, shape, new LatheFacingOp());
+        op.SurfaceSpeed.Set(180);
+        op.MaxSpindleSpeed.Set(2500);
+        op.SpindleSpeed.Set(1200);
+        var paths = new Dictionary<MachineOp, Toolpath> { [op] = ToolpathGenerator.Generate(doc, op) };
+
+        // Fanuc style (defaults): limit with G50 first.
+        var lines = GCodePoster.Post(doc, paths, TurnPost("")).Text.Split("\r\n");
+        var g50 = Array.IndexOf(lines, "G50 S2500");
+        var g96 = Array.IndexOf(lines, "G96 S180");
+        var g97 = Array.IndexOf(lines, "G97 S1200");
+        // G50, G96, the facing cuts, then G97.
+        Assert.True(g50 >= 0 && g96 == g50 + 1 && g97 > g96, string.Join("\n", lines));
+        Assert.Contains(lines[g96..g97], l => l.StartsWith("G1 "));
+        Assert.DoesNotContain(lines[..g96], l => l.StartsWith("G1 "));
+
+        // LinuxCNC: the limit is the D word of G96.
+        var linuxcnc = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "LinuxCNC Turn");
+        var lc = GCodePoster.Post(doc, paths, linuxcnc).Text.Split("\r\n");
+        Assert.Contains("G96 D2500 S180", lc);
+        Assert.DoesNotContain(lc, l => l.StartsWith("G50"));
+
+        // Without surface speed: no G96/G97.
+        op.SurfaceSpeed.Set(0);
+        Assert.DoesNotContain(GCodePoster.Post(doc, paths, TurnPost("")).Text.Split("\r\n"), l => l.StartsWith("G96") || l.StartsWith("G97"));
+    }
+
+    /// <summary>Stepped bore: radius 10 to depth 15, then radius 6 to depth 30; pre-drilled radius 4, retract at radius 2.</summary>
+    private static (CadDocument Doc, LatheOp Op) SteppedBore()
+    {
+        var (doc, shape) = Drawing(new(0, 10), new(-15, 10), new(-15, 6), new(-30, 6));
+        var op = Add(doc, shape, new LatheOp());
+        op.TurningSide.Set(TurningSide.Internal);
+        op.ToolDiameter.Set(0.8);
+        op.StockSurface.Set(4);
+        op.ClearancePlane.Set(2);
+        op.DepthIncrement.Set(1);
+        return (doc, op);
+    }
+
+    [Fact]
+    public void Internal_turning_opens_the_bore_from_the_pre_drilled_hole_without_cutting_into_the_wall()
+    {
+        var (doc, op) = SteppedBore();
+        var tp = ToolpathGenerator.Generate(doc, op);
+        Assert.Empty(tp.Warnings);
+        var moves = Lathe(tp);
+        var feeds = moves.Where(m => m.Kind != MoveKind.Rapid).ToList();
+        // The tip (outward side of the nose) never goes beyond the bore wall.
+        foreach (var f in feeds)
+        {
+            var wall = f.Z >= -15 - 1e-6 ? 10 : 6; // the step face at Z -15 reaches radius 10
+            Assert.True(f.X <= wall + 1e-6, $"tip at Z {f.Z}, X {f.X} beyond the wall {wall}");
+        }
+        // Roughing levels outwards from the pre-drilled hole, and the finishing pass touches both walls.
+        Assert.Contains(feeds, f => Math.Abs(f.X - 5) < 1e-6);
+        // (Moves end at the corners: the wall of radius 10 ends at the step, the small bore at its end plus the nose.)
+        Assert.Contains(feeds, f => Math.Abs(f.X - 10) < 1e-6 && Math.Abs(f.Z + 15) < 1e-6);
+        Assert.Contains(feeds, f => Math.Abs(f.X - 6) < 1e-6 && f.Z <= -30);
+        Assert.True(feeds.All(f => f.X >= 4 - 1e-6), "nothing is cut inside the pre-drilled hole");
+        // Retracts go towards the axis, to the clearance radius 2.
+        Assert.Contains(moves, m => m.Kind == MoveKind.Rapid && Math.Abs(m.X - 2) < 1e-6);
+        Assert.DoesNotContain(moves, m => m.Kind == MoveKind.Rapid && m.X > 10 + 1e-6);
+    }
+
+    [Fact]
+    public void Boring_with_machine_compensation_uses_G41_towards_the_chuck()
+    {
+        var (doc, op) = SteppedBore();
+        op.NoseCompensation.Set(NoseCompensation.Machine);
+        var tp = ToolpathGenerator.Generate(doc, op);
+        Assert.Empty(tp.Warnings);
+        var lines = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, TurnPost("")).Text.Split("\r\n");
+        Assert.Contains("G41", lines);
+        Assert.DoesNotContain("G42", lines);
+        var on = Array.IndexOf(lines, "G41");
+        var off = Array.IndexOf(lines, "G40");
+        // Programmed bore contour (diameter): 20 to Z-15, step to 12, 12 to Z-30.
+        var cut = Positions(lines).Skip(on + 1).Take(off - on - 1).ToList();
+        Assert.Contains((20.0, -15.0), cut);
+        Assert.Contains((12.0, -15.0), cut);
+        Assert.Contains((12.0, -30.0), cut);
+    }
+
+    [Fact]
+    public void Internal_turning_warns_without_a_pre_drilled_hole()
+    {
+        var (doc, op) = SteppedBore();
+        op.StockSurface.Set(12); // outside the bore
+        Assert.NotEmpty(ToolpathGenerator.Generate(doc, op).Warnings);
+    }
+
+    [Fact]
     public void Left_hand_cutting_uses_G41()
     {
         var lines = ChamferedShaft(NoseCompensation.Machine, LatheCutDirection.LeftHand);
