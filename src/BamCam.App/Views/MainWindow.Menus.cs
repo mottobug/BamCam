@@ -138,10 +138,12 @@ public partial class MainWindow
 
         if (PluginMenuItems("Plugins") is { Length: > 0 } pluginItems) MainMenu.Items.Add(Sub("P_lugins", pluginItems));
 
-        MainMenu.Items.Add(Sub("_Help",
+        MainMenu.Items.Add(Sub("_Help", [
+            .. UpdateMenuItems(),
+            "-",
             Item("_About BamCam", () => _ = Dialogs.Message(this, T("About BamCam"),
-                F("BamCam – cross-platform 2.5D CAD/CAM\n\nAvalonia {0}, .NET {1}\nReads and writes .cb drawings and .cbpp post processors.",
-                    typeof(Avalonia.Application).Assembly.GetName().Version, Environment.Version)))));
+                F("BamCam {2} – cross-platform 2.5D CAD/CAM\n\nAvalonia {0}, .NET {1}\nReads and writes .cb drawings and .cbpp post processors.",
+                    typeof(Avalonia.Application).Assembly.GetName().Version, Environment.Version, CurrentVersion)))]));
 
         // Single-key draw shortcuts (active when no text field has focus).
         _shortcuts[(Key.P, KeyModifiers.None)] = () => View.SetTool(new PolylineTool());

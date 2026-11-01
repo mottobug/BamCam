@@ -107,6 +107,18 @@ public sealed class AppSettings
     /// <summary>Plugin files the user allowed or refused (path, SHA-256, enabled).</summary>
     [Browsable(false)] public List<PluginApproval> Plugins { get; set; } = [];
 
+    // ---- Updates ----
+    [Category("Updates"), DisplayName("Check For Updates"),
+     Description("At start, at most once a day, ask GitHub whether a newer BamCam version exists. Only the list of versions is requested; nothing about you or your drawings is sent.")]
+    public bool CheckForUpdates { get; set; }
+    [Category("Updates"), DisplayName("Offer Prereleases"), Description("Also offer test versions (e.g. 0.8.0-beta.1).")]
+    public bool UpdatePrereleases { get; set; }
+    /// <summary>The question about update checks was answered (asked once at the first start).</summary>
+    [Browsable(false)] public bool UpdateCheckAsked { get; set; }
+    [Browsable(false)] public DateTime? LastUpdateCheck { get; set; }
+    /// <summary>Version the user chose to skip ("Skip This Version").</summary>
+    [Browsable(false)] public string? SkippedVersion { get; set; }
+
     /// <summary>Script object texts (SHA-256) the user allowed to run.</summary>
     [Browsable(false)] public List<string> ApprovedScripts { get; set; } = [];
 

@@ -209,6 +209,14 @@ or off. See [docs/plugins.md](docs/plugins.md) for writing a plugin and
 [porting guide](docs/porting-cambam-plugins.md) maps CamBam's plugin concepts to BamCam's and explains how
 drawings saved with a CamBam plugin operation keep opening with the port.
 
+## Updates
+
+At the first start BamCam asks whether it may check for new versions. If allowed, it asks GitHub at most once a
+day (in the background, at start) for the list of releases and mentions a newer one in the message window and in
+the Help menu, with its release notes and a link to the download page. Only the version list is requested; nothing
+about you or your drawings is sent. **Help ▸ Check for Updates** checks at once; Tools ▸ Options switches the daily
+check and test versions on or off. BamCam does not download or install anything by itself.
+
 ## Settings
 Tools ▸ Options (or System ▸ Configuration) edits the application settings:
 - Display and colors, grid for mm and inches, units and font for new drawings.
