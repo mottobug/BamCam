@@ -50,6 +50,8 @@ public class DrawToolTests
                 '.' => Key.OemPeriod,
                 ',' => Key.OemComma,
                 'x' => Key.X,
+                '<' => Key.OemBackslash,
+                '-' => Key.OemMinus,
                 _ => throw new ArgumentException(c.ToString()),
             };
             Assert.True(tool.KeyDown(key, KeyModifiers.None), $"key {c}");
@@ -73,6 +75,51 @@ public class DrawToolTests
         Assert.Equal(3, pts.Count);
         Assert.True(pts[1].AlmostEquals(new(15, 20)), pts[1].ToString());
         Assert.True(pts[2].AlmostEquals(new(15, 32.5)), pts[2].ToString());
+    }
+
+    private static List<Point2> Points(Host host) =>
+        Assert.IsType<PolylineEntity>(Assert.Single(host.Session.Document.AllEntities())).ToPaths().First().Vertices.Select(v => v.XY).ToList();
+
+    [Fact]
+    public void Length_and_angle_place_the_point_by_keyboard()
+    {
+        var (host, tool) = Start(new PolylineTool());
+        Click(tool, 0, 0);
+        Type(tool, "25<30");
+        tool.KeyDown(Key.Enter, KeyModifiers.None);
+        Type(tool, "10<-90");
+        tool.KeyDown(Key.Enter, KeyModifiers.None);
+        tool.KeyDown(Key.Enter, KeyModifiers.None);
+        var pts = Points(host);
+        var a = Point2.FromAngle(Math.PI / 6, 25);
+        Assert.True(pts[1].AlmostEquals(a), pts[1].ToString());
+        Assert.True(pts[2].AlmostEquals(a + new Point2(0, -10)), pts[2].ToString());
+    }
+
+    [Fact]
+    public void Angle_alone_takes_the_length_from_the_cursor()
+    {
+        var (host, tool) = Start(new PolylineTool());
+        Click(tool, 0, 0);
+        Type(tool, "<90");
+        Click(tool, 3, 7); // projected onto the vertical: (0, 7)
+        tool.KeyDown(Key.Enter, KeyModifiers.None);
+        Assert.True(Points(host)[1].AlmostEquals(new(0, 7)), Points(host)[1].ToString());
+    }
+
+    [Fact]
+    public void Shift_snaps_the_direction_to_15_degree_steps()
+    {
+        var (host, tool) = Start(new PolylineTool());
+        Click(tool, 0, 0);
+        // 14° with Shift: snaps to 15°, length from the cursor projected onto that direction.
+        var cursor = Point2.FromAngle(Angles.ToRadians(14), 20);
+        tool.PointerMoved(default, cursor, KeyModifiers.Shift);
+        tool.PointerPressed(default, cursor, Left, KeyModifiers.Shift);
+        tool.KeyDown(Key.Enter, KeyModifiers.None);
+        var p = Points(host)[1];
+        Assert.Equal(15, Angles.ToDegrees(p.Angle), 9);
+        Assert.Equal(20 * Math.Cos(Angles.ToRadians(1)), p.Length, 9);
     }
 
     [Fact]

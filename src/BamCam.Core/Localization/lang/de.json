@@ -1128,6 +1128,8 @@
   "Knife Offset": "Messerversatz",
   "Overcut": "Überschnitt",
   "Swivel Angle": "Schwenkwinkel",
+  "Length < Angle": "Länge < Winkel",
+  "Select next point  [type length, < angle (or W); Shift = 15° steps; Enter / middle click = finish, C = close, Esc = cancel]": "Nächsten Punkt wählen  [Länge tippen, < Winkel (oder W); Umschalt = 15°-Schritte; Enter / Mittelklick = fertig, C = schließen, Esc = abbrechen]",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

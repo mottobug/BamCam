@@ -34,6 +34,12 @@ public abstract class DrawTool : ViewTool
     /// <summary>Second value separator allowed (rectangle: width and height).</summary>
     protected virtual bool TwoDimensions => false;
 
+    /// <summary>An angle may follow the length ("25&lt;30", polyline and line).</summary>
+    protected virtual bool AcceptsAngle => false;
+
+    /// <summary>Shift held during the last mouse move or click (angle steps of 15°).</summary>
+    protected bool AngleSnap { get; private set; }
+
     protected void ClearTyped()
     {
         if (Typed.Length == 0) return;
@@ -42,20 +48,30 @@ public abstract class DrawTool : ViewTool
     }
 
     /// <summary>Digits, decimal separator, value separator and Backspace while a value is being typed.</summary>
-    protected bool DimensionKey(Key key)
+    protected bool DimensionKey(Key key, KeyModifiers mods = KeyModifiers.None)
     {
         if (!HasPendingInput) return false;
+        // "<" is its own key on German keyboards (OemBackslash), Shift+comma on US ones; W (Winkel) works everywhere.
+        var angleKey = key is Key.OemBackslash or Key.W || key == Key.OemComma && mods.HasFlag(KeyModifiers.Shift);
+        if (AcceptsAngle && angleKey)
+        {
+            if (Typed.Contains('<')) return true;
+            Typed += "<";
+            ShowTyped();
+            return true;
+        }
         string? add = key switch
         {
             >= Key.D0 and <= Key.D9 => ((char)('0' + (key - Key.D0))).ToString(),
             >= Key.NumPad0 and <= Key.NumPad9 => ((char)('0' + (key - Key.NumPad0))).ToString(),
+            Key.OemMinus or Key.Subtract when Typed.EndsWith('<') => "-",
             Key.OemPeriod or Key.OemComma or Key.Decimal => ".",
             Key.X or Key.Space or Key.OemSemicolon or Key.Multiply when TwoDimensions && Typed.Length > 0 && !Typed.Contains(';') => ";",
             _ => null,
         };
         if (add != null)
         {
-            if (add == "." && Typed.Split(';')[^1].Contains('.')) return true;
+            if (add == "." && Typed.Split(';', '<')[^1].Contains('.')) return true;
             Typed += add;
         }
         else if (key == Key.Back && Typed.Length > 0)
@@ -66,9 +82,27 @@ public abstract class DrawTool : ViewTool
         {
             return false;
         }
-        Host.SetPrompt(Typed.Length == 0 ? Prompt : $"{Prompt}    {DimensionLabel}: {Typed.Replace(";", " x ")}  {T("[Backspace = correct]")}");
-        Host.Invalidate();
+        ShowTyped();
         return true;
+    }
+
+    private void ShowTyped()
+    {
+        var shown = Typed.Replace(";", " x ").Replace("<", " < ") + (Typed.EndsWith('<') ? "…°" : Typed.Contains('<') ? "°" : "");
+        Host.SetPrompt(Typed.Length == 0 ? Prompt : $"{Prompt}    {DimensionLabel}: {shown}  {T("[Backspace = correct]")}");
+        Host.Invalidate();
+    }
+
+    /// <summary>Typed length and angle (degrees) of "length&lt;angle"; either may be missing.</summary>
+    protected (double? Length, double? Angle) TypedPolar()
+    {
+        if (Typed.Length == 0) return (null, null);
+        var parts = Typed.Split('<');
+        static double? Parse(string s) =>
+            double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : null;
+        var length = Parse(parts[0]) is > 0 and var l ? l : (double?)null;
+        var angle = parts.Length > 1 ? Parse(parts[1]) : null;
+        return (length, angle);
     }
 
     protected void Commit(string description, Entity entity)
@@ -86,6 +120,7 @@ public abstract class DrawTool : ViewTool
     public override void PointerMoved(Point screen, Point2 world, KeyModifiers mods)
     {
         Cursor = world;
+        AngleSnap = mods.HasFlag(KeyModifiers.Shift);
         if (HasPendingInput) Host.Invalidate();
     }
 
@@ -123,7 +158,7 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
 
     public override string Prompt => _pts.Count == 0
         ? (linesOnly ? T("Line: select first point") : T("Polyline: select first point"))
-        : T("Select next point  [Enter / middle click = finish, C = close, Esc = cancel]");
+        : T("Select next point  [type length, < angle (or W); Shift = 15° steps; Enter / middle click = finish, C = close, Esc = cancel]");
 
     protected override bool HasPendingInput => _pts.Count > 0;
     protected override void Reset() => _pts.Clear();
@@ -136,6 +171,7 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
             Finish(closed: true);
             return;
         }
+        if (_pts.Count > 0) PointerMoved(screen, world, mods); // Shift state at the click
         world = Target(world);
         if (_pts.Count > 0 && world.AlmostEquals(_pts[^1], Tolerance.Point)) return;
         _pts.Add(world);
@@ -144,13 +180,24 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
         Host.Invalidate();
     }
 
-    /// <summary>With a typed length the next point lies that far from the last one, towards the cursor.</summary>
+    protected override bool AcceptsAngle => true;
+    protected override string DimensionLabel => T("Length < Angle");
+
+    /// <summary>
+    /// Next point: a typed length and / or angle (degrees from +X, counter-clockwise), else the cursor; with Shift
+    /// the direction snaps to 15° steps. Without a typed length the cursor gives it (projected onto the direction).
+    /// </summary>
     private Point2 Target(Point2 cursor)
     {
-        if (_pts.Count == 0 || TypedValues is not [{ } length, ..]) return cursor;
-        var d = cursor - _pts[^1];
-        var dir = d.Length < 1e-12 ? new Point2(1, 0) : d / d.Length;
-        return _pts[^1] + dir * length;
+        if (_pts.Count == 0) return cursor;
+        var (length, angle) = TypedPolar();
+        if (length == null && angle == null && !AngleSnap) return cursor;
+        var last = _pts[^1];
+        var d = cursor - last;
+        var a = angle is { } deg ? Angles.ToRadians(deg) : d.Length < 1e-12 ? 0 : d.Angle;
+        if (angle == null && AngleSnap) a = Math.Round(a / (Math.PI / 12)) * (Math.PI / 12);
+        var dir = Point2.FromAngle(a, 1);
+        return last + dir * (length ?? (angle != null || AngleSnap ? Math.Max(0, Point2.Dot(d, dir)) : d.Length));
     }
 
     public override void PointerReleased(Point screen, Point2 world, MouseButton button, KeyModifiers mods)
@@ -161,11 +208,11 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
 
     public override bool KeyDown(Key key, KeyModifiers mods)
     {
-        if (DimensionKey(key)) return true;
+        if (DimensionKey(key, mods)) return true;
         if (key is Key.Enter or Key.Return && HasPendingInput)
         {
-            // Enter with a typed length places the point (drawing by keyboard); otherwise it finishes.
-            if (TypedValues is [not null, ..])
+            // Enter with a typed length or angle places the point (drawing by keyboard); otherwise it finishes.
+            if (TypedPolar() is not (null, null))
             {
                 _pts.Add(Target(Cursor));
                 ClearTyped();
