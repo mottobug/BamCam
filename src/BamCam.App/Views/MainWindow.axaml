@@ -79,7 +79,7 @@
       <!-- Right: prompt line, drawing view, messages -->
       <Grid x:Name="RightGrid" Grid.Column="2" RowDefinitions="Auto,*,4,110">
         <Border Grid.Row="0" Background="#FFFFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2" x:Name="PromptBar" IsVisible="False">
-          <TextBlock x:Name="PromptText" />
+          <TextBlock x:Name="PromptText" TextWrapping="Wrap" />
         </Border>
         <d:DrawingView Grid.Row="1" x:Name="View" />
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />

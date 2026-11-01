@@ -86,11 +86,40 @@ public abstract class DrawTool : ViewTool
         return true;
     }
 
+    /// <summary>The typed value as shown: "25 &lt; 30°", "40 x 20" (decimal separator of the interface language).</summary>
+    private string TypedDisplay =>
+        Typed.Replace(".", Culture.NumberFormat.NumberDecimalSeparator).Replace(";", " x ").Replace("<", " < ") +
+        (Typed.EndsWith('<') ? "…°" : Typed.Contains('<') ? "°" : "");
+
     private void ShowTyped()
     {
-        var shown = Typed.Replace(";", " x ").Replace("<", " < ") + (Typed.EndsWith('<') ? "…°" : Typed.Contains('<') ? "°" : "");
-        Host.SetPrompt(Typed.Length == 0 ? Prompt : $"{Prompt}    {DimensionLabel}: {shown}  {T("[Backspace = correct]")}");
+        // The value first: the hints after it may be cut off or wrap.
+        Host.SetPrompt(Typed.Length == 0 ? Prompt : $"{DimensionLabel}: {TypedDisplay}   {T("[Backspace = correct]")}    {Prompt}");
         Host.Invalidate();
+    }
+
+    /// <summary>Size of the figure being drawn ("12,5  ∠ 30°", "Ø 12", "40 x 20"), shown at the cursor; null = none.</summary>
+    protected virtual string? LiveDimension => null;
+
+    protected static string Num(double v) => v.ToString("0.###", Culture);
+
+    /// <summary>
+    /// Label next to the cursor: the typed value (highlighted) or, without one, the live size of the figure, so the
+    /// value can be read where one looks while drawing.
+    /// </summary>
+    public void RenderCursorLabel(DrawingContext dc, ViewTransform view)
+    {
+        if (!HasPendingInput) return;
+        var typed = Typed.Length > 0;
+        if ((typed ? TypedDisplay : LiveDimension) is not { } text) return;
+        var label = new FormattedText(text, Culture, FlowDirection.LeftToRight,
+            new Typeface(Typeface.Default.FontFamily, FontStyle.Normal, typed ? FontWeight.Bold : FontWeight.Normal), 13,
+            typed ? Brushes.Black : Brushes.White);
+        var at = view.ToScreen(Cursor) + new Point(18, 16);
+        var box = new Rect(at.X - 4, at.Y - 2, label.Width + 8, label.Height + 4);
+        dc.DrawRectangle(typed ? new SolidColorBrush(Color.FromRgb(255, 248, 208)) : new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)),
+            new Pen(Brushes.Gray, 1), box, 3, 3);
+        dc.DrawText(label, at);
     }
 
     /// <summary>Typed length and angle (degrees) of "length&lt;angle"; either may be missing.</summary>
@@ -182,6 +211,17 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
 
     protected override bool AcceptsAngle => true;
     protected override string DimensionLabel => T("Length < Angle");
+
+    protected override string? LiveDimension
+    {
+        get
+        {
+            if (_pts.Count == 0) return null;
+            var d = Target(Cursor) - _pts[^1];
+            var angle = Angles.ToDegrees(d.Angle);
+            return $"{Num(d.Length)}  ∠ {Num(Math.Round(angle < -1e-9 ? angle + 360 : angle, 2))}°";
+        }
+    }
 
     /// <summary>
     /// Next point: a typed length and / or angle (degrees from +X, counter-clockwise), else the cursor; with Shift
@@ -370,6 +410,7 @@ public sealed class CircleTool : DrawTool
     }
 
     protected override string DimensionLabel => T("Diameter");
+    protected override string? LiveDimension => _center == null ? null : $"Ø {Num(2 * Radius(Cursor))}";
 
     /// <summary>Typed diameter, else the distance to the cursor.</summary>
     private double Radius(Point2 cursor) => TypedValues is [{ } d, ..] ? d / 2 : Point2.Distance(_center!.Value, cursor);
@@ -420,6 +461,15 @@ public sealed class RectangleTool : DrawTool
     }
 
     protected override string DimensionLabel => T("Width x Height");
+    protected override string? LiveDimension
+    {
+        get
+        {
+            if (_corner is not { } a) return null;
+            var o = Opposite(Cursor);
+            return $"{Num(Math.Abs(o.X - a.X))} x {Num(Math.Abs(o.Y - a.Y))}";
+        }
+    }
     protected override bool TwoDimensions => true;
 
     /// <summary>Opposite corner: typed width (and height) towards the cursor; missing values follow the cursor.</summary>

@@ -242,6 +242,15 @@ public partial class MainWindow : Window
                 Log(dump);
                 File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bamcam-context.txt"), dump);
             }
+            // --tool line|polyline|circle|rectangle: starts a drawing tool (toolbar highlight).
+            if (options.TryGetValue("--tool", out var toolName))
+                View.SetTool(toolName switch
+                {
+                    "line" => new PolylineTool(linesOnly: true),
+                    "circle" => new CircleTool(),
+                    "rectangle" => new RectangleTool(),
+                    _ => new PolylineTool(),
+                });
             // --pick <MOP name>: re-select its drawing objects (the clicks below change the selection), then Enter.
             var pickOp = options.TryGetValue("--pick", out var pickName)
                 ? _session.Document.Parts.SelectMany(p => p.Operations).FirstOrDefault(o => o.Name == pickName)
@@ -264,6 +273,11 @@ public partial class MainWindow : Window
                     }
                 }
             }
+            if (options.TryGetValue("--move", out var move))
+            {
+                var v = move.Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+                View.SimulateMove(new(v[0], v[1]));
+            }
             if (pickOp != null)
             {
                 View.ForwardKeyToTool(Key.Enter, KeyModifiers.None);
@@ -285,15 +299,6 @@ public partial class MainWindow : Window
                 if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
                 ShowToolpathFilter();
             }
-            // --tool line|polyline|circle|rectangle: starts a drawing tool (toolbar highlight).
-            if (options.TryGetValue("--tool", out var toolName))
-                View.SetTool(toolName switch
-                {
-                    "line" => new PolylineTool(linesOnly: true),
-                    "circle" => new CircleTool(),
-                    "rectangle" => new RectangleTool(),
-                    _ => new PolylineTool(),
-                });
             // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
             Window? extra = null;
             if (options.TryGetValue("--window", out var which))

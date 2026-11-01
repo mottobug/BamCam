@@ -204,6 +204,15 @@ public sealed partial class DrawingView : Control, IToolHost
     /// <summary>Diagnostics: screen position of a drawing coordinate.</summary>
     public Point WorldToScreen(Point2 worldPoint) => _view.ToScreen(worldPoint);
 
+    /// <summary>Diagnostics: moves the cursor to a drawing point (tools see a mouse move).</summary>
+    public void SimulateMove(Point2 worldPoint)
+    {
+        var pos = _view.ToScreen(worldPoint);
+        _cursorScreen = pos;
+        _tool.PointerMoved(pos, Snap(_view.ToWorld(pos), pos), KeyModifiers.None);
+        InvalidateVisual();
+    }
+
     public void SimulateClick(Point2 worldPoint, KeyModifiers mods = KeyModifiers.None)
     {
         var pos = _view.ToScreen(worldPoint);
@@ -493,6 +502,7 @@ public sealed partial class DrawingView : Control, IToolHost
             RenderTabs(dc);
             _tool.RenderOverlay(dc, _view);
             RenderSnapMarker(dc);
+            (_tool as DrawTool)?.RenderCursorLabel(dc, _view);
         }
     }
 
