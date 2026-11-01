@@ -93,6 +93,70 @@ public class TurningOpsTests
         Rapid = "{$g0} {$_x} {$_z}", FeedMove = "{$g1} {$_f} {$_x} {$_z}", ThreadCycle = cycle,
     };
 
+    /// <summary>Finishing pass over a cylinder of radius 7 with a 1 mm chamfer at the face (nose radius 0.4).</summary>
+    private static string[] ChamferedShaft(NoseCompensation comp, LatheCutDirection direction = LatheCutDirection.RightHand)
+    {
+        var (doc, shape) = Drawing(new(0, 0), new(0, 6), new(-1, 7), new(-20, 7), new(-20, 10));
+        var op = Add(doc, shape, new LatheOp());
+        op.ToolDiameter.Set(0.8);
+        op.RoughingFinishing.Set(RoughingFinishing.Finishing);
+        op.NoseCompensation.Set(comp);
+        op.LatheCutDirection.Set(direction);
+        var tp = ToolpathGenerator.Generate(doc, op);
+        Assert.Empty(tp.Warnings);
+        var post = TurnPost("");
+        post.ArcCW = "{$g2} {$_f} {$_x} {$_z} {$i} {$k}";
+        post.ArcCCW = "{$g3} {$_f} {$_x} {$_z} {$i} {$k}";
+        return GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text.Split("\r\n");
+    }
+
+    [Fact]
+    public void Machine_nose_compensation_outputs_the_part_contour_between_G42_and_G40()
+    {
+        var lines = ChamferedShaft(NoseCompensation.Machine);
+        var on = Array.IndexOf(lines, "G42");
+        var off = Array.IndexOf(lines, "G40");
+        Assert.True(on >= 0 && off > on, string.Join("\n", lines));
+        var positions = Positions(lines);
+        // Programmed points on the part contour (diameter): axis at the face, chamfer, cylinder, shoulder.
+        Assert.Equal([(0.0, 0.0), (12.0, 0.0), (14.0, -1.0), (14.0, -20.0), (20.0, -20.0)], positions.Skip(on + 1).Take(off - on - 1));
+        // Axial start-up move: the tool waits in front of the face, at least two nose radii away.
+        Assert.Equal(0, positions[on].X, 9);
+        Assert.True(positions[on].Z >= 0.9, $"start-up from Z {positions[on].Z}");
+        // G40 is followed by the radial retract.
+        Assert.StartsWith("G0 X", lines[off + 1]);
+
+        // Computed: no compensation codes, the tip path is offset at the chamfer.
+        var computed = ChamferedShaft(NoseCompensation.Computed);
+        Assert.DoesNotContain(computed, l => l is "G40" or "G41" or "G42");
+        Assert.DoesNotContain(Positions(computed), p => p == (14.0, -1.0));
+    }
+
+    /// <summary>Position (diameter X, Z) after each line, following modal (omitted) axis words.</summary>
+    private static List<(double X, double Z)> Positions(string[] lines)
+    {
+        double x = double.NaN, z = double.NaN;
+        var result = new List<(double, double)>();
+        foreach (var line in lines)
+        {
+            foreach (var word in line.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (word[0] == 'X') x = double.Parse(word[1..], CultureInfo.InvariantCulture);
+                if (word[0] == 'Z') z = double.Parse(word[1..], CultureInfo.InvariantCulture);
+            }
+            result.Add((Math.Round(x, 4), Math.Round(z, 4)));
+        }
+        return result;
+    }
+
+    [Fact]
+    public void Left_hand_cutting_uses_G41()
+    {
+        var lines = ChamferedShaft(NoseCompensation.Machine, LatheCutDirection.LeftHand);
+        Assert.Contains("G41", lines);
+        Assert.DoesNotContain("G42", lines);
+    }
+
     [Fact]
     public void Threads_are_output_as_G76_cycle()
     {

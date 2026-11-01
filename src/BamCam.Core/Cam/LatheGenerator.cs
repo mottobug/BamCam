@@ -67,8 +67,31 @@ internal static class LatheGenerator
                         moves.StraightPass(from, to, tip, approach, leadOut);
                 }
             }
-            moves.ContourPass(contour, approach, leadOut);
+            if (op.NoseCompensation.Value == NoseCompensation.Machine)
+            {
+                // The control offsets the part contour (plus clearance) by the nose radius of its tool table.
+                var programmed = clearance > 1e-9 ? CenterContour(profile, Outline(profile, clearance)!, clearance) : ByDecreasingZ(profile);
+                if (programmed == null)
+                {
+                    tp.Warnings.Add(Tr.F("{0}: the profile could not be offset for the tool.", op.Name));
+                    continue;
+                }
+                if (dir > 0) programmed = programmed.Reversed();
+                // External turning towards the chuck (right hand) has the tool on the right of the path: G42.
+                moves.CompensatedContourPass(contour, programmed, dir < 0 ? CutterSide.Right : CutterSide.Left, approach, leadOut);
+            }
+            else
+            {
+                moves.ContourPass(contour, approach, leadOut);
+            }
         }
+    }
+
+    /// <summary>The profile itself, ordered by decreasing Z like <see cref="CenterContour"/>.</summary>
+    private static Path2 ByDecreasingZ(Path2 profile)
+    {
+        var pts = profile.Flatten(ToolpathGenerator.ChordTolerance);
+        return pts[^1].X >= pts[0].X ? profile.Reversed() : profile;
     }
 
     /// <summary>Material region (profile closed to the axis) grown by <paramref name="d"/>: where the nose centre must not go.</summary>
@@ -455,24 +478,68 @@ internal static class LatheGenerator
         {
             var first = contour.Vertices[0].Point;
             Approach(TipZ(first.X), first.Y - noseRadius, approach);
+            AlongContour(contour);
+            LeadOut(leadOut);
+        }
+
+        /// <summary>Contour segments as tool tip moves; <paramref name="shift"/> false = the points themselves.</summary>
+        private void AlongContour(Path2 contour, bool shift = true, List<Move>? into = null)
+        {
+            (double Z, double X) Tip(double cz, double cx) => shift ? (TipZ(cz), cx - noseRadius) : (cz, cx);
             foreach (var s in contour.Segments())
             {
-                var tip = (Z: TipZ(s.End.X), X: s.End.Y - noseRadius);
+                var tip = Tip(s.End.X, s.End.Y);
                 var end = toDrawing(tip.Z, tip.X);
+                Move move;
                 if (s.IsArc)
                 {
                     var arc = s.ToArc();
-                    var center = toDrawing(TipZ(arc.Center.X), arc.Center.Y - noseRadius).XY;
+                    var c = Tip(arc.Center.X, arc.Center.Y);
                     // Mapping to the drawing mirrors the lathe view when the profile lies below the axis.
-                    tp.Add(Move.Arc(end, center, arc.IsClockwise ^ (side < 0), cutFeed));
+                    move = Move.Arc(end, toDrawing(c.Z, c.X).XY, arc.IsClockwise ^ (side < 0), cutFeed);
                 }
                 else
                 {
-                    tp.Add(Move.Line(end, cutFeed));
+                    move = Move.Line(end, cutFeed);
                 }
+                if (into != null)
+                {
+                    into.Add(move);
+                    continue;
+                }
+                tp.Add(move);
                 _tip = tip;
             }
+        }
+
+        /// <summary>
+        /// Contour pass for the machine's nose radius compensation: rapid to a point in front of the contour start (at
+        /// least two nose radii against the cutting direction), compensation on, an axial start-up move onto the
+        /// contour, the cut (computed tip moves for display, <paramref name="programmed"/> part contour for the G-code),
+        /// lead out, compensation off with the radial retract.
+        /// </summary>
+        public void CompensatedContourPass(Path2 contour, Path2 programmed, CutterSide comp, double approach, double leadOut)
+        {
+            var first = contour.Vertices[0].Point;
+            var z = TipZ(first.X);
+            var x = first.Y - noseRadius;
+            var start = programmed.Vertices[0].Point;
+            var entryZ = start.X - dir * Math.Max(approach, 2 * noseRadius + 0.1);
+            if (_tip is { } p && p.X < clearanceX) Rapid(p.Z, clearanceX);
+            Rapid(entryZ, clearanceX);
+            Rapid(entryZ, start.Y);
+
+            var code = new List<Move> { Move.Line(toDrawing(start.X, start.Y), plungeFeed) };
+            AlongContour(programmed, shift: false, into: code);
+            var end = programmed.Vertices[^1].Point;
+            if (leadOut > 0) code.Add(Move.Line(toDrawing(end.X - dir * leadOut, end.Y + leadOut), cutFeed));
+
+            tp.Add(Move.CompOn(comp, code));
+            Feed(z, x, plungeFeed);
+            AlongContour(contour);
             LeadOut(leadOut);
+            tp.Add(Move.CompOff());
+            if (_tip is { } q) Rapid(q.Z, clearanceX);
         }
     }
 }

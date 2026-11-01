@@ -163,6 +163,10 @@ public sealed class LatheOp : TurningOp
     [Param(70, "Lathe")] public CamParam<LatheCutDirection> LatheCutDirection { get; set; } = new(Cam.LatheCutDirection.RightHand);
     [Param(71, "Lathe")] public CamParam<double> LatheLeadInLength { get; set; } = new(0);
     [Param(72, "Lathe")] public CamParam<double> LatheLeadOutLength { get; set; } = new(0);
+
+    [Param(73, "Lathe"), DisplayName("Nose Compensation"),
+     Description("Computed: the tool path allows for the nose radius (virtual tool tip). Machine: the contour pass is output on the part contour with G41/G42, and the control offsets it by the nose radius and tip orientation of its tool table. Roughing passes stay computed.")]
+    public CamParam<NoseCompensation> NoseCompensation { get; set; } = new(Cam.NoseCompensation.Computed);
 }
 
 /// <summary>

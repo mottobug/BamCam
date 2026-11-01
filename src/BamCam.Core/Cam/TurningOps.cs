@@ -15,6 +15,9 @@ public abstract class TurningOp : MachineOp
     }
 }
 
+/// <summary>Who allows for the tool nose radius: BamCam in the tool path, or the control (G41/G42).</summary>
+public enum NoseCompensation { Computed, Machine }
+
 /// <summary>Thread on the outside of the part or inside a bore.</summary>
 public enum ThreadType { External, Internal }
 

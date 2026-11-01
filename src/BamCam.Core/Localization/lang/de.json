@@ -1054,6 +1054,10 @@
   "Steel": "Stahl",
   "Stainless Steel": "Edelstahl",
   "Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.": "Warnung: Der CAM-Stil „{0}“ ist auf diesem Rechner nicht vorhanden. Bearbeitungen mit diesem Stil behalten die in der Zeichnung gespeicherten Werte.",
+  "Computed": "Berechnet",
+  "Computed: the tool path allows for the nose radius (virtual tool tip). Machine: the contour pass is output on the part contour with G41/G42, and the control offsets it by the nose radius and tip orientation of its tool table. Roughing passes stay computed.": "Berechnet: Der Werkzeugweg berücksichtigt den Schneidenradius (virtuelle Schneidenspitze). Maschine: Der Konturschnitt wird auf der Teilekontur mit G41/G42 ausgegeben, die Steuerung versetzt ihn um Schneidenradius und Schneidenlage aus ihrer Werkzeugtabelle. Die Schruppschnitte bleiben berechnet.",
+  "Machine": "Maschine",
+  "Nose Compensation": "Schneidenradiuskorrektur",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

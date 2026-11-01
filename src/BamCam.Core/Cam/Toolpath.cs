@@ -2,7 +2,10 @@ using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Cam;
 
-public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle, ThreadCycle }
+public enum MoveKind { Rapid, Feed, ArcCW, ArcCCW, Dwell, Comment, DrillCycle, ThreadCycle, CutterComp }
+
+/// <summary>Side of the machine's tool radius compensation (G41 left, G42 right, G40 off).</summary>
+public enum CutterSide { Off, Left, Right }
 
 /// <summary>
 /// Threading cycle (turning). The tool stands at the drive line (start Z, drive radius) before the move;
@@ -27,7 +30,8 @@ public readonly record struct DrillCycle(double RetractZ, double Peck, double Dw
 /// is the hole bottom.
 /// </summary>
 public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Point2 Center = default,
-    string? Text = null, double Seconds = 0, DrillCycle Cycle = default, ThreadCycle Thread = default)
+    string? Text = null, double Seconds = 0, DrillCycle Cycle = default, ThreadCycle Thread = default,
+    CutterSide Side = CutterSide.Off, IReadOnlyList<Move>? Programmed = null)
 {
     public static Move Rapid(Point3 to) => new(MoveKind.Rapid, to);
     public static Move Line(Point3 to, double feed) => new(MoveKind.Feed, to, feed);
@@ -38,6 +42,16 @@ public readonly record struct Move(MoveKind Kind, Point3 To, double Feed = 0, Po
         new(MoveKind.DrillCycle, bottom, feed, Cycle: cycle);
     public static Move ThreadCut(Point3 rootAtEnd, ThreadCycle cycle) =>
         new(MoveKind.ThreadCycle, rootAtEnd, Thread: cycle);
+
+    /// <summary>
+    /// Switches the machine's tool radius compensation on. The moves up to the matching <see cref="CompOff"/> are the
+    /// computed tool path (display, simulation); the post processor outputs <paramref name="programmed"/> instead:
+    /// the same cut on the part contour, which the control offsets by the radius of its tool table.
+    /// </summary>
+    public static Move CompOn(CutterSide side, IReadOnlyList<Move> programmed) =>
+        new(MoveKind.CutterComp, default, Side: side, Programmed: programmed);
+
+    public static Move CompOff() => new(MoveKind.CutterComp, default, Side: CutterSide.Off);
 
     public bool IsArc => Kind is MoveKind.ArcCW or MoveKind.ArcCCW;
     public bool IsMotion => Kind is MoveKind.Rapid or MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW;

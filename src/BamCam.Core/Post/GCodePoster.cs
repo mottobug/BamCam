@@ -578,19 +578,41 @@ public sealed partial class GCodePoster
         var motion = job.Toolpath.Moves.Where(m => m.IsMotion).Select(m => Out(m.To).Y).ToList();
         double side = motion.Count > 0 && motion.Average() < 0 ? -1 : 1;
         Point3? pos = null;
-        foreach (var m in job.Toolpath.Moves)
+        var compensated = false;
+        foreach (var move in job.Toolpath.Moves)
+        {
+            if (move.Kind == MoveKind.CutterComp)
+            {
+                if (move.Side == CutterSide.Off)
+                {
+                    compensated = false;
+                    Line(_post.CutterCompOff);
+                    continue;
+                }
+                // Machine compensation: the programmed part contour replaces the computed moves up to the G40.
+                var left = (move.Side == CutterSide.Left) ^ _post.InvertArcs;
+                Line(left ? _post.CutterCompLeft : _post.CutterCompRight);
+                foreach (var pm in move.Programmed ?? []) Emit(pm);
+                compensated = true;
+                continue;
+            }
+            if (!compensated) Emit(move);
+        }
+        return sb.ToString();
+
+        void Emit(Move m)
         {
             if (m.Kind == MoveKind.Comment)
             {
                 Line($"{_post.Comment} {m.Text} {_post.EndComment}");
-                continue;
+                return;
             }
             if (m.Kind == MoveKind.ThreadCycle && pos is { } threadStart)
             {
                 ThreadBlocks(m, Out(threadStart), Out(m.To), side, Line);
-                continue;
+                return;
             }
-            if (!m.IsMotion) continue;
+            if (!m.IsMotion) return;
             var t = Out(m.To);
             var x = LatheX(t.Y * side);
             var z = t.X;
@@ -645,7 +667,6 @@ public sealed partial class GCodePoster
             }
             pos = m.To;
         }
-        return sb.ToString();
     }
 
     /// <summary>
