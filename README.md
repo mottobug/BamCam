@@ -184,8 +184,12 @@ The G-code produced for the CamBam sample `snap-together-box.cb` matches the ref
 lines (depth levels, holding tabs, corner overcuts, arcs, nesting copies). For the example drawings in
 `examples_to_test` it matches CamBam's output line for line or within 0.004 mm.
 
+**Printing:** File ▸ Print writes a vector PDF (fit to page, true size 1:1 split over several pages, or a custom
+scale; paper size, orientation, toolpaths, layer colours, caption) and opens it in the PDF viewer; File ▸ Export ▸
+PDF saves it.
+
 **Not implemented yet:** additive 3D mode, CamBam bitmap objects (images are imported as surfaces or outlines
-instead), script objects, printing. Such objects are kept unchanged when `.cb` files are loaded and saved.
+instead), script objects. Such objects are kept unchanged when `.cb` files are loaded and saved.
 
 ## Plugins
 
