@@ -249,6 +249,8 @@ public partial class MainWindow : Window
                     "line" => new PolylineTool(linesOnly: true),
                     "circle" => new CircleTool(),
                     "rectangle" => new RectangleTool(),
+                    "textpath" => new TextOnPathTool(_session.Document.AllEntities().OfType<TextEntity>().First(),
+                        _session.Document.AllEntities().First(e => e is not TextEntity)),
                     _ => new PolylineTool(),
                 });
             // --pick <MOP name>: re-select its drawing objects (the clicks below change the selection), then Enter.

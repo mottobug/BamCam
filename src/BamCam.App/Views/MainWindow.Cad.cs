@@ -42,6 +42,20 @@ public partial class MainWindow
         View.SetTool(new CornerTool(polyline));
     }
 
+    /// <summary>Draw ▸ Text on Polyline: one text and one guide object selected; the start point is clicked.</summary>
+    private void TextOnPolyline()
+    {
+        var selected = Selected;
+        var text = selected.OfType<TextEntity>().ToList();
+        var guides = selected.Where(e => e is PolylineEntity or LineEntity or ArcEntity or CircleEntity or SplineEntity or RectEntity).ToList();
+        if (text.Count != 1 || guides.Count != 1 || selected.Count != 2)
+        {
+            Log(T("Text on polyline: select one text and one polyline (or line, arc, circle, spline, rectangle) as guide."));
+            return;
+        }
+        View.SetTool(new TextOnPathTool(text[0], guides[0]));
+    }
+
     /// <summary>Reference of the align commands (toolbar list), kept in the settings.</summary>
     private AlignReference AlignTo
     {

@@ -256,6 +256,7 @@ public partial class MainWindow
             Item("Di_vide Geometry...", DividePoints),
             Item("_Centers", CenterPoints)),
         Item("_Text...", DrawText),
+        Item("Text on Pol_yline", TextOnPolyline),
         .. PluginMenuItems("Draw"),
     ];
 
