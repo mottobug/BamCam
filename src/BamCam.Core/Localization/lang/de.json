@@ -1090,6 +1090,8 @@
   "Circle _Centers": "_Kreiszentren",
   "_Quadrants": "_Quadranten",
   "_Intersections": "_Schnittpunkte",
+  "Width x Height": "Breite x Höhe",
+  "[Backspace = correct]": "[Rücktaste = korrigieren]",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

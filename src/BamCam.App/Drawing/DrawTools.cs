@@ -18,8 +18,62 @@ public abstract class DrawTool : ViewTool
     protected abstract void Reset();
     protected abstract bool HasPendingInput { get; }
 
+    // ---- Dimension input: while drawing, typed digits give the exact length / diameter / width and height.
+
+    /// <summary>The digits typed so far (values separated by ';'), empty when nothing was typed.</summary>
+    protected string Typed { get; private set; } = "";
+
+    /// <summary>Typed values (invariant or comma decimal separator); empty entries are null.</summary>
+    protected double?[] TypedValues => Typed.Length == 0 ? [] : Typed.Split(';').Select(s =>
+        double.TryParse(s.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && v > 0
+            ? v : (double?)null).ToArray();
+
+    /// <summary>Label of the typed values in the prompt ("Length", "Diameter", "Width; Height").</summary>
+    protected virtual string DimensionLabel => T("Length");
+
+    /// <summary>Second value separator allowed (rectangle: width and height).</summary>
+    protected virtual bool TwoDimensions => false;
+
+    protected void ClearTyped()
+    {
+        if (Typed.Length == 0) return;
+        Typed = "";
+        Host.SetPrompt(Prompt);
+    }
+
+    /// <summary>Digits, decimal separator, value separator and Backspace while a value is being typed.</summary>
+    protected bool DimensionKey(Key key)
+    {
+        if (!HasPendingInput) return false;
+        string? add = key switch
+        {
+            >= Key.D0 and <= Key.D9 => ((char)('0' + (key - Key.D0))).ToString(),
+            >= Key.NumPad0 and <= Key.NumPad9 => ((char)('0' + (key - Key.NumPad0))).ToString(),
+            Key.OemPeriod or Key.OemComma or Key.Decimal => ".",
+            Key.X or Key.Space or Key.OemSemicolon or Key.Multiply when TwoDimensions && Typed.Length > 0 && !Typed.Contains(';') => ";",
+            _ => null,
+        };
+        if (add != null)
+        {
+            if (add == "." && Typed.Split(';')[^1].Contains('.')) return true;
+            Typed += add;
+        }
+        else if (key == Key.Back && Typed.Length > 0)
+        {
+            Typed = Typed[..^1];
+        }
+        else
+        {
+            return false;
+        }
+        Host.SetPrompt(Typed.Length == 0 ? Prompt : $"{Prompt}    {DimensionLabel}: {Typed.Replace(";", " x ")}  {T("[Backspace = correct]")}");
+        Host.Invalidate();
+        return true;
+    }
+
     protected void Commit(string description, Entity entity)
     {
+        Typed = "";
         var session = Host.Session;
         session.Execute(description, () => session.Document.AddEntity(entity));
         session.Select([entity]);
@@ -41,6 +95,7 @@ public abstract class DrawTool : ViewTool
         if (HasPendingInput)
         {
             Reset();
+            Typed = "";
             Host.SetPrompt(Prompt);
             Host.Invalidate();
         }
@@ -78,10 +133,21 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
             Finish(closed: true);
             return;
         }
+        world = Target(world);
         if (_pts.Count > 0 && world.AlmostEquals(_pts[^1], Tolerance.Point)) return;
         _pts.Add(world);
+        ClearTyped();
         Host.SetPrompt(Prompt);
         Host.Invalidate();
+    }
+
+    /// <summary>With a typed length the next point lies that far from the last one, towards the cursor.</summary>
+    private Point2 Target(Point2 cursor)
+    {
+        if (_pts.Count == 0 || TypedValues is not [{ } length, ..]) return cursor;
+        var d = cursor - _pts[^1];
+        var dir = d.Length < 1e-12 ? new Point2(1, 0) : d / d.Length;
+        return _pts[^1] + dir * length;
     }
 
     public override void PointerReleased(Point screen, Point2 world, MouseButton button, KeyModifiers mods)
@@ -92,9 +158,20 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
 
     public override bool KeyDown(Key key, KeyModifiers mods)
     {
+        if (DimensionKey(key)) return true;
         if (key is Key.Enter or Key.Return && HasPendingInput)
         {
-            Finish(false);
+            // Enter with a typed length places the point (drawing by keyboard); otherwise it finishes.
+            if (TypedValues is [not null, ..])
+            {
+                _pts.Add(Target(Cursor));
+                ClearTyped();
+                Host.Invalidate();
+            }
+            else
+            {
+                Finish(false);
+            }
             return true;
         }
         if (key == Key.C && _pts.Count >= 3)
@@ -136,7 +213,7 @@ public sealed class PolylineTool(bool linesOnly = false) : DrawTool
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         if (_pts.Count == 0) return;
-        DrawPath(dc, view, Path2.FromPoints(_pts.Append(Cursor), false), PreviewPen);
+        DrawPath(dc, view, Path2.FromPoints(_pts.Append(Target(Cursor)), false), PreviewPen);
     }
 }
 
@@ -237,15 +314,31 @@ public sealed class CircleTool : DrawTool
             Host.SetPrompt(Prompt);
             return;
         }
-        var r = Point2.Distance(c, world);
+        var r = Radius(world);
         if (r < Tolerance.Point) return;
         Commit(T("Draw circle"), new CircleEntity { Center = c.ToPoint3(), Diameter = 2 * r });
+    }
+
+    protected override string DimensionLabel => T("Diameter");
+
+    /// <summary>Typed diameter, else the distance to the cursor.</summary>
+    private double Radius(Point2 cursor) => TypedValues is [{ } d, ..] ? d / 2 : Point2.Distance(_center!.Value, cursor);
+
+    public override bool KeyDown(Key key, KeyModifiers mods)
+    {
+        if (DimensionKey(key)) return true;
+        if (key is Key.Enter or Key.Return && _center is { } c && TypedValues is [{ } d, ..])
+        {
+            Commit(T("Draw circle"), new CircleEntity { Center = c.ToPoint3(), Diameter = d });
+            return true;
+        }
+        return base.KeyDown(key, mods);
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         if (_center is not { } c) return;
-        var r = Point2.Distance(c, Cursor);
+        var r = Radius(Cursor);
         if (r < Tolerance.Point) return;
         DrawPath(dc, view, new CircleEntity { Center = c.ToPoint3(), Diameter = 2 * r }.ToPaths().First(), PreviewPen);
         dc.DrawLine(PreviewPen, view.ToScreen(c), view.ToScreen(Cursor));
@@ -271,14 +364,41 @@ public sealed class RectangleTool : DrawTool
             Host.SetPrompt(Prompt);
             return;
         }
+        world = Opposite(world);
         if (Math.Abs(a.X - world.X) < Tolerance.Point || Math.Abs(a.Y - world.Y) < Tolerance.Point) return;
         Commit(T("Draw rectangle"), RectEntity.FromCorners(a, world, CornerRadius));
+    }
+
+    protected override string DimensionLabel => T("Width x Height");
+    protected override bool TwoDimensions => true;
+
+    /// <summary>Opposite corner: typed width (and height) towards the cursor; missing values follow the cursor.</summary>
+    private Point2 Opposite(Point2 cursor)
+    {
+        var a = _corner!.Value;
+        var v = TypedValues;
+        var sx = cursor.X < a.X ? -1 : 1;
+        var sy = cursor.Y < a.Y ? -1 : 1;
+        var x = v.Length > 0 && v[0] is { } w ? a.X + sx * w : cursor.X;
+        var y = v.Length > 1 && v[1] is { } h ? a.Y + sy * h : cursor.Y;
+        return new Point2(x, y);
+    }
+
+    public override bool KeyDown(Key key, KeyModifiers mods)
+    {
+        if (DimensionKey(key)) return true;
+        if (key is Key.Enter or Key.Return && _corner is { } a && TypedValues is [not null, not null])
+        {
+            Commit(T("Draw rectangle"), RectEntity.FromCorners(a, Opposite(Cursor), CornerRadius));
+            return true;
+        }
+        return base.KeyDown(key, mods);
     }
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         if (_corner is not { } a) return;
-        DrawPath(dc, view, RectEntity.FromCorners(a, Cursor, CornerRadius).ToPaths().First(), PreviewPen);
+        DrawPath(dc, view, RectEntity.FromCorners(a, Opposite(Cursor), CornerRadius).ToPaths().First(), PreviewPen);
     }
 }
 
