@@ -150,6 +150,9 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 - **Pocket:** offset and hatch fills, islands.
 - **Drill:** canned cycles G81/G82/G83 and spiral milling.
 - **Engrave** and **NC file** (G-code back-plot).
+- **V-engrave** (V-carving) of text, regions and closed polylines: the V-bit follows the centre lines (medial axis)
+  and goes as deep as the shape is wide, with sharp corners; areas wider than the cone at the target depth get a
+  flat bottom (outline plus clearing passes); V angle, tip diameter and depth passes.
 - **Drag knife** (vinyl / foil cutting): the path moves forward by the blade offset, with swivel arcs around
   corners above the swivel angle and an overcut at the end of closed shapes.
 - **Plasma** (also laser / oxy-fuel): kerf compensation (outlines outside, holes inside), holes before the outline
@@ -293,7 +296,8 @@ Bug reports, ideas, translations and pull requests are welcome: see [CONTRIBUTIN
 
 BamCam is released under the [MIT License](LICENSE).
 
-Third-party components keep their own licenses: Avalonia, SkiaSharp, HarfBuzzSharp and CommunityToolkit.Mvvm
+Third-party components keep their own licenses: Avalonia, AvaloniaEdit, SkiaSharp, HarfBuzzSharp, CommunityToolkit.Mvvm,
+Roslyn scripting and Delaunator (DelaunatorSharp)
 (MIT), Clipper2 (Boost Software License 1.0) and the Inter font (SIL Open Font License 1.1).
 
 ## Legal notice

@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <PackageReference Include="Clipper2" Version="1.5.4" />
+    <PackageReference Include="Delaunator" Version="1.0.11" />
   </ItemGroup>
 
   <ItemGroup>

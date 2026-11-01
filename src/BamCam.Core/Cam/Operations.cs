@@ -233,6 +233,7 @@ public static class MachineOpFactory
         "BamCamLatheDrill" => new LatheDrillOp(),
         "BamCamDragKnife" => new DragKnifeOp(),
         "BamCamPlasma" => new PlasmaOp(),
+        "BamCamVEngrave" => new VEngraveOp(),
         _ => null,
     };
 }

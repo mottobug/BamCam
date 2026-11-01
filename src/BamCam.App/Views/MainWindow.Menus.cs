@@ -267,6 +267,7 @@ public partial class MainWindow
         Item("P_ocket", () => CreateOp(new PocketOp())),
         Item("_Drill", () => CreateOp(new DrillOp())),
         Item("_Engrave", () => CreateOp(new EngraveOp())),
+        Item("_V-Engrave", () => CreateOp(new VEngraveOp())),
         Item("_3D Profile", () => CreateOp(new Profile3DOp())),
         Item("Drag _Knife", () => CreateOp(new DragKnifeOp())),
         Item("Pl_asma", () => CreateOp(new PlasmaOp())),
@@ -539,6 +540,7 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
         p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp())));
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
+        p.Children.Add(ToolButton("IconVEngrave", "V-Engrave", () => CreateOp(new VEngraveOp())));
         p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp())));
         p.Children.Add(ToolButton("IconPlasma", "Plasma", () => CreateOp(new PlasmaOp())));
         p.Children.Add(ToolSeparator());

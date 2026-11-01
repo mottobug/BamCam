@@ -417,6 +417,7 @@ public partial class MainWindow
             else ApplyUnitDefaults(op);
             if (op is DragKnifeOp knife && doc.Units == DrawingUnits.Inches) knife.UseInchDefaults();
             if (op is PlasmaOp plasma && doc.Units == DrawingUnits.Inches) plasma.UseInchDefaults();
+            if (op is VEngraveOp vEngrave && doc.Units == DrawingUnits.Inches) vEngrave.UseInchDefaults();
             var stockEmpty = (part.Stock.IsEmpty ? doc.Machining.Stock : part.Stock).IsEmpty;
             if (op is Profile3DOp p3 && stockEmpty)
             {

@@ -92,6 +92,13 @@ Special operations:
   threading and drilling; the remaining stock is shown in the drawing. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
+- **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
+  closed polylines, set the *V Angle* of the bit (and its *Tip Diameter* if it has a flat tip) and the *Target
+  Depth*. The bit follows the centre lines of each shape and goes exactly as deep as the shape is wide, so the cone
+  touches both sides and corners end sharp. Where a shape is wider than the cone at the target depth, the bottom
+  is flat: its outline is cut at target depth and, with *Clear Flat Areas*, cleared in passes of *Flat Stepover*
+  (switch it off to clear these areas with a pocket and a flat end mill). *Depth Increment* splits deep cuts into
+  passes. Example: `examples_to_test/V-Engrave (sign).cb`.
 - **Plasma** (Machining ▸ Plasma) for plasma, laser and oxy-fuel cutters: select all outlines and holes of the parts
   in one operation and set the *Kerf Width*. BamCam cuts holes before the outline around them, outlines outside
   and holes inside the line, and enters through the scrap with a lead-in arc. Per cut the torch moves to *Pierce
