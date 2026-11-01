@@ -158,6 +158,7 @@ public partial class MainWindow : Window
     private void OnPropertyEdited()
     {
         if (_session.Inspected is TextEntity t) t.InvalidateOutlines();
+        if (_session.Inspected is ParametricEntity parametric) parametric.Invalidate();
         if (_session.Inspected is Core.Cam.MachineOp op)
         {
             var changed = LibraryFiles.ApplyStyle(_session.Document, op);

@@ -24,7 +24,7 @@ public static class CadOps
                     result.Add(single);
                 }
                 break;
-            case RegionEntity or TextEntity or SplineEntity:
+            case RegionEntity or TextEntity or SplineEntity or ParametricEntity:
                 result.AddRange(ToPolylines(e));
                 break;
             default:

@@ -99,11 +99,22 @@ public static class CbReader
                 case "objects":
                     foreach (var o in child.Elements())
                         if (ReadEntity(o) is { } e) doc.AddLoadedEntity(e, layer);
+                    RestoreParametric(layer);
                     break;
                 default: layer.Extensions.Add(new XElement(child)); break;
             }
         }
     }
+
+    /// <summary>Parametric objects (plugin types, scripts) saved as polylines become objects again.</summary>
+    private static void RestoreParametric(Layer layer) => ParametricEntities.Restore(layer,
+        pline => pline.Extensions.FirstOrDefault(x => x.Name.LocalName == CbWriter.ParametricData) is { } data
+            ? ((string?)data.Attribute("type") ?? "", CbFormat.ParseMatrix((string?)data.Attribute("m")),
+                data.Elements("param").Select(p => ((string?)p.Attribute("name") ?? "", p.Value)).ToList())
+            : null,
+        pline => pline.Extensions.FirstOrDefault(x => x.Name.LocalName == CbWriter.ParametricPart) is { } part
+            ? CbFormat.ParseInt((string?)part.Attribute("of"))
+            : null);
 
     private static readonly HashSet<string> CommonEntityChildren = ["ModificationCount", "mat", "Tag"];
 

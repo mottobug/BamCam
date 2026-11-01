@@ -121,8 +121,7 @@ G-code comes from the post processor, as for the built-in operations: do not wri
 ## 5. What is not possible (yet)
 
 - Docked panels, or access to BamCam's window and menus (toolbar buttons: give the command an `Icon`).
-- Own entity (drawing object) types.
-- Scripts (CamBam's script objects and script menu).
+- Drawing object types other than parametric outlines (`ParametricEntity`), e.g. objects with their own rendering.
 
 Ask in the issues if your plugin needs one of these.
 

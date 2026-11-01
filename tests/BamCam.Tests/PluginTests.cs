@@ -73,7 +73,7 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     public void Loading_registers_commands_and_operations()
     {
         Assert.Equal(PluginState.Loaded, plugin.Info.State);
-        Assert.Equal(2, plugin.Manager.Commands.Count);
+        Assert.Equal(3, plugin.Manager.Commands.Count);
         Assert.All(plugin.Manager.Commands, c => Assert.Equal("Draw", c.Command.Menu));
         var format = Assert.Single(plugin.Manager.Importers);
         Assert.Equal([".xyz"], format.Format.Extensions);
@@ -142,7 +142,26 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
 
     private PluginCommand Command(string english) =>
         plugin.Manager.Commands.Select(c => c.Command).Single(c => c.Header.Replace("_", "").Contains(english, StringComparison.OrdinalIgnoreCase) ||
-                                                               c.Header.Replace("_", "").Contains(english == "Polygon" ? "Vieleck" : "Stern"));
+                                                               c.Header.Replace("_", "").Contains(english switch { "Polygon" => "Vieleck", "Gear" => "Zahnrad", _ => "Stern" }));
+
+    [Fact]
+    public async Task Plugin_object_types_are_parametric_and_survive_saving()
+    {
+        var context = new FakeContext([]);
+        await Command("Gear").Execute(context);
+        var gear = Assert.IsAssignableFrom<ParametricEntity>(Assert.Single(context.Added));
+        Assert.Equal("sample.gear", gear.ParametricType);
+        var doc = new CadDocument();
+        doc.AddEntity(gear);
+        var before = gear.Bounds().Width;
+        // Change a parameter (as the property grid does) and save / read.
+        gear.GetType().GetProperty("Teeth")!.SetValue(gear, 40);
+        gear.Invalidate();
+        Assert.True(gear.Bounds().Width > before * 1.8);
+        var back = Assert.IsAssignableFrom<ParametricEntity>(Assert.Single(CbReader.Parse(CbWriter.ToString(doc)).AllEntities()));
+        Assert.Equal(40, back.GetType().GetProperty("Teeth")!.GetValue(back));
+        Assert.Equal(gear.Bounds().Width, back.Bounds().Width, 9);
+    }
 
     [Fact]
     public async Task Plugin_tools_pick_points_with_preview()

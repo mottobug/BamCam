@@ -173,6 +173,33 @@ shortcuts; Enter or a middle click call `Finished` (ends the tool by default), a
 plus everything of a command (`Change`, `AddEntities`, `AskNumber`, …). An exception in the tool ends it with a
 message instead of breaking BamCam.
 
+### Object types
+
+A plugin can add drawing objects whose geometry is computed from parameters:
+
+```csharp
+host.AddEntityType<GearEntity>();
+
+public sealed class GearEntity : ParametricEntity
+{
+    public override string ParametricType => "acme.gear";   // unique, saved in drawings
+    public override string TypeName => "Gear";              // name in the drawing tree
+
+    [Category("Gear")] public int Teeth { get; set; } = 20;
+    [Category("Gear")] public double Module { get; set; } = 2;
+
+    protected override IEnumerable<Path2>? Generate() { /* outlines around the origin */ }
+}
+```
+
+Public settable properties of simple types (numbers, bool, text, enums) are the parameters: they show in the
+property grid, and changing one recomputes the outline. Moving, rotating and scaling work through the object's
+transform. Create objects in a command with `ctx.AddEntities`.
+
+Drawings store the object as ordinary polylines (the computed outlines, in drawing coordinates) plus an element
+with type and parameters. CamBam and BamCam without the plugin therefore show the polylines and can machine them;
+with the plugin the object is parametric again.
+
 ### File formats
 
 ```csharp

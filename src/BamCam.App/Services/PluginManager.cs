@@ -178,6 +178,9 @@ public sealed class PluginManager
         public void AddExporter(FileFormat format, Action<CadDocument, string> write) =>
             manager.Exporters.Add(new PluginFileFormatEntry(plugin, format, null, write));
 
+        public void AddEntityType<TEntity>() where TEntity : ParametricEntity, new() =>
+            ParametricEntities.Register(new TEntity().ParametricType, () => new TEntity());
+
         public void AddPostMacro(string name, Func<PostMacroContext, string> evaluate) =>
             GCodePoster.RegisterMacro(name, (doc, op, args) => evaluate(new PostMacroContext(doc, op, args)));
     }

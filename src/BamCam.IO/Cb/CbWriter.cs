@@ -124,10 +124,42 @@ public static class CbWriter
         return el;
     }
 
+    /// <summary>Element on the first polyline of a parametric object: type, transform and parameters.</summary>
+    public const string ParametricData = "BamCamObject";
+
+    /// <summary>Element on further polylines of a parametric object: the id of the object.</summary>
+    public const string ParametricPart = "BamCamObjectPart";
+
     private static IEnumerable<XElement> WriteEntity(Entity e, ref int nextId)
     {
         switch (e)
         {
+            case ParametricEntity pe:
+            {
+                // Saved as ordinary polylines (CamBam and BamCam without the plugin show them) plus the object's data.
+                var outlines = pe.ToPaths().Where(p => p.Count > 0).ToList();
+                if (outlines.Count == 0) outlines.Add(new Path2());
+                var result = new List<XElement>();
+                for (var i = 0; i < outlines.Count; i++)
+                {
+                    var el = PolylineXml(i == 0 ? pe.Id : nextId++, outlines[i], Matrix4.Identity);
+                    if (i == 0)
+                    {
+                        el.Add(new XElement(ParametricData,
+                            new XAttribute("type", pe.ParametricType),
+                            new XAttribute("m", CbFormat.Matrix(pe.Transform)),
+                            pe.SaveParameters().Select(p => new XElement("param", new XAttribute("name", p.Name), p.Value))));
+                        if (!string.IsNullOrEmpty(pe.Tag)) el.Add(new XElement("Tag", pe.Tag));
+                        foreach (var x in pe.Extensions.Where(x => x.Name.LocalName is not (ParametricData or ParametricPart))) el.Add(new XElement(x));
+                    }
+                    else
+                    {
+                        el.Add(new XElement(ParametricPart, new XAttribute("of", pe.Id)));
+                    }
+                    result.Add(el);
+                }
+                return result;
+            }
             case PolylineEntity p:
             {
                 var el = PolylineXml(p.Id, p.LocalPath, p.Transform);

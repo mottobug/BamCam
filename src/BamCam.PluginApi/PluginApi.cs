@@ -55,6 +55,14 @@ public interface IPluginHost
     /// a post processor's own macros take precedence, so use a name with the vendor as prefix ("acme.serial").
     /// </summary>
     void AddPostMacro(string name, Func<PostMacroContext, string> evaluate);
+
+    /// <summary>
+    /// Adds a drawing object type whose geometry is computed from parameters (<typeparamref name="TEntity"/> derives
+    /// from <see cref="ParametricEntity"/>). Its parameters show in the property grid; drawings store its outlines as
+    /// polylines too, so the object stays visible without the plugin (and in CamBam). Create objects with a command
+    /// (<see cref="ICommandContext.AddEntities"/>).
+    /// </summary>
+    void AddEntityType<TEntity>() where TEntity : ParametricEntity, new();
 }
 
 /// <summary>A file type: its name in file dialogs and its extensions (".xyz").</summary>

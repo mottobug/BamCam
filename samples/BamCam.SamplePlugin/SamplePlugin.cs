@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
@@ -30,6 +31,18 @@ public sealed class SamplePlugin : IBamCamPlugin
             Execute = ctx =>
             {
                 ctx.StartTool(new StarTool(german));
+                return Task.CompletedTask;
+            },
+        });
+        host.AddEntityType<GearEntity>();
+        host.AddCommand(new PluginCommand
+        {
+            Header = german ? "_Zahnrad" : "_Gear",
+            Menu = "Draw",
+            Description = german ? "Parametrisches Objekt: Zähnezahl und Modul im Eigenschaftsfenster ändern" : "Parametric object: change teeth and module in the properties",
+            Execute = ctx =>
+            {
+                ctx.AddEntities(german ? "Zahnrad zeichnen" : "Draw gear", [new GearEntity()]);
                 return Task.CompletedTask;
             },
         });
@@ -188,5 +201,42 @@ internal static class XyzFormat
             lines.AddRange(points.Select(p => string.Format(Inv, "{0} {1} {2}", p.X, p.Y, p.Z)));
         }
         File.WriteAllLines(path, lines);
+    }
+}
+/// <summary>
+/// Parametric object: a spur gear outline (trapezoid teeth, simplified) around the origin with a centre bore.
+/// Teeth, module and bore are edited in the property grid; the outline follows.
+/// </summary>
+public sealed class GearEntity : ParametricEntity
+{
+    public override string ParametricType => "sample.gear";
+    public override string TypeName => "Gear";
+
+    [Category("Gear")] public int Teeth { get; set; } = 20;
+    [Category("Gear"), Description("Tooth size: pitch diameter = module x teeth.")] public double Module { get; set; } = 2;
+    [Category("Gear"), DisplayName("Bore Diameter")] public double Bore { get; set; } = 8;
+
+    protected override IEnumerable<Path2>? Generate()
+    {
+        var teeth = Math.Clamp(Teeth, 6, 200);
+        var m = Math.Max(Module, 0.01);
+        var pitch = m * teeth / 2;
+        var outer = pitch + m;
+        var root = pitch - 1.25 * m;
+        var points = new List<Point2>();
+        var step = 2 * Math.PI / teeth;
+        for (var i = 0; i < teeth; i++)
+        {
+            var a = i * step;
+            // root, flank up, tip, flank down
+            points.Add(Point2.FromAngle(a, root));
+            points.Add(Point2.FromAngle(a + step * 0.15, root));
+            points.Add(Point2.FromAngle(a + step * 0.3, outer));
+            points.Add(Point2.FromAngle(a + step * 0.5, outer));
+            points.Add(Point2.FromAngle(a + step * 0.65, root));
+        }
+        yield return Path2.FromPoints(points, closed: true);
+        if (Bore > 0 && Bore / 2 < root)
+            yield return new Path2([new Vertex(new Point3(Bore / 2, 0, 0), 1), new Vertex(new Point3(-Bore / 2, 0, 0), 1)], true);
     }
 }
