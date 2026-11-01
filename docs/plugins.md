@@ -9,7 +9,8 @@ It can add
   and their own toolpath generator.
 
 CamBam plugins do not run in BamCam: they are built against CamBam's own assemblies. Porting one means
-replacing CamBam's API calls with the interfaces described here.
+replacing CamBam's API calls with the interfaces described here; see
+[Porting CamBam plugins](porting-cambam-plugins.md) for a step-by-step guide.
 
 The complete example is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin): a *Regular Polygon*
 command and a *Facing* operation.

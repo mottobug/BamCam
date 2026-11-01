@@ -193,6 +193,10 @@ of the system folder; BamCam asks once before loading a new plugin, and **Tools 
 or off. See [docs/plugins.md](docs/plugins.md) for writing a plugin and
 [samples/BamCam.SamplePlugin](samples/BamCam.SamplePlugin) for a complete example.
 
+**Porting CamBam plugins:** CamBam plugins do not run unchanged, but their logic can be kept; the
+[porting guide](docs/porting-cambam-plugins.md) maps CamBam's plugin concepts to BamCam's and explains how
+drawings saved with a CamBam plugin operation keep opening with the port.
+
 ## Settings
 Tools ▸ Options (or System ▸ Configuration) edits the application settings:
 - Display and colors, grid for mm and inches, units and font for new drawings.
