@@ -6,6 +6,8 @@ using System.Runtime.Loader;
 using System.Security.Cryptography;
 using BamCam.Core.Cam;
 using BamCam.Core.Localization;
+using BamCam.Core.Model;
+using BamCam.Core.Post;
 using BamCam.Plugins;
 
 namespace BamCam.App.Services;
@@ -39,6 +41,16 @@ public sealed record PluginCommandEntry(PluginInfo Plugin, PluginCommand Command
 /// <summary>A machining operation type registered by a plugin.</summary>
 public sealed record PluginOperationEntry(PluginInfo Plugin, string XmlName, string DisplayType, Func<MachineOp> Create);
 
+/// <summary>A file format added by a plugin (importer or exporter).</summary>
+public sealed record PluginFileFormatEntry(PluginInfo Plugin, FileFormat Format, Func<string, CadDocument>? Read, Action<CadDocument, string>? Write)
+{
+    public bool Handles(string path) => Format.Extensions.Any(x =>
+        string.Equals("." + x.TrimStart('.'), System.IO.Path.GetExtension(path), StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>File dialog patterns ("*.xyz").</summary>
+    public List<string> Patterns => Format.Extensions.Select(x => "*." + x.TrimStart('.')).ToList();
+}
+
 /// <summary>
 /// Finds, approves and loads plugins (.NET assemblies referencing BamCam.PluginApi) from the plugin folders.
 /// Discovery only reads metadata; code runs only after the user approved the exact file.
@@ -50,6 +62,8 @@ public sealed class PluginManager
     public List<PluginInfo> Plugins { get; } = [];
     public List<PluginCommandEntry> Commands { get; } = [];
     public List<PluginOperationEntry> Operations { get; } = [];
+    public List<PluginFileFormatEntry> Importers { get; } = [];
+    public List<PluginFileFormatEntry> Exporters { get; } = [];
 
     /// <summary>The plugin folder in the user's system folder.</summary>
     public static string UserFolder => System.IO.Path.Combine(SystemLibrary.SystemFolder, "plugins");
@@ -157,6 +171,15 @@ public sealed class PluginManager
         }
 
         public void Log(string message) => log($"{plugin.Name}: {message}");
+
+        public void AddImporter(FileFormat format, Func<string, CadDocument> read) =>
+            manager.Importers.Add(new PluginFileFormatEntry(plugin, format, read, null));
+
+        public void AddExporter(FileFormat format, Action<CadDocument, string> write) =>
+            manager.Exporters.Add(new PluginFileFormatEntry(plugin, format, null, write));
+
+        public void AddPostMacro(string name, Func<PostMacroContext, string> evaluate) =>
+            GCodePoster.RegisterMacro(name, (doc, op, args) => evaluate(new PostMacroContext(doc, op, args)));
     }
 
     /// <summary>

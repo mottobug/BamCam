@@ -1,4 +1,5 @@
 using BamCam.Core.Cam;
+using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 
 namespace BamCam.Plugins;
@@ -39,7 +40,28 @@ public interface IPluginHost
 
     /// <summary>Writes a line to BamCam's message window.</summary>
     void Log(string message);
+
+    /// <summary>
+    /// Adds a file format to File ▸ Open: <paramref name="read"/> turns the file into a drawing (which replaces the
+    /// open one, like opening a .cb file). Built-in formats (.cb, .dxf, .stl) keep their own readers.
+    /// </summary>
+    void AddImporter(FileFormat format, Func<string, CadDocument> read);
+
+    /// <summary>Adds a file format to File ▸ Export: <paramref name="write"/> saves the drawing to the given path.</summary>
+    void AddExporter(FileFormat format, Action<CadDocument, string> write);
+
+    /// <summary>
+    /// Adds a post processor macro: post processor templates can use {$name} or {$name(arguments)}. Built-in macros and
+    /// a post processor's own macros take precedence, so use a name with the vendor as prefix ("acme.serial").
+    /// </summary>
+    void AddPostMacro(string name, Func<PostMacroContext, string> evaluate);
 }
+
+/// <summary>A file type: its name in file dialogs and its extensions (".xyz").</summary>
+public sealed record FileFormat(string Name, params string[] Extensions);
+
+/// <summary>What a post processor macro of a plugin sees.</summary>
+public sealed record PostMacroContext(CadDocument Document, MachineOp? Operation, string? Arguments);
 
 /// <summary>A menu command of a plugin.</summary>
 public sealed class PluginCommand
@@ -86,4 +108,69 @@ public interface ICommandContext
 
     /// <summary>Asks for a text; null when cancelled.</summary>
     Task<string?> AskText(string title, string label, string defaultValue = "");
+
+    /// <summary>
+    /// Starts an interactive tool in the drawing (picking points with the mouse). The command returns at once; the
+    /// tool runs until it calls <see cref="IToolContext.End"/> or the user presses Esc.
+    /// </summary>
+    void StartTool(PluginTool tool);
+}
+
+/// <summary>Modifier keys held during a click.</summary>
+[Flags]
+public enum ToolModifiers { None = 0, Shift = 1, Control = 2, Alt = 4 }
+
+/// <summary>
+/// Interactive drawing tool of a plugin (like BamCam's own drawing commands). Points are in drawing coordinates and
+/// already snapped (grid and object snap as switched on by the user). Override what the tool needs.
+/// </summary>
+public abstract class PluginTool
+{
+    /// <summary>Text of the prompt bar while the tool runs (update with <see cref="IToolContext.SetPrompt"/>).</summary>
+    public virtual string Prompt => "";
+
+    /// <summary>The tool was started.</summary>
+    public virtual void Started(IToolContext context) { }
+
+    /// <summary>The mouse moved; redraw follows, so <see cref="Preview"/> can show a rubber band.</summary>
+    public virtual void Moved(IToolContext context, Point2 point) { }
+
+    /// <summary>Left click.</summary>
+    public virtual void Clicked(IToolContext context, Point2 point, ToolModifiers modifiers) { }
+
+    /// <summary>Enter or a middle click: by default the tool ends.</summary>
+    public virtual void Finished(IToolContext context) => context.End();
+
+    /// <summary>
+    /// A key was pressed: "A" … "Z", "0" … "9", "Back", "Delete", "Space", "Tab", "Up", "Down", "Left", "Right",
+    /// "Escape". Return true when the tool used it. An unused Escape ends the tool.
+    /// </summary>
+    public virtual bool KeyPressed(IToolContext context, string key) => false;
+
+    /// <summary>Paths drawn as dashed preview (drawing coordinates), e.g. the figure up to the cursor.</summary>
+    public virtual IEnumerable<Path2> Preview(IToolContext context) => [];
+
+    /// <summary>The tool ended (by <see cref="IToolContext.End"/>, Esc or another command).</summary>
+    public virtual void Ended(IToolContext context) { }
+}
+
+/// <summary>What a running plugin tool can see and do: everything of a command plus prompt, picking and ending.</summary>
+public interface IToolContext : ICommandContext
+{
+    /// <summary>The last (snapped) cursor position.</summary>
+    Point2 Cursor { get; }
+
+    /// <summary>Size of one screen pixel in drawing units (for pick distances and marker sizes).</summary>
+    double PixelSize { get; }
+
+    /// <summary>Drawing objects at a point (within a few pixels), nearest first.</summary>
+    IReadOnlyList<Entity> PickAt(Point2 point);
+
+    void SetPrompt(string text);
+
+    /// <summary>Redraws the drawing (and the preview).</summary>
+    void Redraw();
+
+    /// <summary>Ends the tool and returns to selection.</summary>
+    void End();
 }

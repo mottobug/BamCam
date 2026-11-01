@@ -146,7 +146,7 @@ public static class Polygons
         return shapes;
     }
 
-    /// <summary>Same as <see cref="BuildShapes"/> but for already-offset Clipper output.</summary>
+    /// <summary>Same as <see cref="BuildShapes(IEnumerable{Path2}, double)"/> but for already-offset Clipper output.</summary>
     public static List<Shape> BuildShapes(PathsD paths)
     {
         var tree = new PolyTreeD();

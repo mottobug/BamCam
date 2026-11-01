@@ -6,7 +6,16 @@
     <Nullable>enable</Nullable>
     <!-- Interface version for plugins: stays the same across BamCam releases (binding); the file version follows the release. -->
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-  </PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Undocumented members and partly documented parameters are fine; the docs are for plugin authors. -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+    <Description>Drawing, geometry and CAM model of BamCam, for plugins (reference together with BamCam.PluginApi).</Description>
+    <!-- NuGet package for plugin authors (attached to every GitHub release). -->
+    <Authors>mottobug</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mottobug/BamCam</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mottobug/BamCam</RepositoryUrl>
+    <PackageTags>BamCam;CAM;CNC;plugin</PackageTags>  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Clipper2" Version="1.5.4" />

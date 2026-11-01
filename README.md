@@ -189,8 +189,9 @@ instead), script objects, printing. Such objects are kept unchanged when `.cb` f
 
 ## Plugins
 
-BamCam can be extended with plugins from other vendors: .NET libraries that add menu commands and machining
-operation types (with their own parameters and toolpath generator). They are installed in the `plugins` folder
+BamCam can be extended with plugins from other vendors: .NET libraries that add menu commands, interactive
+drawing tools, machining operation types (with their own parameters and toolpath generator), file formats and
+post processor macros. The interface is available as NuGet packages attached to each release. They are installed in the `plugins` folder
 of the system folder; BamCam asks once before loading a new plugin, and **Tools ▸ Plugins** switches them on
 or off. See [docs/plugins.md](docs/plugins.md) for writing a plugin and
 [samples/BamCam.SamplePlugin](samples/BamCam.SamplePlugin) for a complete example.

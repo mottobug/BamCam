@@ -4,18 +4,48 @@ A BamCam plugin is a .NET 10 class library (C#, F#, VB.NET) that references `Bam
 It can add
 
 - **commands** to the Draw, Edit or Machining menu or to its own *Plugins* menu, which read and change the
-  drawing with undo, and
+  drawing with undo,
+- **interactive drawing tools** that pick points with the mouse (snapped, with a rubber band preview),
 - **machining operation types** with their own parameters (shown in the property grid and saved in drawings)
-  and their own toolpath generator.
+  and their own toolpath generator,
+- **file formats** for File ▸ Open and File ▸ Export, and
+- **post processor macros** (`{$name}`) for G-code templates.
 
 CamBam plugins do not run in BamCam: they are built against CamBam's own assemblies. Porting one means
 replacing CamBam's API calls with the interfaces described here; see
 [Porting CamBam plugins](porting-cambam-plugins.md) for a step-by-step guide.
 
 The complete example is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin): a *Regular Polygon*
-command and a *Facing* operation.
+command, a *Star* tool (two clicks), a *Facing* operation, an *XYZ point list* file format and the macro
+`{$sample.opcount}`.
 
 ## Project
+
+The interface comes as two NuGet packages, `BamCam.PluginApi` and `BamCam.Core`, attached to every
+[GitHub release](https://github.com/mottobug/BamCam/releases) (`*.nupkg`). Download both into a folder and add it as
+a package source (or use `RestoreAdditionalProjectSources`):
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <RestoreAdditionalProjectSources>C:\packages\bamcam</RestoreAdditionalProjectSources>
+    <Product>My Plugin</Product>
+    <Company>My Company</Company>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Provided by BamCam at run time: compile against them, do not copy them (ExcludeAssets="runtime"). -->
+    <PackageReference Include="BamCam.PluginApi" Version="0.7.0" ExcludeAssets="runtime" />
+    <PackageReference Include="BamCam.Core" Version="0.7.0" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>
+```
+
+Use the package version of the BamCam release you develop against; plugins keep working with later releases as
+long as the interface stays compatible (the assemblies have the fixed version 1.0.0.0). Without the packages,
+reference the DLLs of an installation instead:
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk">
@@ -106,6 +136,60 @@ static void Generate(ToolpathContext ctx, MyOp op, Toolpath tp)
 ```
 
 The post processor turns the moves into G-code like those of the built-in operations.
+
+### Interactive tools
+
+A command can start a tool that picks points in the drawing, like BamCam's own drawing commands:
+
+```csharp
+Execute = ctx => { ctx.StartTool(new StarTool()); return Task.CompletedTask; },
+
+sealed class StarTool : PluginTool
+{
+    Point2? _center;
+
+    public override string Prompt => _center == null ? "Star: click the centre" : "Click the outer radius";
+
+    public override void Clicked(IToolContext ctx, Point2 point, ToolModifiers modifiers)
+    {
+        if (_center is not { } c) { _center = point; ctx.SetPrompt(Prompt); return; }
+        ctx.AddEntities("Draw star", [new PolylineEntity(Star(c, point))]);
+        _center = null;
+    }
+
+    // Dashed rubber band up to the cursor.
+    public override IEnumerable<Path2> Preview(IToolContext ctx) =>
+        _center is { } c ? [Star(c, ctx.Cursor)] : [];
+}
+```
+
+Points arrive in drawing coordinates, already snapped to the grid and to objects as the user switched it on.
+`KeyPressed` receives keys by name ("A" … "Z", "0" … "9", "Up", "Back", "Escape", …) before BamCam's single-letter
+shortcuts; Enter or a middle click call `Finished` (ends the tool by default), an unused Esc ends it.
+`IToolContext` also offers `PickAt(point)` (objects under a point), `PixelSize`, `SetPrompt`, `Redraw` and `End`,
+plus everything of a command (`Change`, `AddEntities`, `AskNumber`, …). An exception in the tool ends it with a
+message instead of breaking BamCam.
+
+### File formats
+
+```csharp
+var format = new FileFormat("XYZ point list", ".xyz");
+host.AddImporter(format, path => { var doc = new CadDocument(); /* read */ return doc; });
+host.AddExporter(format, (doc, path) => { /* write */ });
+```
+
+Importers appear in File ▸ Open (the drawing replaces the open one; saving asks for a .cb file name), exporters in
+File ▸ Export. The built-in formats (.cb, .dxf, .stl) keep their own readers.
+
+### Post processor macros
+
+```csharp
+host.AddPostMacro("acme.serial", m => NextSerial(m.Document, m.Arguments));
+```
+
+Post processor templates can then use `{$acme.serial}` or `{$acme.serial(args)}`. The function gets the drawing,
+the operation being posted (null in header and footer) and the arguments. Built-in macros and the post processor's
+own macros take precedence: prefix the name with your vendor name.
 
 ## Installing
 

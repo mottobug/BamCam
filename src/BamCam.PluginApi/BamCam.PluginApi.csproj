@@ -8,8 +8,13 @@
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
-    <Description>Plugin interface of BamCam: commands and machining operations provided by other vendors.</Description>
-  </PropertyGroup>
+    <Description>Plugin interface of BamCam: commands, drawing tools, machining operations, file formats and post processor macros provided by other vendors.</Description>
+    <!-- NuGet package for plugin authors (attached to every GitHub release). -->
+    <Authors>mottobug</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/mottobug/BamCam</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mottobug/BamCam</RepositoryUrl>
+    <PackageTags>BamCam;CAM;CNC;plugin</PackageTags>  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BamCam.Core\BamCam.Core.csproj" />

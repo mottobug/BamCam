@@ -73,8 +73,11 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     public void Loading_registers_commands_and_operations()
     {
         Assert.Equal(PluginState.Loaded, plugin.Info.State);
-        var command = Assert.Single(plugin.Manager.Commands);
-        Assert.Equal("Draw", command.Command.Menu);
+        Assert.Equal(2, plugin.Manager.Commands.Count);
+        Assert.All(plugin.Manager.Commands, c => Assert.Equal("Draw", c.Command.Menu));
+        var format = Assert.Single(plugin.Manager.Importers);
+        Assert.Equal([".xyz"], format.Format.Extensions);
+        Assert.Single(plugin.Manager.Exporters);
         var operation = Assert.Single(plugin.Manager.Operations);
         Assert.Equal("MOPFacingSample", operation.XmlName);
         var op = MachineOpFactory.Create("MOPFacingSample");
@@ -130,16 +133,88 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     public async Task Plugin_commands_change_the_drawing_through_the_context()
     {
         var context = new FakeContext([6, 20]);
-        await plugin.Manager.Commands.Single().Command.Execute(context);
+        await Command("Polygon").Execute(context);
         var polygon = Assert.IsType<PolylineEntity>(Assert.Single(context.Added));
         Assert.True(polygon.Closed);
         Assert.Equal(6, polygon.Points.Count);
         Assert.All(polygon.Points, v => Assert.Equal(20, v.Point.XY.Length, 9));
     }
 
+    private PluginCommand Command(string english) =>
+        plugin.Manager.Commands.Select(c => c.Command).Single(c => c.Header.Replace("_", "").Contains(english, StringComparison.OrdinalIgnoreCase) ||
+                                                               c.Header.Replace("_", "").Contains(english == "Polygon" ? "Vieleck" : "Stern"));
+
+    [Fact]
+    public async Task Plugin_tools_pick_points_with_preview()
+    {
+        var context = new FakeContext([]);
+        await Command("Star").Execute(context);
+        var tool = Assert.IsAssignableFrom<PluginTool>(context.Started);
+        var toolContext = new FakeToolContext(context);
+        tool.Started(toolContext);
+        tool.Clicked(toolContext, new Point2(10, 10), ToolModifiers.None);
+        toolContext.Cursor = new Point2(10, 30);
+        Assert.Single(tool.Preview(toolContext));                 // rubber band star
+        Assert.True(tool.KeyPressed(toolContext, "Up"));          // 6 points
+        tool.Clicked(toolContext, new Point2(10, 30), ToolModifiers.None);
+        var star = Assert.IsType<PolylineEntity>(Assert.Single(context.Added));
+        Assert.Equal(12, star.Points.Count);
+        Assert.Equal(20, Point2.Distance(new Point2(10, 10), star.Points[0].XY), 9);
+        Assert.False(tool.KeyPressed(toolContext, "Escape"));     // not used: BamCam ends the tool
+    }
+
+    [Fact]
+    public void Plugin_file_formats_read_and_write()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"bamcam-{Guid.NewGuid():N}.xyz");
+        try
+        {
+            File.WriteAllText(path, "# test\n1 2\n3.5,4.5,-1\nnot a point\n");
+            var doc = plugin.Manager.Importers.Single().Read!(path);
+            var list = Assert.IsType<PointListEntity>(Assert.Single(doc.AllEntities()));
+            Assert.Equal([new Point3(1, 2, 0), new Point3(3.5, 4.5, -1)], list.Points);
+            plugin.Manager.Exporters.Single().Write!(doc, path);
+            Assert.Equal(["# x y z", "1 2 0", "3.5 4.5 -1"], File.ReadAllLines(path));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Plugin_post_macros_are_expanded()
+    {
+        var (doc, _) = FacingDrawing();
+        var post = new BamCam.Core.Post.PostProcessorDefinition { Header = "(ops {$sample.opcount})", Footer = "" };
+        var text = BamCam.Core.Post.GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath>(), post).Text;
+        Assert.Contains("(ops 1)", text);
+    }
+
+    private sealed class FakeToolContext(FakeContext commands) : IToolContext
+    {
+        public Point2 Cursor { get; set; }
+        public double PixelSize => 0.1;
+        public IReadOnlyList<Entity> PickAt(Point2 point) => [];
+        public void SetPrompt(string text) { }
+        public void Redraw() { }
+        public void End() { }
+        public CadDocument Document => commands.Document;
+        public IReadOnlyList<Entity> Selection => [];
+        public void Change(string description, Action change) => change();
+        public void AddEntities(string description, IEnumerable<Entity> entities) => commands.AddEntities(description, entities);
+        public void Select(IEnumerable<Entity> entities) { }
+        public void Log(string message) { }
+        public Task<double?> AskNumber(string title, string label, double defaultValue) => Task.FromResult<double?>(defaultValue);
+        public Task<string?> AskText(string title, string label, string defaultValue = "") => Task.FromResult<string?>(defaultValue);
+        public void StartTool(PluginTool tool) { }
+    }
+
     private sealed class FakeContext(double[] answers) : ICommandContext
     {
         private int _next;
+        public PluginTool? Started { get; private set; }
+        public void StartTool(PluginTool tool) => Started = tool;
         public List<Entity> Added { get; } = [];
         public CadDocument Document { get; } = new();
         public IReadOnlyList<Entity> Selection => [];

@@ -110,7 +110,8 @@ public partial class MainWindow
             Sub("_Import Image",
                 Item("As _Height Map...", ImportHeightMap),
                 Item("_Trace Outlines...", TraceImage)),
-            Sub("_Export", Item("To _DXF...", ExportDxf)),
+            Sub("_Export", [Item("To _DXF...", ExportDxf),
+                .. _plugins.Exporters.Select(x => (object)Item(F("To {0}...", x.Format.Name), () => ExportWithPlugin(x)))]),
             RecentMenu(),
             "-",
             Item("E_xit", Close)));

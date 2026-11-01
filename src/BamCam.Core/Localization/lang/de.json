@@ -1169,6 +1169,11 @@
   "Text on polyline": "Text entlang Polylinie",
   "Text on polyline: click the start point of the text on the guide  [U = reverse direction, S = other side, Esc = cancel]": "Text entlang Polylinie: Startpunkt des Textes auf der Führungslinie anklicken  [U = Richtung umkehren, S = andere Seite, Esc = abbrechen]",
   "Text on polyline: select one text and one polyline (or line, arc, circle, spline, rectangle) as guide.": "Text entlang Polylinie: einen Text und eine Polylinie (oder Linie, Bogen, Kreis, Spline, Rechteck) als Führung auswählen.",
+  "Export failed ({0}): {1}": "Export fehlgeschlagen ({0}): {1}",
+  "Export {0}": "{0} exportieren",
+  "Macro {{${0}}} failed: {1}": "Makro {{${0}}} fehlgeschlagen: {1}",
+  "Plugin tool failed: {0}": "Plugin-Werkzeug fehlgeschlagen: {0}",
+  "To {0}...": "Als {0}...",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

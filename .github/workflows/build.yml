@@ -70,6 +70,14 @@ jobs:
             ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }}
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
+      - name: NuGet packages for plugin authors
+        if: matrix.name == 'win-x64'
+        shell: pwsh
+        run: |
+          foreach ($project in "src/BamCam.Core", "src/BamCam.PluginApi") {
+            dotnet pack $project -c Release -p:Version=${{ steps.version.outputs.version }} -o artifacts
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
       - uses: actions/upload-artifact@v5
         with:
           name: BamCam-${{ matrix.name }}
@@ -77,6 +85,7 @@ jobs:
             artifacts/*.zip
             artifacts/*.tar.gz
             artifacts/*-setup.exe
+            artifacts/*.nupkg
           if-no-files-found: error
 
   release:

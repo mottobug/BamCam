@@ -18,16 +18,21 @@ Create a .NET 10 class library instead of the .NET Framework project:
     <TargetFramework>net10.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Nullable>enable</Nullable>
+    <RestoreAdditionalProjectSources>C:\packages\bamcam</RestoreAdditionalProjectSources>
     <Product>My Plugin</Product>
     <Company>My Name</Company>
     <Version>2.0.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="BamCam.PluginApi" HintPath="path\to\BamCam\BamCam.PluginApi.dll" Private="false" />
-    <Reference Include="BamCam.Core" HintPath="path\to\BamCam\BamCam.Core.dll" Private="false" />
+    <PackageReference Include="BamCam.PluginApi" Version="0.7.0" ExcludeAssets="runtime" />
+    <PackageReference Include="BamCam.Core" Version="0.7.0" ExcludeAssets="runtime" />
   </ItemGroup>
 </Project>
 ```
+
+The two `.nupkg` files are attached to every BamCam release on GitHub; put them into the folder named in
+`RestoreAdditionalProjectSources`. See [plugins.md](plugins.md#project) for referencing the DLLs of an
+installation instead.
 
 - Remove the references to CamBam's DLLs and to `System.Windows.Forms`.
 - Copy the source files over and let the compiler show every place that used CamBam: that is the list of
@@ -73,6 +78,9 @@ There is no access to BamCam's window, menus or toolbars: a command is a menu en
 | Polyline segments with bulge | `Path2` with `Vertex(point, bulge)`; `entity.ToPaths()` gives any entity's geometry in drawing coordinates |
 | Entity transformation matrix | `entity.Transform` (`Matrix4`); `ApplyTransform` bakes it in |
 | Windows Forms input dialogs | `await ctx.AskNumber(...)`, `await ctx.AskText(...)`; for more, a small Avalonia window of your own |
+| Mouse handling in the drawing view (picking points, rubber band) | `ctx.StartTool(new MyTool())` with a `PluginTool` (`Clicked`, `Moved`, `KeyPressed`, `Preview`) |
+| Own file import / export | `host.AddImporter` / `host.AddExporter` with a `FileFormat` |
+| Own post processor macros | `host.AddPostMacro("vendor.name", m => ...)` |
 | Message boxes / CamBam's message window | `ctx.Log("...")` (and `host.Log` during initialisation) |
 | CamBam's configuration settings | not exposed; keep the plugin's own settings in its own file (e.g. JSON next to the DLL) |
 | Machining operation class derived from CamBam's MOP base class | class derived from `MachineOp` or `DepthOp`, registered with `host.AddOperation<TOp>(generator)` |
@@ -113,14 +121,13 @@ G-code comes from the post processor, as for the built-in operations: do not wri
 ## 5. What is not possible (yet)
 
 - Own toolbar buttons, docked panels, or access to BamCam's window and menus.
-- Interactive tools that follow the mouse in the drawing (rubber band, clicking points). A command can ask for
-  numbers and texts and work on the selection; ask in the issues if your plugin needs mouse input.
 - Own entity (drawing object) types.
-- File import / export formats and post processor macros.
 - Scripts (CamBam's script objects and script menu).
 
+Ask in the issues if your plugin needs one of these.
+
 Some popular CamBam plugins are already built into BamCam: snap toolbar and object snap modes, dimensioned
-drawing (typed lengths, angles, diameters), fillet / chamfer, trim / extend.
+drawing (typed lengths, angles, diameters), fillet / chamfer, trim / extend, align toolbar, text on polyline.
 
 ## 6. Test and publish
 

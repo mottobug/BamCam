@@ -378,8 +378,9 @@ public partial class MainWindow : Window
         {
             Title = T("Open"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType(T("Drawings")) { Patterns = ["*.cb", "*.dxf"] }, CbType, DxfType,
-                new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }, NcType, AllType],
+            FileTypeFilter = [new FilePickerFileType(T("Drawings")) { Patterns = ["*.cb", "*.dxf", .. _plugins.Importers.SelectMany(i => i.Patterns)] },
+                CbType, DxfType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] },
+                .. _plugins.Importers.Select(i => new FilePickerFileType(i.Format.Name) { Patterns = i.Patterns }), NcType, AllType],
         });
         if (files.Count == 0) return;
         if (files[0].TryGetLocalPath() is { } path) OpenPath(path);
@@ -400,7 +401,8 @@ public partial class MainWindow : Window
                 View.ZoomToFit();
                 return;
             }
-            if (ext is not (".cb" or ".dxf"))
+            var importer = ext is ".cb" or ".dxf" ? null : _plugins.Importers.FirstOrDefault(i => i.Handles(path));
+            if (importer == null && ext is not (".cb" or ".dxf"))
             {
                 // Anything else is treated as G-code and back-plotted as an NC File operation.
                 var nc = new Core.Cam.NcFileOp { Name = Path.GetFileNameWithoutExtension(path) };
@@ -411,7 +413,14 @@ public partial class MainWindow : Window
                 View.ZoomToFit();
                 return;
             }
-            if (ext == ".dxf")
+            if (importer != null)
+            {
+                // Read by a plugin; saving asks for a .cb file name instead of overwriting the imported file.
+                doc = importer.Read!(path);
+                doc.FilePath = null;
+                if (string.IsNullOrWhiteSpace(doc.Name)) doc.Name = Path.GetFileNameWithoutExtension(path);
+            }
+            else if (ext == ".dxf")
             {
                 doc = DxfReader.Load(path, out var warnings);
                 foreach (var w in warnings.Distinct()) Log(F("DXF: {0}", w));
@@ -494,6 +503,29 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>File ▸ Export with a file format of a plugin.</summary>
+    private async void ExportWithPlugin(PluginFileFormatEntry exporter)
+    {
+        var ext = exporter.Format.Extensions.FirstOrDefault()?.TrimStart('.') ?? "";
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = F("Export {0}", exporter.Format.Name),
+            SuggestedFileName = _session.Document.Name + (ext.Length > 0 ? "." + ext : ""),
+            DefaultExtension = ext,
+            FileTypeChoices = [new FilePickerFileType(exporter.Format.Name) { Patterns = exporter.Patterns }],
+        });
+        if (file?.TryGetLocalPath() is not { } path) return;
+        try
+        {
+            exporter.Write!(_session.Document, path);
+            Log(F("Exported {0}", path));
+        }
+        catch (Exception ex)
+        {
+            Log(F("Export failed ({0}): {1}", exporter.Plugin.Name, ex.Message));
+        }
+    }
+
     private void OnDrop(object? sender, DragEventArgs e)
     {
         var files = e.DataTransfer.TryGetFiles();
@@ -519,6 +551,11 @@ public partial class MainWindow : Window
         if (inText && e.KeyModifiers == KeyModifiers.None) return;
         if (inText && e.Key is Key.C or Key.V or Key.X or Key.Z or Key.Y or Key.A) return;
 
+        if (!inText && e.KeyModifiers == KeyModifiers.None && View.Tool.WantsPlainKeys && View.ForwardKeyToTool(e.Key, e.KeyModifiers))
+        {
+            e.Handled = true;
+            return;
+        }
         if (HandleShortcut(e.Key, e.KeyModifiers))
         {
             e.Handled = true;

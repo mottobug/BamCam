@@ -177,6 +177,19 @@ public sealed partial class GCodePoster
 
     // ------------------------------------------------------------------ macro evaluation
 
+    private static readonly Dictionary<string, Func<CadDocument, MachineOp?, string?, string>> PluginMacros = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Adds a macro {$name} or {$name(arguments)} for post processor templates (plugins). Built-in macros and the
+    /// post processor's own macros take precedence. The function gets the drawing, the operation being posted (null
+    /// in the header and footer) and the arguments.
+    /// </summary>
+    public static void RegisterMacro(string name, Func<CadDocument, MachineOp?, string?, string> evaluate) =>
+        PluginMacros[name.Trim()] = evaluate;
+
+    /// <summary>Removes all macros registered by plugins.</summary>
+    public static void ClearRegisteredMacros() => PluginMacros.Clear();
+
     private string EvalMacro(string body)
     {
         string name = body.Trim();
@@ -276,6 +289,19 @@ public sealed partial class GCodePoster
         }
 
         if (_userMacros.TryGetValue(name, out var user)) return Expand(user);
+
+        if (PluginMacros.TryGetValue(name, out var plugin))
+        {
+            try
+            {
+                return plugin(_doc, op, args) ?? "";
+            }
+            catch (Exception ex)
+            {
+                _warnings.Add(Tr.F("Macro {{${0}}} failed: {1}", name, ex.Message));
+                return "";
+            }
+        }
 
         if (!_post.SuppressParserErrors) _warnings.Add(Tr.F("Unknown post processor macro: {{${0}}}", name));
         return "";

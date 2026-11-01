@@ -46,6 +46,12 @@ public abstract class ViewTool
     /// <summary>Returns true if the key was handled.</summary>
     public virtual bool KeyDown(Key key, KeyModifiers mods) => false;
 
+    /// <summary>
+    /// Keys without modifiers go to the tool before BamCam's single-letter shortcuts (P, C, R …), for tools that use
+    /// letters themselves (plugin tools).
+    /// </summary>
+    public virtual bool WantsPlainKeys => false;
+
     /// <summary>Draws rubber-band previews on top of the drawing.</summary>
     public virtual void RenderOverlay(DrawingContext dc, ViewTransform view) { }
 
