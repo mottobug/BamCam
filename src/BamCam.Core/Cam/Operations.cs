@@ -207,7 +207,7 @@ public static class MachineOpFactory
     /// <summary>Registers an operation type added by a plugin under its <see cref="MachineOp.XmlName"/> (the xsi:type in files).</summary>
     public static void Register(string xmlName, Func<MachineOp> create)
     {
-        if (BuiltInElements.Contains(xmlName) || xmlName == LatheOp.XsiType || xmlName.StartsWith("BamCamLathe", StringComparison.Ordinal))
+        if (BuiltInElements.Contains(xmlName) || xmlName == LatheOp.XsiType || xmlName.StartsWith("BamCam", StringComparison.Ordinal))
             throw new ArgumentException($"'{xmlName}' is a built-in operation type.", nameof(xmlName));
         Plugins[xmlName] = create;
     }
@@ -231,6 +231,7 @@ public static class MachineOpFactory
         "BamCamLatheGroove" => new LatheGrooveOp(),
         "BamCamLatheThread" => new LatheThreadOp(),
         "BamCamLatheDrill" => new LatheDrillOp(),
+        "BamCamDragKnife" => new DragKnifeOp(),
         _ => null,
     };
 }

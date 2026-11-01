@@ -415,6 +415,7 @@ public partial class MainWindow
             part.Operations.Add(op);
             if (CamLibraries.FindStyleLibrary(doc, part) != null) LibraryFiles.ApplyStyle(doc, op);
             else ApplyUnitDefaults(op);
+            if (op is DragKnifeOp knife && doc.Units == DrawingUnits.Inches) knife.UseInchDefaults();
             var stockEmpty = (part.Stock.IsEmpty ? doc.Machining.Stock : part.Stock).IsEmpty;
             if (op is Profile3DOp p3 && stockEmpty)
             {
