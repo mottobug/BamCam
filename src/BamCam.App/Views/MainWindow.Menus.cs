@@ -199,13 +199,7 @@ public partial class MainWindow
         Item("_Array Copy...", ArrayCopy),
         Item("_Polar Array Copy...", PolarArrayCopy),
         Item("_Center (Extents)", CenterExtents),
-        Sub("A_lign",
-            Item("_Left", () => AlignSelection(Core.Cad.AlignEdge.Left)),
-            Item("_Center (Horizontal)", () => AlignSelection(Core.Cad.AlignEdge.CenterX)),
-            Item("_Right", () => AlignSelection(Core.Cad.AlignEdge.Right)),
-            Item("_Top", () => AlignSelection(Core.Cad.AlignEdge.Top)),
-            Item("_Middle (Vertical)", () => AlignSelection(Core.Cad.AlignEdge.CenterY)),
-            Item("_Bottom", () => AlignSelection(Core.Cad.AlignEdge.Bottom))),
+        AlignSubmenu(),
         Item("Apply Transformations", ApplyTransformations),
     ];
 
@@ -400,6 +394,55 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>A toolbar icon (24 x 24 geometry scaled to 18 px).</summary>
+    private Path IconPath(string key) => new()
+    {
+        Data = (Geometry)this.FindResource(key)!, Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18,
+        Stretch = Stretch.Uniform, StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
+    };
+
+    /// <summary>The six align commands and the choice of the reference (toolbar menu and Transform submenu).</summary>
+    private object[] AlignMenuItems()
+    {
+        MenuItem Edge(string header, string icon, Core.Cad.AlignEdge edge)
+        {
+            var item = Item(header, () => AlignSelection(edge));
+            item.Icon = IconPath(icon);
+            return item;
+        }
+        var items = new List<object>
+        {
+            Edge("_Left", "IconAlignLeft", Core.Cad.AlignEdge.Left),
+            Edge("_Center (Horizontal)", "IconAlignCenterX", Core.Cad.AlignEdge.CenterX),
+            Edge("_Right", "IconAlignRight", Core.Cad.AlignEdge.Right),
+            Edge("_Top", "IconAlignTop", Core.Cad.AlignEdge.Top),
+            Edge("_Middle (Vertical)", "IconAlignCenterY", Core.Cad.AlignEdge.CenterY),
+            Edge("_Bottom", "IconAlignBottom", Core.Cad.AlignEdge.Bottom),
+            new Separator(),
+            new MenuItem { Header = T("Align to") + ":", IsEnabled = false },
+        };
+        foreach (var (value, text) in AlignReferences)
+        {
+            var item = Item(text, () => AlignTo = value);
+            item.ToggleType = MenuItemToggleType.Radio;
+            item.IsChecked = AlignTo == value;
+            items.Add(item);
+        }
+        return items.ToArray();
+    }
+
+    private MenuItem AlignSubmenu()
+    {
+        var sub = Sub("A_lign");
+        sub.SubmenuOpened += (_, _) =>
+        {
+            sub.Items.Clear();
+            foreach (var i in AlignMenuItems()) sub.Items.Add(i);
+        };
+        foreach (var i in AlignMenuItems()) sub.Items.Add(i);
+        return sub;
+    }
+
     private ComboBox? _unitsCombo;
     private bool _unitsHooked;
 
@@ -458,21 +501,22 @@ public partial class MainWindow
         p.Children.Add(ToolModeButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool()), t => t is PointListTool));
         p.Children.Add(ToolModeButton("IconText", "Text (T)", DrawText, t => t is TextTool));
         p.Children.Add(ToolSeparator());
-        p.Children.Add(ToolButton("IconAlignLeft", "Align left", () => AlignSelection(Core.Cad.AlignEdge.Left)));
-        p.Children.Add(ToolButton("IconAlignCenterX", "Align centres horizontally", () => AlignSelection(Core.Cad.AlignEdge.CenterX)));
-        p.Children.Add(ToolButton("IconAlignRight", "Align right", () => AlignSelection(Core.Cad.AlignEdge.Right)));
-        p.Children.Add(ToolButton("IconAlignTop", "Align top", () => AlignSelection(Core.Cad.AlignEdge.Top)));
-        p.Children.Add(ToolButton("IconAlignCenterY", "Align centres vertically", () => AlignSelection(Core.Cad.AlignEdge.CenterY)));
-        p.Children.Add(ToolButton("IconAlignBottom", "Align bottom", () => AlignSelection(Core.Cad.AlignEdge.Bottom)));
-        var alignTo = new ComboBox
+        // One button for aligning: a menu with the six edges and the reference.
+        // A plain toolbar button (same look and height as the others) with a small arrow and a menu.
+        var arrow = new Path
         {
-            ItemsSource = AlignReferences.Select(r => T(r.Text)).ToList(),
-            SelectedIndex = Math.Max(0, Array.FindIndex(AlignReferences, r => r.Value == AlignTo)),
-            Width = 185, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Data = Geometry.Parse("M0,0 L6,0 L3,3.5 Z"), Fill = Brushes.Black, Width = 6, Height = 4,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(2, 0, 0, 0),
         };
-        ToolTip.SetTip(alignTo, T("Align to"));
-        alignTo.SelectionChanged += (_, _) => { if (alignTo.SelectedIndex >= 0) AlignTo = AlignReferences[alignTo.SelectedIndex].Value; };
-        p.Children.Add(alignTo);
+        var align = new Button
+        {
+            Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { IconPath("IconAlignLeft"), arrow } },
+        };
+        var flyout = new MenuFlyout();
+        flyout.Opening += (_, _) => flyout.ItemsSource = AlignMenuItems();
+        align.Flyout = flyout;
+        ToolTip.SetTip(align, T("Align"));
+        p.Children.Add(align);
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
