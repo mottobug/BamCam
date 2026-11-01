@@ -181,7 +181,8 @@ public partial class MainWindow
         Sub("Polyline",
             Item("_Edit Points...", () => { if (Selected.FirstOrDefault() is { } e) EditPoints(e); }),
             Item("_Reverse", ReversePolylines),
-            Item("_Clean", CleanPolylines)),
+            Item("_Clean", CleanPolylines),
+            Item("_Fillet / Chamfer", FilletChamfer)),
         Sub("_Transform", TransformMenuItems()),
         .. PluginMenuItems("Edit"),
     ];
