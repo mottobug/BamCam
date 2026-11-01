@@ -34,7 +34,7 @@ public partial class MainWindow
             var gray = ImageImport.LoadGray(path);
             var (w, h) = Size(gray);
             var hint = F("{0}: {1} x {2} pixels. White is high (Top Z), black is Depth below it.", Path.GetFileName(path), w, h);
-            if (!await new ObjectDialog(T("Height Map"), _heightMapOptions, hint).ShowFor(this)) return;
+            if (!await new ImageImportDialog(T("Height Map"), _heightMapOptions, gray, hint).ShowFor(this)) return;
             var o = _heightMapOptions;
             var surface = ImageGeometry.HeightMap(gray, Math.Max(o.Width, 1e-3), o.Depth, o.TopZ, o.Resolution, o.Invert);
             _session.Execute(T("Import height map"), () => _session.Document.AddEntity(surface));
@@ -57,7 +57,7 @@ public partial class MainWindow
             var gray = ImageImport.LoadGray(path);
             var (w, h) = Size(gray);
             var hint = F("{0}: {1} x {2} pixels. Areas darker than the threshold are traced.", Path.GetFileName(path), w, h);
-            if (!await new ObjectDialog(T("Trace Outlines"), _traceOptions, hint).ShowFor(this)) return;
+            if (!await new ImageImportDialog(T("Trace Outlines"), _traceOptions, gray, hint).ShowFor(this)) return;
             var o = _traceOptions;
             var loops = ImageGeometry.TraceOutlines(gray, Math.Max(o.Width, 1e-3), Math.Clamp(o.Threshold, 0, 1), o.Invert, o.Smoothing);
             if (loops.Count == 0)

@@ -32,6 +32,8 @@ public sealed class PrintOptions
 
     [Category("Content"), Description("Drawing name, scale, page and date below the drawing.")]
     public bool Caption { get; set; } = true;
+
+    public override string ToString() => "Print";
 }
 
 /// <summary>Writes the drawing as PDF (vector, true to scale) for printing.</summary>

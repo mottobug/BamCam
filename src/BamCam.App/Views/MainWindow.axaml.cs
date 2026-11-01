@@ -323,6 +323,8 @@ public partial class MainWindow : Window
                 {
                     "plugins" => new PluginManagerWindow(_plugins, _settings.Plugins),
                     "speeds" => NewSpeedsFeedsWindow().Window,
+                    "trace" when options.TryGetValue("--image", out var image) =>
+                        new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
                         t => (null, Core.Model.ScriptEntity.Runner!(t).Error)),
                     _ => null,

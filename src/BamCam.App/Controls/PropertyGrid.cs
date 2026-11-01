@@ -254,7 +254,8 @@ public sealed partial class PropertyGrid : DockPanel
             CadDocument d => Tr.F("Drawing: {0}", d.Name),
             MachiningOptions => Tr.T("Machining"),
             Services.AppSettings => Tr.T("Configuration"),
-            _ => _target.GetType().Name,
+            // Settings objects may name themselves (ToString); otherwise the class name.
+            _ => _target.ToString() is { } name && name != _target.GetType().ToString() ? Tr.T(name) : _target.GetType().Name,
         };
 
         var nodes = NodesFor(_target, 0, "", null).ToList();

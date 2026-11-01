@@ -1260,6 +1260,8 @@
   "Run (Ctrl+Enter)": "Ausführen (Strg+Enter)",
   "The script runs longer than {0} s.": "Das Skript läuft länger als {0} s.",
   "{0} outlines.": "{0} Konturen.",
+  "White = Top Z {0:0.###}, black = {1:0.###}. Surface {2:0.##} x {3:0.##}.": "Weiß = Oberkante Z {0:0.###}, Schwarz = {1:0.###}. Fläche {2:0.##} x {3:0.##}.",
+  "{0} outlines, {1:0.##} x {2:0.##} in the drawing.": "{0} Konturen, {1:0.##} x {2:0.##} in der Zeichnung.",
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

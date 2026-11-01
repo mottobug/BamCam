@@ -18,6 +18,8 @@ public sealed class HeightMapOptions
     [Category("Height"), Description("Black is high and white low.")]
     public bool Invert { get; set; }
 
+    public override string ToString() => "Height Map";
+
     [Category("Size"), Description("Distance between the sample points of the surface (smaller = finer, slower).")]
     public double Resolution { get; set; } = 0.5;
 }
@@ -39,6 +41,8 @@ public sealed class TraceOptions
 
     [Category("Trace"), DisplayName("As Splines"), Description("Create smooth splines through the outline points instead of polylines.")]
     public bool AsSplines { get; set; }
+
+    public override string ToString() => "Trace Outlines";
 }
 
 /// <summary>Reads raster images (PNG, JPEG, BMP, GIF, WebP) as brightness values.</summary>
