@@ -31,6 +31,16 @@ STL and G-code, and produces G-code through a template engine that understands t
     <td>Splines (NURBS) drawn with CamBam-style tangent handles</td>
     <td>Plugin manager and speeds and feeds calculator</td>
   </tr>
+  <tr>
+    <td><a href="docs/screenshots/script-object.png"><img src="docs/screenshots/script-object.png" alt="Script object"></a><br><a href="docs/screenshots/script-editor.png"><img src="docs/screenshots/script-editor.png" alt="Script editor" width="70%"></a></td>
+    <td><a href="docs/screenshots/text-on-polyline.png"><img src="docs/screenshots/text-on-polyline.png" alt="Text on polyline"></a></td>
+    <td><a href="docs/screenshots/image-trace.png"><img src="docs/screenshots/image-trace.png" alt="Image import with preview"></a></td>
+  </tr>
+  <tr>
+    <td>C# script object (a flange with holes) and the script editor, which jumps to a compile error</td>
+    <td>Text along a polyline: the preview follows the cursor on the guide</td>
+    <td>Image import: traced outlines previewed while the threshold is set</td>
+  </tr>
 </table>
 
 ## Build and run
