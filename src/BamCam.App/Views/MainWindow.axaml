@@ -32,6 +32,7 @@
     <StreamGeometry x:Key="Icon3D">M2,20 C6,8 9,6 12,12 C15,18 18,14 22,4 M2,22 L22,22</StreamGeometry>
     <StreamGeometry x:Key="IconPlasma">M8,2 L16,2 L16,8 L13.5,13 L10.5,13 L8,8 Z M12,15.5 L12,21.5 M9.5,16.5 L7,21 M14.5,16.5 L17,21 M4,22 L20,22</StreamGeometry>
     <StreamGeometry x:Key="IconGenerate">M4,4 L20,12 L4,20 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSimulate">M2,15 L12,10 L22,15 L12,20 Z M2,15 L2,18 L12,23 L22,18 L22,15 M8,12 L8,6 M8,6 C8,4 10,4 10,6 L10,11</StreamGeometry>
     <StreamGeometry x:Key="IconGcode">M3,4 L21,4 L21,20 L3,20 Z M6,9 L11,9 M6,13 L16,13 M6,17 L13,17</StreamGeometry>
     <StreamGeometry x:Key="IconGrid">M3,3 L21,3 L21,21 L3,21 Z M9,3 L9,21 M15,3 L15,21 M3,9 L21,9 M3,15 L21,15</StreamGeometry>
     <StreamGeometry x:Key="IconAxis">M4,20 L4,3 M4,20 L21,20 M4,3 L2,6 M4,3 L6,6 M21,20 L18,18 M21,20 L18,22</StreamGeometry>

@@ -81,6 +81,16 @@ Everything can be undone with `Ctrl+Z`.
 5. **Choose the post processor** (Machining ▸ Post Processor, or set a default in the options) and
    **produce G-code** (`Ctrl+W`).
 
+**3D simulation** (Machining ▸ 3D Simulation, `Ctrl+Shift+T`, toolbar button next to *Generate*): a separate
+window shows the stock after the milling operations as a shaded 3D model, cut with the real tool shape (end mill,
+ball nose, bull nose, V-bit) and diameter. Material left above what an operation is meant to reach is coloured:
+yellow to red for rest material (corners the round tool cannot reach, holding tabs, roughing clearance), magenta
+where the tool cut below the target. Targets are the area of pockets, the cut band of profiles, drill holes and the
+surface of 3D profiles, each at its target depth. Choose the operations on the left; the slider (or ▶) steps
+through the moves. *Cell size* sets the accuracy (smaller = finer and slower), *Tolerance* how much material
+counts as rest material. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis (no
+undercuts); turning, plasma and drag knife are not shown.
+
 Operations refer to their objects by ID (*Primitive IDs* in the properties; `[...]` picks them in the drawing).
 Parts group operations; each part can have its own stock, origin and nesting. CAM styles provide default values;
 values you type override them.

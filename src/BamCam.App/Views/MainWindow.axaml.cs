@@ -328,6 +328,7 @@ public partial class MainWindow : Window
                 {
                     "plugins" => new PluginManagerWindow(_plugins, _settings.Plugins),
                     "speeds" => NewSpeedsFeedsWindow().Window,
+                    "simulation" => new SimulationWindow(_session.Document, _session.Toolpaths),
                     "trace" when options.TryGetValue("--image", out var image) =>
                         new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
@@ -335,6 +336,7 @@ public partial class MainWindow : Window
                     _ => null,
                 };
                 extra?.Show(this);
+                if (extra is SimulationWindow) await Task.Delay(6000); // simulation runs on a worker thread
                 if (extra is ScriptEditorWindow scriptEditor)
                 {
                     await Task.Delay(300);

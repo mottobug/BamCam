@@ -686,4 +686,18 @@ public partial class MainWindow
         }
         new GCodeWindow(path).Show(this);
     }
+
+    /// <summary>Opens the 3D simulation; generates the toolpaths first when milling operations have none yet.</summary>
+    private async Task ShowSimulation()
+    {
+        var doc = _session.Document;
+        var milling = doc.Parts.SelectMany(p => p.Operations).Where(o => o.Enabled && Core.Simulation.MillingSimulation.IsMilling(o)).ToList();
+        if (milling.Count == 0)
+        {
+            Log(T("There are no milling operations to simulate."));
+            return;
+        }
+        if (milling.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync();
+        new SimulationWindow(doc, _session.Toolpaths).Show(this);
+    }
 }

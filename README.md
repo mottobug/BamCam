@@ -198,6 +198,9 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   for the 3D profile, e.g. for reliefs) or **traced outlines** (closed polylines or splines of the dark or light areas).
 - Also: depth levels and cut ordering, CAM styles with inheritance, tool libraries, toolpath display with
   rapids and cut widths, toolpaths to geometry.
+- **3D simulation** of the milling operations: the stock as a height field cut with the real tool shape (end, ball,
+  bull nose, V-bit), shaded and rotatable, with the rest material above each operation's target in colour and a
+  slider to step through the moves.
 
 **G-code:** built-in post processors Default, Mach3, LinuxCNC, LinuxCNC Turn, GRBL and GRBL Plasma; existing `.cbpp` files are loaded
 (own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
