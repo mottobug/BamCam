@@ -36,7 +36,13 @@ public sealed class SimulationWindow : Window
     private readonly TextBox _cell = new() { Width = 80 };
     private readonly TextBox _tolerance = new() { Width = 80 };
     private readonly Button _play = new() { Content = "▷", MinWidth = 36 };
-    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(60) };
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(40) };
+    private readonly ComboBox _speed = new() { MinWidth = 120, VerticalAlignment = VerticalAlignment.Center };
+    private readonly Stopwatch _tickWatch = new();
+    private double _due; // moves owed to the playing speed
+
+    /// <summary>Playing speeds in moves per second (0 = as fast as the simulation runs).</summary>
+    private static readonly int[] Speeds = [1, 2, 5, 10, 25, 50, 100, 250, 1000, 0];
 
     private HeightField? _field;
     private List<MillingSimulation.SimMove> _moves = [];
@@ -89,15 +95,31 @@ public sealed class SimulationWindow : Window
         };
         _play.Click += (_, _) => TogglePlay();
         ToolTip.SetTip(_play, T("Play / pause (Space)"));
+        _speed.ItemsSource = Speeds.Select(s => s > 0 ? F("{0} moves/s", s) : T("Maximum")).ToList();
+        _speed.SelectedIndex = Array.IndexOf(Speeds, 10);
+        ToolTip.SetTip(_speed, T("Speed of playing"));
         _timer.Tick += (_, _) =>
         {
+            var elapsed = _tickWatch.Elapsed.TotalSeconds;
+            _tickWatch.Restart();
             if (_busy) return;
             if (_done >= _moves.Count)
             {
                 TogglePlay();
                 return;
             }
-            RunTo(_done + Math.Max(1, _moves.Count / 300));
+            var speed = Speeds[Math.Max(0, _speed.SelectedIndex)];
+            if (speed <= 0)
+            {
+                RunTo(_done + Math.Max(1, _moves.Count / 100));
+                return;
+            }
+            // Moves due since the last tick (at slow speeds one every few ticks).
+            _due = Math.Min(_due + speed * elapsed, Math.Max(1, speed / 5.0));
+            var n = (int)_due;
+            if (n < 1) return;
+            _due -= n;
+            RunTo(_done + n);
         };
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
@@ -106,6 +128,7 @@ public sealed class SimulationWindow : Window
         buttons.Children.Add(_play);
         buttons.Children.Add(StepButton("▶", T("Next move (Right)"), () => RunTo(_done + 1)));
         buttons.Children.Add(StepButton("▶|", T("To the end (End)"), () => RunTo(_moves.Count)));
+        buttons.Children.Add(_speed);
 
         var status = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0), MinWidth = 260 };
         status.Children.Add(_progress);
@@ -335,6 +358,20 @@ public sealed class SimulationWindow : Window
                      (gouge == 0 ? "" : "\n" + F("Cut below the target on {0:0.#} {1}.", gouge * area, unit));
     }
 
+    /// <summary>Diagnostic: jumps back and forth and steps single moves, as a user would (--window simulation).</summary>
+    public async Task ExerciseAsync()
+    {
+        var random = new Random(1);
+        for (var i = 0; i < 40; i++)
+        {
+            var target = i % 4 == 0 ? random.Next(_moves.Count + 1) : _done + (i % 2 == 0 ? 1 : -1);
+            RunTo(target);
+            await Task.Delay(60);
+        }
+        RunTo(_moves.Count / 2);
+        await Task.Delay(1500);
+    }
+
     private void TogglePlay()
     {
         if (_timer.IsEnabled)
@@ -344,6 +381,8 @@ public sealed class SimulationWindow : Window
             return;
         }
         if (_done >= _moves.Count) RunTo(0);
+        _due = 1; // the first move at once
+        _tickWatch.Restart();
         _timer.Start();
         _play.Content = "❚❚";
     }

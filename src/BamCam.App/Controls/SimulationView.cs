@@ -6,12 +6,12 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using BamCam.Core.Cam;
 using BamCam.Core.Simulation;
-using SkiaSharp;
+using System.Runtime.InteropServices;
 
 namespace BamCam.App.Controls;
 
 /// <summary>
-/// Shaded 3D view of a <see cref="HeightField"/> (software rendered with Skia: triangles sorted back to front).
+/// Shaded 3D view of a <see cref="HeightField"/> (software rendered with a depth buffer).
 /// Left drag rotates, right or middle drag pans, the wheel zooms, a double click resets the view. Material above the
 /// target height (rest material) is yellow to red, material cut below it magenta.
 /// </summary>
@@ -102,6 +102,7 @@ public sealed class SimulationView : Control
         InvalidateVisual();
     }
 
+
     public override void Render(DrawingContext context)
     {
         context.FillRectangle(new SolidColorBrush(Color.FromRgb(46, 48, 58)), new Rect(Bounds.Size));
@@ -113,20 +114,37 @@ public sealed class SimulationView : Control
             _bitmap?.Dispose();
             _bitmap = new WriteableBitmap(new PixelSize(w, h), new Vector(96, 96), PixelFormat.Bgra8888, AlphaFormat.Premul);
         }
-        using (var buffer = _bitmap.Lock())
+        int[] pixels;
+        List<(Point, Point)> toolLines;
+        try
         {
-            var info = new SKImageInfo(w, h, SKColorType.Bgra8888, SKAlphaType.Premul);
-            using var surface = SKSurface.Create(info, buffer.Address, buffer.RowBytes);
-            surface.Canvas.Clear(new SKColor(46, 48, 58));
-            Draw(surface.Canvas, _field, w, h);
+            (pixels, toolLines) = Draw(_field, w, h);
         }
+        catch (Exception ex)
+        {
+            // A drawing error must never close BamCam: show it instead.
+            context.DrawText(new FormattedText(ex.Message, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                Typeface.Default, 12, Brushes.OrangeRed), new Point(10, 10));
+            return;
+        }
+        using (var buffer = _bitmap.Lock())
+            for (var y = 0; y < h; y++)
+                Marshal.Copy(pixels, y * w, buffer.Address + y * buffer.RowBytes, w);
         context.DrawImage(_bitmap, new Rect(0, 0, w, h));
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(0, 220, 255)), 1.5);
+        foreach (var (a, b) in toolLines) context.DrawLine(pen, a, b);
     }
 
-    private void Draw(SKCanvas canvas, HeightField f, int width, int height)
+    private static int Argb(int r, int g, int b) => unchecked((int)0xFF000000) | (r << 16) | (g << 8) | b;
+
+    /// <summary>
+    /// Renders the height field into BGRA pixels with a depth buffer (own rasteriser: robust for any view, also
+    /// with very large or degenerate triangles), and returns the outline of the tool as screen lines.
+    /// </summary>
+    private (int[] Pixels, List<(Point, Point)> ToolLines) Draw(HeightField f, int width, int height)
     {
         // Display grid: at most about 300 x 300 nodes; each node shows the lowest cell of its block, so that
-        // narrow grooves stay visible.
+        // narrow grooves stay visible. The heights may change meanwhile (simulation thread): copied once here.
         var step = Math.Max(1, (int)Math.Ceiling(Math.Max(f.Nx, f.Ny) / 300.0));
         var nx = (f.Nx - 1) / step + 1;
         var ny = (f.Ny - 1) / step + 1;
@@ -141,10 +159,11 @@ public sealed class SimulationView : Control
             for (var bi = i * step; bi < Math.Min(f.Nx, (i + 1) * step); bi++)
             {
                 var k = bj * f.Nx + bi;
-                if (f.Z[k] < low) low = f.Z[k];
+                var v = f.Z[k];
+                if (v < low) low = v;
                 if (!float.IsNaN(f.Target[k]) && (float.IsNaN(tgt) || f.Target[k] < tgt)) tgt = f.Target[k];
             }
-            z[j * nx + i] = low;
+            z[j * nx + i] = float.IsFinite(low) ? low : (float)f.Top;
             target[j * nx + i] = tgt;
         }
 
@@ -153,7 +172,7 @@ public sealed class SimulationView : Control
         var cell = f.Cell * step;
         double sizeX = (nx - 1) * cell, sizeY = (ny - 1) * cell, midZ = (f.Top + f.Bottom) / 2;
         var scale = _zoom * 0.8 * Math.Min(width, height) / Math.Max(Math.Max(sizeX, sizeY), 1e-6);
-        (float X, float Y, float Depth) Project(double x, double y, double zz)
+        (double X, double Y, double Depth) Project(double x, double y, double zz)
         {
             x -= sizeX / 2;
             y -= sizeY / 2;
@@ -162,32 +181,67 @@ public sealed class SimulationView : Control
             var ry = sy * x + cy * y;
             var up = ry * cp + zz * sp;
             var depth = -ry * sp + zz * cp;
-            return ((float)(width / 2 + _pan.X + rx * scale), (float)(height / 2 + _pan.Y - up * scale), (float)depth);
+            return (width / 2.0 + _pan.X + rx * scale, height / 2.0 + _pan.Y - up * scale, depth);
         }
         // Light from the viewer, a little from the upper left (world coordinates of the view axes).
         (double X, double Y, double Z) toViewer = (-sy * sp, -cy * sp, cp), up = (sy * cp, cy * cp, sp), right = (cy, -sy, 0);
         var light = Normalize(0.8 * toViewer.X + 0.4 * up.X - 0.3 * right.X, 0.8 * toViewer.Y + 0.4 * up.Y - 0.3 * right.Y,
             0.8 * toViewer.Z + 0.4 * up.Z - 0.3 * right.Z);
 
-        var tris = new List<(float Depth, SKPoint A, SKPoint B, SKPoint C, SKColor Color)>(nx * ny * 2 + 4 * (nx + ny));
-        var px = new (float X, float Y, float Depth)[nx * ny];
+        var pixels = new int[width * height];
+        Array.Fill(pixels, Argb(46, 48, 58));
+        var depthBuffer = new float[width * height];
+        Array.Fill(depthBuffer, float.NegativeInfinity);
+
+        // Flat shaded triangle; the nearer surface (larger depth) wins.
+        void Triangle((double X, double Y, double Depth) p0, (double X, double Y, double Depth) p1, (double X, double Y, double Depth) p2, int color)
+        {
+            if (!double.IsFinite(p0.X + p0.Y + p1.X + p1.Y + p2.X + p2.Y + p0.Depth + p1.Depth + p2.Depth)) return;
+            var area = (p1.X - p0.X) * (p2.Y - p0.Y) - (p1.Y - p0.Y) * (p2.X - p0.X);
+            if (Math.Abs(area) < 1e-12) return;
+            var minX = (int)Math.Max(0, Math.Floor(Math.Min(p0.X, Math.Min(p1.X, p2.X))));
+            var maxX = (int)Math.Min(width - 1, Math.Ceiling(Math.Max(p0.X, Math.Max(p1.X, p2.X))));
+            var minY = (int)Math.Max(0, Math.Floor(Math.Min(p0.Y, Math.Min(p1.Y, p2.Y))));
+            var maxY = (int)Math.Min(height - 1, Math.Ceiling(Math.Max(p0.Y, Math.Max(p1.Y, p2.Y))));
+            if (minX > maxX || minY > maxY) return;
+            var inv = 1 / area;
+            for (var y = minY; y <= maxY; y++)
+            {
+                var py = y + 0.5;
+                for (var x = minX; x <= maxX; x++)
+                {
+                    var px = x + 0.5;
+                    var w0 = ((p1.X - px) * (p2.Y - py) - (p1.Y - py) * (p2.X - px)) * inv;
+                    var w1 = ((p2.X - px) * (p0.Y - py) - (p2.Y - py) * (p0.X - px)) * inv;
+                    var w2 = 1 - w0 - w1;
+                    if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
+                    var d = (float)(w0 * p0.Depth + w1 * p1.Depth + w2 * p2.Depth);
+                    var idx = y * width + x;
+                    if (d <= depthBuffer[idx]) continue;
+                    depthBuffer[idx] = d;
+                    pixels[idx] = color;
+                }
+            }
+        }
+
+        var projected = new (double X, double Y, double Depth)[nx * ny];
         for (var j = 0; j < ny; j++)
         for (var i = 0; i < nx; i++)
-            px[j * nx + i] = Project(i * cell, j * cell, z[j * nx + i]);
+            projected[j * nx + i] = Project(i * cell, j * cell, z[j * nx + i]);
 
-        SKColor Shade(double nx_, double ny_, double nz, SKColor baseColor)
+        int Shade(double nx_, double ny_, double nz, (int R, int G, int B) baseColor)
         {
             var n = Normalize(nx_, ny_, nz);
             var lambert = 0.35 + 0.65 * Math.Max(0, n.X * light.X + n.Y * light.Y + n.Z * light.Z);
-            return new SKColor((byte)(baseColor.Red * lambert), (byte)(baseColor.Green * lambert), (byte)(baseColor.Blue * lambert));
+            return Argb((int)(baseColor.R * lambert), (int)(baseColor.G * lambert), (int)(baseColor.B * lambert));
         }
 
         // Height above the target that all corners of a quad with a target share (walls, which reach the target at
         // their foot, stay material coloured); NaN without target.
-        double Deviation(params int[] corners)
+        double Deviation(int a, int b, int c, int d)
         {
             var result = double.NaN;
-            foreach (var k in corners)
+            foreach (var k in (ReadOnlySpan<int>)[a, b, c, d])
             {
                 if (float.IsNaN(target[k])) continue;
                 var e = z[k] - target[k];
@@ -203,20 +257,17 @@ public sealed class SimulationView : Control
             var dzdx = (z[b] + z[d] - z[a] - z[c]) / (2 * cell);
             var dzdy = (z[c] + z[d] - z[a] - z[b]) / (2 * cell);
             var color = Shade(-dzdx, -dzdy, 1, ColorOf(Deviation(a, b, c, d), f));
-            var depth = (px[a].Depth + px[b].Depth + px[c].Depth + px[d].Depth) / 4;
-            tris.Add((depth, P(px[a]), P(px[b]), P(px[d]), color));
-            tris.Add((depth, P(px[a]), P(px[d]), P(px[c]), color));
+            Triangle(projected[a], projected[b], projected[d], color);
+            Triangle(projected[a], projected[d], projected[c], color);
         }
         // Sides of the stock block down to the bottom.
-        var sideColor = new SKColor(150, 140, 120);
         void Side(int from, int to, double x0, double y0, double x1, double y1, double nxs, double nys)
         {
             var bottom0 = Project(x0, y0, f.Bottom);
             var bottom1 = Project(x1, y1, f.Bottom);
-            var color = Shade(nxs, nys, 0, sideColor);
-            var depth = (px[from].Depth + px[to].Depth + bottom0.Depth + bottom1.Depth) / 4;
-            tris.Add((depth, P(px[from]), P(px[to]), P(bottom1), color));
-            tris.Add((depth, P(px[from]), P(bottom1), P(bottom0), color));
+            var color = Shade(nxs, nys, 0, (150, 140, 120));
+            Triangle(projected[from], projected[to], bottom1, color);
+            Triangle(projected[from], bottom1, bottom0, color);
         }
         for (var i = 0; i + 1 < nx; i++)
         {
@@ -229,69 +280,50 @@ public sealed class SimulationView : Control
             Side(j * nx + nx - 1, (j + 1) * nx + nx - 1, sizeX, j * cell, sizeX, (j + 1) * cell, 1, 0);
         }
 
-        tris.Sort((p, q) => p.Depth.CompareTo(q.Depth)); // far first
-        var positions = new SKPoint[tris.Count * 3];
-        var colors = new SKColor[tris.Count * 3];
-        for (var t = 0; t < tris.Count; t++)
-        {
-            positions[3 * t] = tris[t].A;
-            positions[3 * t + 1] = tris[t].B;
-            positions[3 * t + 2] = tris[t].C;
-            colors[3 * t] = colors[3 * t + 1] = colors[3 * t + 2] = tris[t].Color;
-        }
-        using var paint = new SKPaint { IsAntialias = false };
-        canvas.DrawVertices(SKVertexMode.Triangles, positions, null, colors, paint);
-
+        var lines = new List<(Point, Point)>();
         if (Tool is { } tool)
         {
-            // Outline of the tool: circles at the tip and above, joined at the sides (always on top).
+            // Outline of the tool: circles at the tip and above, joined at the sides (drawn on top).
             var (tip, r) = tool;
             var shaft = Math.Max(4 * r, (f.Top - f.Bottom) * 1.5);
-            using var pen = new SKPaint { Color = new SKColor(0, 220, 255), StrokeWidth = 1.5f, IsAntialias = true, Style = SKPaintStyle.Stroke };
-            SKPath Ring(double zz)
+            Point Screen(double dx, double dy, double zz)
             {
-                var path = new SKPath();
-                for (var k = 0; k <= 32; k++)
-                {
-                    var a = k * Math.PI / 16;
-                    var q = Project(tip.X - f.X0 - f.Cell / 2 + r * Math.Cos(a), tip.Y - f.Y0 - f.Cell / 2 + r * Math.Sin(a), zz);
-                    if (k == 0) path.MoveTo(q.X, q.Y);
-                    else path.LineTo(q.X, q.Y);
-                }
-                return path;
+                var q = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, zz);
+                return new Point(q.X, q.Y);
             }
-            using (var low = Ring(tip.Z)) canvas.DrawPath(low, pen);
-            using (var high = Ring(tip.Z + shaft)) canvas.DrawPath(high, pen);
+            foreach (var zz in new[] { tip.Z, tip.Z + shaft })
+                for (var k = 0; k < 32; k++)
+                {
+                    double a0 = k * Math.PI / 16, a1 = (k + 1) * Math.PI / 16;
+                    lines.Add((Screen(r * Math.Cos(a0), r * Math.Sin(a0), zz), Screen(r * Math.Cos(a1), r * Math.Sin(a1), zz)));
+                }
             foreach (var side in new[] { 1, -1 })
             {
                 // The two outline lines of the cylinder as seen from the viewer (along the screen's right axis).
                 double dx = side * r * cy, dy = -side * r * sy;
-                var a = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, tip.Z);
-                var b = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, tip.Z + shaft);
-                canvas.DrawLine(a.X, a.Y, b.X, b.Y, pen);
+                lines.Add((Screen(dx, dy, tip.Z), Screen(dx, dy, tip.Z + shaft)));
             }
+            lines.RemoveAll(l => !double.IsFinite(l.Item1.X + l.Item1.Y + l.Item2.X + l.Item2.Y));
         }
+        return (pixels, lines);
     }
-
-    private static SKPoint P((float X, float Y, float Depth) p) => new(p.X, p.Y);
 
     private static (double X, double Y, double Z) Normalize(double x, double y, double z)
     {
         var l = Math.Sqrt(x * x + y * y + z * z);
-        return l < 1e-12 ? (0, 0, 1) : (x / l, y / l, z / l);
+        return l < 1e-12 || !double.IsFinite(l) ? (0, 0, 1) : (x / l, y / l, z / l);
     }
 
     /// <summary>Material colour, or the deviation from the target: rest material yellow to red, cut too deep magenta.</summary>
-    private SKColor ColorOf(double excess, HeightField f)
+    private (int R, int G, int B) ColorOf(double excess, HeightField f)
     {
-        var material = new SKColor(205, 200, 190);
-        if (double.IsNaN(excess)) return material;
+        if (double.IsNaN(excess)) return (205, 200, 190);
         if (excess > Tolerance)
         {
             var t = Math.Clamp(excess / Math.Max(4 * Tolerance, (f.Top - f.Bottom) / 4), 0, 1);
-            return new SKColor(255, (byte)(220 * (1 - t)), 0);
+            return (255, (int)(220 * (1 - t)), 0);
         }
-        if (excess < -Tolerance) return new SKColor(220, 0, 220);
-        return material;
+        if (excess < -Tolerance) return (220, 0, 220);
+        return (205, 200, 190);
     }
 }

@@ -336,7 +336,11 @@ public partial class MainWindow : Window
                     _ => null,
                 };
                 extra?.Show(this);
-                if (extra is SimulationWindow) await Task.Delay(6000); // simulation runs on a worker thread
+                if (extra is SimulationWindow simulation)
+                {
+                    await Task.Delay(6000); // simulation runs on a worker thread
+                    await simulation.ExerciseAsync();
+                }
                 if (extra is ScriptEditorWindow scriptEditor)
                 {
                     await Task.Delay(300);

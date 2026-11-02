@@ -1339,6 +1339,8 @@
   "No milling toolpaths. Generate toolpaths first.": "Keine Fräs-Werkzeugwege. Zuerst Werkzeugwege erzeugen.",
   "Move {0} / {1}": "Bewegung {0} / {1}",
   "Move {0} of {1}": "Bewegung {0} von {1}",
+  "Speed of playing": "Abspielgeschwindigkeit",
+  "{0} moves/s": "{0} Bewegungen/s",
   "Start: nothing cut yet.": "Anfang: noch nichts geschnitten.",
   "Drilling cycle": "Bohrzyklus",
   "Next move (Right)": "Nächste Bewegung (Pfeil rechts)",
