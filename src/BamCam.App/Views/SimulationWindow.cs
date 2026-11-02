@@ -60,8 +60,8 @@ public sealed class SimulationWindow : Window
         Title = T("3D Simulation");
         Width = 1100;
         Height = 740;
-        MinWidth = 600;
-        MinHeight = 400;
+        MinWidth = 480;
+        MinHeight = 320;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
 
         var left = new StackPanel { Margin = new Thickness(10), Spacing = 6, Width = 250 };
@@ -151,6 +151,19 @@ public sealed class SimulationWindow : Window
         Closed += (_, _) => _timer.Stop();
         Opened += (_, _) => Restart();
         AddHandler(KeyDownEvent, OnKey, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    /// <summary>Shows the window at most about 85 % of the owner's screen, so that it fits and its edges can be reached.</summary>
+    public void ShowFor(Window owner)
+    {
+        var screen = owner.Screens.ScreenFromWindow(owner) ?? owner.Screens.Primary;
+        if (screen != null)
+        {
+            var area = screen.WorkingArea;
+            Width = Math.Min(Width, area.Width / screen.Scaling * 0.85);
+            Height = Math.Min(Height, area.Height / screen.Scaling * 0.85);
+        }
+        Show(owner);
     }
 
     private static Button StepButton(string text, string tip, Action action)

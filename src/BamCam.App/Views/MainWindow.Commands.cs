@@ -698,6 +698,6 @@ public partial class MainWindow
             return;
         }
         if (milling.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync();
-        new SimulationWindow(doc, _session.Toolpaths).Show(this);
+        new SimulationWindow(doc, _session.Toolpaths).ShowFor(this);
     }
 }
