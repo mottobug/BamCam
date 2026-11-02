@@ -86,7 +86,7 @@ window shows the stock after the milling operations as a shaded 3D model, cut wi
 ball nose, bull nose, V-bit) and diameter. Material left above what an operation is meant to reach is coloured:
 yellow to red for rest material (corners the round tool cannot reach, holding tabs, roughing clearance), magenta
 where the tool cut below the target. Targets are the area of pockets, the cut band of profiles, drill holes and the
-surface of 3D profiles, each at its target depth. Choose the operations on the left. The buttons below step through the moves one by one (◀ / ▶, or the
+surface of 3D profiles, each at its target depth. It shows what is selected in the drawing tree: one operation, all operations of a part, or (Machining, the drawing) all of them, and follows the tree while it is open; the check boxes on the left change the choice. The buttons below step through the moves one by one (◀ / ▶, or the
 arrow keys), jump to the start or end (Home / End) or play them (Space) at the speed chosen next to the buttons (1 to 1000 moves per second or as fast as possible); the counter shows the move and the total,
 with the operation and the G-code of the move, and the tool is drawn at its position. *Cell size* sets the accuracy (smaller = finer and slower), *Tolerance* how much material
 counts as rest material. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis (no

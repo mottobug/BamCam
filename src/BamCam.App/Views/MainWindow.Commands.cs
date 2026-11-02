@@ -687,17 +687,64 @@ public partial class MainWindow
         new GCodeWindow(path).Show(this);
     }
 
-    /// <summary>Opens the 3D simulation; generates the toolpaths first when milling operations have none yet.</summary>
-    private async Task ShowSimulation()
+    private SimulationWindow? _simulationWindow;
+
+    /// <summary>
+    /// What the simulation shows for the selection in the drawing tree: the selected milling operation, the enabled
+    /// milling operations of the selected part, or (machining options, drawing, nothing) all enabled ones. Null when
+    /// something else is selected (the simulation keeps what it shows).
+    /// </summary>
+    private (List<MachineOp> Ops, PostScope Scope)? SimulationScope()
     {
         var doc = _session.Document;
-        var milling = doc.Parts.SelectMany(p => p.Operations).Where(o => o.Enabled && Core.Simulation.MillingSimulation.IsMilling(o)).ToList();
-        if (milling.Count == 0)
+        static bool Milling(MachineOp o) => Core.Simulation.MillingSimulation.IsMilling(o);
+        return _session.Inspected switch
+        {
+            MachineOp op when Milling(op) => ([op], new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)),
+            Part part => (part.Operations.Where(o => o.Enabled && Milling(o)).ToList(), new PostScope(part)),
+            null or CadDocument or MachiningOptions =>
+                (doc.Parts.Where(p => p.Enabled).SelectMany(p => p.Operations).Where(o => o.Enabled && Milling(o)).ToList(), PostScope.All),
+            _ => null,
+        };
+    }
+
+    /// <summary>Opens the 3D simulation for the selection; generates missing toolpaths first.</summary>
+    private async Task ShowSimulation()
+    {
+        var (ops, scope) = SimulationScope() ?? (_session.Document.Parts.SelectMany(p => p.Operations)
+            .Where(o => o.Enabled && Core.Simulation.MillingSimulation.IsMilling(o)).ToList(), PostScope.All);
+        if (ops.Count == 0)
         {
             Log(T("There are no milling operations to simulate."));
             return;
         }
-        if (milling.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync();
-        new SimulationWindow(doc, _session.Toolpaths).ShowFor(this);
+        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync(scope);
+        if (_simulationWindow is { } open)
+        {
+            open.ShowOperations(ops);
+            open.Activate();
+            return;
+        }
+        var window = new SimulationWindow(_session.Document, _session.Toolpaths);
+        window.ShowOperations(ops);
+        window.Closed += (_, _) => _simulationWindow = null;
+        _simulationWindow = window;
+        window.ShowFor(this);
+    }
+
+    /// <summary>Simulation window for the selection, for the --window simulation screenshot.</summary>
+    private SimulationWindow SimulationForDiagnostics()
+    {
+        var window = new SimulationWindow(_session.Document, _session.Toolpaths);
+        if (SimulationScope() is { } s) window.ShowOperations(s.Ops);
+        return window;
+    }
+
+    /// <summary>An open simulation follows the operation or part selected in the drawing tree.</summary>
+    private async void FollowSelectionInSimulation()
+    {
+        if (_simulationWindow is not { } window || SimulationScope() is not { } s || s.Ops.Count == 0) return;
+        if (s.Ops.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync(s.Scope);
+        if (_simulationWindow == window) window.ShowOperations(s.Ops);
     }
 }

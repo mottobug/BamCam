@@ -45,6 +45,7 @@ public partial class MainWindow : Window
                 return;
             }
             Properties.SelectedObject = _session.Inspected ?? _session.Document;
+            if (_session.Inspected != null) FollowSelectionInSimulation();
         };
 
         View.CursorMoved += (_, p) => CoordText.Text = $"X: {p.X:0.###}  Y: {p.Y:0.###}";
@@ -328,7 +329,7 @@ public partial class MainWindow : Window
                 {
                     "plugins" => new PluginManagerWindow(_plugins, _settings.Plugins),
                     "speeds" => NewSpeedsFeedsWindow().Window,
-                    "simulation" => new SimulationWindow(_session.Document, _session.Toolpaths),
+                    "simulation" => SimulationForDiagnostics(),
                     "trace" when options.TryGetValue("--image", out var image) =>
                         new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),

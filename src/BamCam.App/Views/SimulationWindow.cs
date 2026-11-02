@@ -66,15 +66,8 @@ public sealed class SimulationWindow : Window
 
         var left = new StackPanel { Margin = new Thickness(10), Spacing = 6, Width = 250 };
         left.Children.Add(new TextBlock { Text = T("Operations"), FontWeight = FontWeight.SemiBold });
-        foreach (var op in doc.Parts.SelectMany(p => p.Operations))
-        {
-            if (!MillingSimulation.IsMilling(op) || !toolpaths.ContainsKey(op)) continue;
-            var box = new CheckBox { Content = op.Name, IsChecked = op.Enabled };
-            box.IsCheckedChanged += (_, _) => Restart();
-            _ops.Add((op, box));
-            left.Children.Add(box);
-        }
-        if (_ops.Count == 0) left.Children.Add(new TextBlock { Text = T("No milling toolpaths. Generate toolpaths first."), TextWrapping = TextWrapping.Wrap });
+        left.Children.Add(_opsPanel);
+        BuildOperations(doc.Parts.SelectMany(p => p.Operations).Where(o => o.Enabled).ToList());
 
         left.Children.Add(Row(T("Cell size"), _cell));
         left.Children.Add(Row(T("Tolerance"), _tolerance));
@@ -151,6 +144,46 @@ public sealed class SimulationWindow : Window
         Closed += (_, _) => _timer.Stop();
         Opened += (_, _) => Restart();
         AddHandler(KeyDownEvent, OnKey, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    private readonly StackPanel _opsPanel = new() { Spacing = 6 };
+    private bool _building;
+
+    /// <summary>One check box per milling operation with a toolpath; the given ones are checked.</summary>
+    private void BuildOperations(IReadOnlyCollection<MachineOp> shown)
+    {
+        _building = true;
+        _ops.Clear();
+        _opsPanel.Children.Clear();
+        foreach (var part in _doc.Parts)
+        foreach (var op in part.Operations)
+        {
+            if (!MillingSimulation.IsMilling(op) || !_toolpaths.ContainsKey(op)) continue;
+            var box = new CheckBox { Content = _doc.Parts.Count > 1 ? $"{part.Name}: {op.Name}" : op.Name, IsChecked = shown.Contains(op) };
+            box.IsCheckedChanged += (_, _) =>
+            {
+                if (!_building) Restart();
+            };
+            _ops.Add((op, box));
+            _opsPanel.Children.Add(box);
+        }
+        if (_ops.Count == 0) _opsPanel.Children.Add(new TextBlock { Text = T("No milling toolpaths. Generate toolpaths first."), TextWrapping = TextWrapping.Wrap });
+        _building = false;
+    }
+
+    /// <summary>
+    /// Simulates only <paramref name="ops"/> (the operation or part selected in the drawing tree); the list also
+    /// picks up toolpaths generated since the window opened.
+    /// </summary>
+    public void ShowOperations(IReadOnlyCollection<MachineOp> ops)
+    {
+        var same = _ops.Count == _toolpaths.Count(t => MillingSimulation.IsMilling(t.Key)) &&
+                   _ops.All(o => (o.Box.IsChecked == true) == ops.Contains(o.Op));
+        if (same) return;
+        _timer.Stop();
+        _play.Content = "▷";
+        BuildOperations(ops);
+        if (IsVisible) Restart();
     }
 
     /// <summary>Shows the window at most about 85 % of the owner's screen, so that it fits and its edges can be reached.</summary>
