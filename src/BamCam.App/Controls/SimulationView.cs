@@ -34,6 +34,9 @@ public sealed class SimulationView : Control
     /// <summary>Material left above the target that is shown as rest material.</summary>
     public double Tolerance { get; set; } = 0.05;
 
+    /// <summary>Tool tip position and radius, drawn as an outline of the tool (null = none).</summary>
+    public (Core.Geometry.Point3 Tip, double Radius)? Tool { get; set; }
+
     public HeightField? Field
     {
         get => _field;
@@ -238,6 +241,36 @@ public sealed class SimulationView : Control
         }
         using var paint = new SKPaint { IsAntialias = false };
         canvas.DrawVertices(SKVertexMode.Triangles, positions, null, colors, paint);
+
+        if (Tool is { } tool)
+        {
+            // Outline of the tool: circles at the tip and above, joined at the sides (always on top).
+            var (tip, r) = tool;
+            var shaft = Math.Max(4 * r, (f.Top - f.Bottom) * 1.5);
+            using var pen = new SKPaint { Color = new SKColor(0, 220, 255), StrokeWidth = 1.5f, IsAntialias = true, Style = SKPaintStyle.Stroke };
+            SKPath Ring(double zz)
+            {
+                var path = new SKPath();
+                for (var k = 0; k <= 32; k++)
+                {
+                    var a = k * Math.PI / 16;
+                    var q = Project(tip.X - f.X0 - f.Cell / 2 + r * Math.Cos(a), tip.Y - f.Y0 - f.Cell / 2 + r * Math.Sin(a), zz);
+                    if (k == 0) path.MoveTo(q.X, q.Y);
+                    else path.LineTo(q.X, q.Y);
+                }
+                return path;
+            }
+            using (var low = Ring(tip.Z)) canvas.DrawPath(low, pen);
+            using (var high = Ring(tip.Z + shaft)) canvas.DrawPath(high, pen);
+            foreach (var side in new[] { 1, -1 })
+            {
+                // The two outline lines of the cylinder as seen from the viewer (along the screen's right axis).
+                double dx = side * r * cy, dy = -side * r * sy;
+                var a = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, tip.Z);
+                var b = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, tip.Z + shaft);
+                canvas.DrawLine(a.X, a.Y, b.X, b.Y, pen);
+            }
+        }
     }
 
     private static SKPoint P((float X, float Y, float Depth) p) => new(p.X, p.Y);

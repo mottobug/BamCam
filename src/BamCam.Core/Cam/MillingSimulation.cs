@@ -136,20 +136,47 @@ public static class MillingSimulation
         return new HeightField(x0, y0, cell, nx, ny, top, bottom);
     }
 
-    /// <summary>One cutting move (rapids are not simulated).</summary>
+    /// <summary>One straight piece of a move.</summary>
     public readonly record struct Step(Point3 From, Point3 To, SimTool Tool, MachineOp Op);
 
-    /// <summary>All cutting moves of the jobs in order.</summary>
-    public static List<Step> Steps(CadDocument doc, IReadOnlyList<(MachineOp Op, Toolpath Toolpath)> jobs, double tolerance)
+    /// <summary>
+    /// One move of a toolpath (G0, G1, G2/G3, a drilling cycle) as the straight pieces it is cut in; arcs are split
+    /// into lines. Rapids are moves too but cut nothing.
+    /// </summary>
+    public sealed record SimMove(MachineOp Op, Move Move, int Index, Point3 From, IReadOnlyList<Step> Pieces)
     {
-        var steps = new List<Step>();
+        public Point3 End => Pieces.Count > 0 ? Pieces[^1].To : Move.To;
+    }
+
+    /// <summary>All moves of the jobs in order (<see cref="SimMove.Index"/> counts within each toolpath, from 1).</summary>
+    public static List<SimMove> Moves(CadDocument doc, IReadOnlyList<(MachineOp Op, Toolpath Toolpath)> jobs, double tolerance)
+    {
+        var moves = new List<SimMove>();
         foreach (var (op, toolpath) in jobs)
         {
             var tool = ToolOf(doc, op);
-            foreach (var s in toolpath.DisplaySegments(tolerance))
-                if (s.Kind != MoveKind.Rapid) steps.Add(new Step(s.From, s.To, tool, op));
+            Point3? pos = toolpath.StartPosition;
+            var index = 0;
+            foreach (var m in toolpath.Moves)
+            {
+                if (!m.IsMotion && m.Kind is not (MoveKind.DrillCycle or MoveKind.ThreadCycle)) continue;
+                index++;
+                var single = new Toolpath { StartPosition = pos };
+                single.Moves.Add(m);
+                var pieces = single.DisplaySegments(tolerance)
+                    .Where(s => s.Kind != MoveKind.Rapid).Select(s => new Step(s.From, s.To, tool, op)).ToList();
+                var start = pos ?? m.To;
+                moves.Add(new SimMove(op, m, index, start, pieces));
+                pos = m.Kind == MoveKind.DrillCycle ? start with { X = m.To.X, Y = m.To.Y } : m.To;
+            }
         }
-        return steps;
+        return moves;
+    }
+
+    /// <summary>Applies one move to the height field.</summary>
+    public static void Cut(HeightField f, SimMove move)
+    {
+        foreach (var piece in move.Pieces) Cut(f, piece);
     }
 
     /// <summary>Lowers the heights under the tool moving along one straight step.</summary>

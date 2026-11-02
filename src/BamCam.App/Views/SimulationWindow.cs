@@ -3,6 +3,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -16,7 +17,7 @@ namespace BamCam.App.Views;
 
 /// <summary>
 /// 3D simulation of the milling operations on the stock (height field), with the material left above the target
-/// depth of each operation shown in colour. The slider steps through the moves.
+/// depth of each operation shown in colour. The moves can be stepped one by one, forwards and backwards.
 /// </summary>
 public sealed class SimulationWindow : Window
 {
@@ -24,18 +25,27 @@ public sealed class SimulationWindow : Window
     private readonly IReadOnlyDictionary<MachineOp, Toolpath> _toolpaths;
     private readonly List<(MachineOp Op, CheckBox Box)> _ops = [];
     private readonly SimulationView _view = new();
-    private readonly Slider _slider = new() { Minimum = 0, Maximum = 1, HorizontalAlignment = HorizontalAlignment.Stretch };
-    private readonly TextBlock _progress = new() { VerticalAlignment = VerticalAlignment.Center, MinWidth = 150, Margin = new Thickness(8, 0) };
+    private readonly Slider _slider = new()
+    {
+        Minimum = 0, Maximum = 1, SmallChange = 1, LargeChange = 10, TickFrequency = 1, IsSnapToTickEnabled = true,
+        HorizontalAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Center,
+    };
+    private readonly TextBlock _progress = new() { FontWeight = FontWeight.SemiBold };
+    private readonly TextBlock _current = new() { FontSize = 11, Foreground = Brushes.DimGray };
     private readonly TextBlock _info = new() { TextWrapping = TextWrapping.Wrap, FontSize = 11, Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBox _cell = new() { Width = 80 };
     private readonly TextBox _tolerance = new() { Width = 80 };
-    private readonly Button _play = new() { Content = "▶", MinWidth = 36 };
+    private readonly Button _play = new() { Content = "▷", MinWidth = 36 };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(60) };
 
     private HeightField? _field;
-    private List<MillingSimulation.Step> _steps = [];
-    private int _done; // steps applied to _field
+    private List<MillingSimulation.SimMove> _moves = [];
+    private int _done; // moves applied to _field
     private bool _busy, _pending, _updatingSlider;
+
+    /// <summary>Copies of the heights after every n-th move, so that stepping back does not start from the beginning.</summary>
+    private readonly SortedDictionary<int, float[]> _checkpoints = [];
+    private int _checkpointEvery = int.MaxValue;
 
     public SimulationWindow(CadDocument doc, IReadOnlyDictionary<MachineOp, Toolpath> toolpaths)
     {
@@ -43,7 +53,7 @@ public sealed class SimulationWindow : Window
         _toolpaths = toolpaths;
         Title = T("3D Simulation");
         Width = 1100;
-        Height = 720;
+        Height = 740;
         MinWidth = 600;
         MinHeight = 400;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -69,31 +79,44 @@ public sealed class SimulationWindow : Window
         left.Children.Add(_info);
         left.Children.Add(new TextBlock
         {
-            Text = T("Left drag: rotate, right drag: move, wheel: zoom, double click: reset."), TextWrapping = TextWrapping.Wrap,
-            FontSize = 11, Foreground = Brushes.DimGray,
+            Text = T("Left drag: rotate, right drag: move, wheel: zoom, double click: reset. Arrow keys: previous / next move, Home / End: start / end, Space: play."),
+            TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = Brushes.DimGray,
         });
 
         _slider.PropertyChanged += (_, e) =>
         {
-            if (e.Property == RangeBase.ValueProperty && !_updatingSlider) RunTo((int)_slider.Value);
+            if (e.Property == RangeBase.ValueProperty && !_updatingSlider) RunTo((int)Math.Round(_slider.Value));
         };
         _play.Click += (_, _) => TogglePlay();
+        ToolTip.SetTip(_play, T("Play / pause (Space)"));
         _timer.Tick += (_, _) =>
         {
             if (_busy) return;
-            if (_done >= _steps.Count)
+            if (_done >= _moves.Count)
             {
                 TogglePlay();
                 return;
             }
-            RunTo(_done + Math.Max(1, _steps.Count / 300));
+            RunTo(_done + Math.Max(1, _moves.Count / 300));
         };
+
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        buttons.Children.Add(StepButton("|◀", T("To the start (Home)"), () => RunTo(0)));
+        buttons.Children.Add(StepButton("◀", T("Previous move (Left)"), () => RunTo(_done - 1)));
+        buttons.Children.Add(_play);
+        buttons.Children.Add(StepButton("▶", T("Next move (Right)"), () => RunTo(_done + 1)));
+        buttons.Children.Add(StepButton("▶|", T("To the end (End)"), () => RunTo(_moves.Count)));
+
+        var status = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0), MinWidth = 260 };
+        status.Children.Add(_progress);
+        status.Children.Add(_current);
         var bottom = new DockPanel { Margin = new Thickness(10, 4, 10, 10) };
-        DockPanel.SetDock(_play, Dock.Left);
-        DockPanel.SetDock(_progress, Dock.Right);
-        bottom.Children.Add(_play);
-        bottom.Children.Add(_progress);
+        DockPanel.SetDock(buttons, Dock.Left);
+        DockPanel.SetDock(status, Dock.Right);
+        bottom.Children.Add(buttons);
+        bottom.Children.Add(status);
         bottom.Children.Add(_slider);
+        _slider.Margin = new Thickness(10, 0, 0, 0);
 
         var root = new DockPanel();
         DockPanel.SetDock(bottom, Dock.Bottom);
@@ -104,6 +127,30 @@ public sealed class SimulationWindow : Window
         Content = root;
         Closed += (_, _) => _timer.Stop();
         Opened += (_, _) => Restart();
+        AddHandler(KeyDownEvent, OnKey, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+    }
+
+    private static Button StepButton(string text, string tip, Action action)
+    {
+        var b = new Button { Content = text, MinWidth = 36, HorizontalContentAlignment = HorizontalAlignment.Center };
+        ToolTip.SetTip(b, tip);
+        b.Click += (_, _) => action();
+        return b;
+    }
+
+    private void OnKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Source is TextBox) return; // typing a cell size or tolerance
+        switch (e.Key)
+        {
+            case Key.Left: RunTo(_done - 1); break;
+            case Key.Right: RunTo(_done + 1); break;
+            case Key.Home: RunTo(0); break;
+            case Key.End: RunTo(_moves.Count); break;
+            case Key.Space: TogglePlay(); break;
+            default: return;
+        }
+        e.Handled = true;
     }
 
     private static Control Row(string label, Control editor)
@@ -129,13 +176,14 @@ public sealed class SimulationWindow : Window
         Add(Color.FromRgb(255, 220, 0), T("Rest material (little)"));
         Add(Color.FromRgb(255, 0, 0), T("Rest material (much)"));
         Add(Color.FromRgb(220, 0, 220), T("Cut below the target"));
+        Add(Color.FromRgb(0, 220, 255), T("Tool"));
         return panel;
     }
 
     private static double ParseOr(TextBox box, double fallback) =>
         double.TryParse(box.Text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v > 0 ? v : fallback;
 
-    /// <summary>New height field and steps for the checked operations, simulated to the end.</summary>
+    /// <summary>New height field and moves for the checked operations, simulated to the end.</summary>
     private void Restart()
     {
         var jobs = _ops.Where(o => o.Box.IsChecked == true && _toolpaths.ContainsKey(o.Op)).Select(o => (o.Op, _toolpaths[o.Op])).ToList();
@@ -145,46 +193,63 @@ public sealed class SimulationWindow : Window
         _tolerance.Text = tolerance.ToString("0.###", CultureInfo.CurrentCulture);
         _view.Tolerance = tolerance;
         MillingSimulation.SetTargets(field, _doc, jobs.Select(j => j.Op));
-        _steps = MillingSimulation.Steps(_doc, jobs, field.Cell / 2);
+        _moves = MillingSimulation.Moves(_doc, jobs, field.Cell / 2);
         _field = field;
         _done = 0;
+        _checkpoints.Clear();
+        // About 40 copies, at most ~200 MB in all.
+        var maxCopies = (int)Math.Clamp(200_000_000L / (4L * field.Z.Length), 0, 40);
+        _checkpointEvery = maxCopies == 0 ? int.MaxValue : Math.Max(20, _moves.Count / maxCopies);
         _view.Field = field;
         _updatingSlider = true;
-        _slider.Maximum = Math.Max(1, _steps.Count);
-        _slider.Value = _steps.Count;
+        _slider.Maximum = Math.Max(1, _moves.Count);
+        _slider.Value = _moves.Count;
         _updatingSlider = false;
-        RunTo(_steps.Count);
+        RunTo(_moves.Count);
     }
 
-    /// <summary>Simulates up to step <paramref name="target"/> on a worker thread (from the start when going back).</summary>
+    /// <summary>
+    /// Simulates up to move <paramref name="target"/> on a worker thread. Going back restarts from the nearest
+    /// saved copy of the heights before it.
+    /// </summary>
     private async void RunTo(int target)
     {
         if (_field is not { } field) return;
-        target = Math.Clamp(target, 0, _steps.Count);
+        target = Math.Clamp(target, 0, _moves.Count);
         if (_busy)
         {
             _pending = true;
+            _updatingSlider = true;
+            _slider.Value = target;
+            _updatingSlider = false;
             return;
         }
         _busy = true;
         var sw = Stopwatch.StartNew();
-        var from = _done;
-        var steps = _steps;
-        if (target < from)
+        var moves = _moves;
+        if (target < _done)
         {
-            field.Reset();
-            from = _done = 0;
+            var restore = _checkpoints.Keys.LastOrDefault(k => k <= target);
+            if (restore > 0) Array.Copy(_checkpoints[restore], field.Z, field.Z.Length);
+            else field.Reset();
+            _done = restore;
         }
         // In chunks of about a quarter second, showing the material in between.
-        var k = from;
+        var k = _done;
         while (k < target)
         {
             var chunkStart = k;
+            var every = _checkpointEvery;
+            var copies = new List<(int, float[])>();
             k = await Task.Run(() =>
             {
                 var watch = Stopwatch.StartNew();
                 var i = chunkStart;
-                while (i < target && watch.ElapsedMilliseconds < 250) MillingSimulation.Cut(field, steps[i++]);
+                while (i < target && watch.ElapsedMilliseconds < 250)
+                {
+                    MillingSimulation.Cut(field, moves[i++]);
+                    if (i % every == 0) copies.Add((i, (float[])field.Z.Clone()));
+                }
                 return i;
             });
             if (field != _field)
@@ -192,24 +257,62 @@ public sealed class SimulationWindow : Window
                 // Restarted meanwhile: simulate the new field.
                 _busy = false;
                 _pending = false;
-                RunTo((int)_slider.Value);
+                RunTo((int)Math.Round(_slider.Value));
                 return;
             }
+            foreach (var (at, copy) in copies) _checkpoints[at] = copy;
             _done = k;
-            _view.InvalidateVisual();
-            _progress.Text = F("Move {0} / {1}", _done, _steps.Count);
+            ShowPosition();
             if (_pending) break; // the slider moved on: follow it
         }
         _busy = false;
-        _updatingSlider = true;
-        _slider.Value = _pending ? _slider.Value : _done;
-        _updatingSlider = false;
+        ShowPosition();
+        if (!_pending)
+        {
+            _updatingSlider = true;
+            _slider.Value = _done;
+            _updatingSlider = false;
+        }
         UpdateInfo(sw.Elapsed);
         if (_pending)
         {
             _pending = false;
-            RunTo((int)_slider.Value);
+            RunTo((int)Math.Round(_slider.Value));
         }
+    }
+
+    /// <summary>Move counter, the last move done and the tool at its end.</summary>
+    private void ShowPosition()
+    {
+        _progress.Text = F("Move {0} of {1}", _done, _moves.Count);
+        if (_done == 0 || _done > _moves.Count)
+        {
+            _current.Text = T("Start: nothing cut yet.");
+            _view.Tool = null;
+        }
+        else
+        {
+            var m = _moves[_done - 1];
+            _current.Text = $"{m.Op.Name} · {Describe(m)}";
+            _view.Tool = (m.End, MillingSimulation.ToolOf(_doc, m.Op).Radius);
+        }
+        _view.InvalidateVisual();
+    }
+
+    private static string Describe(MillingSimulation.SimMove m)
+    {
+        var p = m.Move.To;
+        var xyz = string.Format(CultureInfo.InvariantCulture, "X{0:0.###} Y{1:0.###} Z{2:0.###}", p.X, p.Y, p.Z);
+        var feed = m.Move.Feed > 0 ? string.Format(CultureInfo.InvariantCulture, " F{0:0.#}", m.Move.Feed) : "";
+        return m.Move.Kind switch
+        {
+            MoveKind.Rapid => $"G0 {xyz}",
+            MoveKind.Feed => $"G1 {xyz}{feed}",
+            MoveKind.ArcCW => $"G2 {xyz}{feed}",
+            MoveKind.ArcCCW => $"G3 {xyz}{feed}",
+            MoveKind.DrillCycle => T("Drilling cycle") + " " + xyz,
+            _ => xyz,
+        };
     }
 
     private void UpdateInfo(TimeSpan elapsed)
@@ -237,10 +340,10 @@ public sealed class SimulationWindow : Window
         if (_timer.IsEnabled)
         {
             _timer.Stop();
-            _play.Content = "▶";
+            _play.Content = "▷";
             return;
         }
-        if (_done >= _steps.Count) RunTo(0);
+        if (_done >= _moves.Count) RunTo(0);
         _timer.Start();
         _play.Content = "❚❚";
     }

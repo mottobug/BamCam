@@ -50,7 +50,11 @@ public class MillingSimulationTests
         var jobs = new List<(MachineOp, Toolpath)> { (op, tp) };
         var f = MillingSimulation.Create(doc, jobs, 0.1);
         MillingSimulation.SetTargets(f, doc, [op]);
-        foreach (var s in MillingSimulation.Steps(doc, jobs, 0.05)) MillingSimulation.Cut(f, s);
+        var moves = MillingSimulation.Moves(doc, jobs, 0.05);
+        // One simulation step per toolpath move (G0 / G1 / G2 / G3), numbered from 1.
+        Assert.Equal(tp.Moves.Count(m => m.IsMotion), moves.Count);
+        Assert.Equal(Enumerable.Range(1, moves.Count), moves.Select(m => m.Index));
+        foreach (var m in moves) MillingSimulation.Cut(f, m);
 
         Assert.Equal(-2, TargetAt(f, 15, 10), 6);
         Assert.True(float.IsNaN(TargetAt(f, -1, 10)), "no target outside the pocket");
