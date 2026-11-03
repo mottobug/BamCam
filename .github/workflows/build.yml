@@ -34,7 +34,7 @@ jobs:
         run: dotnet test -c Release --no-build --logger "trx;LogFileName=results.trx"
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
           path: "**/TestResults/*.trx"
@@ -78,7 +78,7 @@ jobs:
             dotnet pack $project -c Release -p:Version=${{ steps.version.outputs.version }} -o artifacts
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: BamCam-${{ matrix.name }}
           path: |
@@ -96,7 +96,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           # Only the packages, not the test results.
           pattern: BamCam-*
