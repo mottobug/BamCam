@@ -117,6 +117,9 @@ public partial class MainWindow
         var replaced = broken.Select(b => b.Source).ToHashSet();
         _session.Select(sources.Where(s => !replaced.Contains(s)).Concat(broken.SelectMany(b => b.Pieces)).ToList());
         Log(F("Break at intersections: {0} object(s) split into {1} pieces.", broken.Count, broken.Sum(b => b.Pieces.Count)));
+        // A closed shape crossed only once keeps its outline: it is just open at the crossing now.
+        var opened = broken.Count(b => b.Pieces.Count == 1);
+        if (opened > 0) Log(F("{0} closed shape(s) crossed only once: opened at the crossing (one open piece with the same outline).", opened));
         WarnBrokenReferences(replaced, true);
     }
 

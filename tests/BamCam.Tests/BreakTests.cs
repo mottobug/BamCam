@@ -57,6 +57,30 @@ public class BreakTests
     }
 
     [Fact]
+    public void Closed_polyline_repeating_its_first_point_is_not_cut_there()
+    {
+        // Closed, and the last point repeats the first (as from some DXF files or drawing back to the start).
+        var rect = new PolylineEntity(Path2.FromPoints([new(0, 0), new(10, 0), new(10, 10), new(0, 10), new(0, 0)], closed: true));
+        var cut = Line(5, -5, 5, 15);
+        var pieces = CadOps.BreakAtIntersections([rect, cut]).Single(b => b.Source == rect).Pieces;
+        Assert.Equal(2, pieces.Count);
+        Assert.All(pieces, p => Assert.Equal(20, p.ToPaths().Single().Length, 9));
+    }
+
+    [Fact]
+    public void Closed_polyline_crossed_once_is_opened_there()
+    {
+        var rect = new PolylineEntity(Path2.FromPoints([new(0, 0), new(10, 0), new(10, 10), new(0, 10)], closed: true));
+        var inside = Line(5, 5, 15, 6); // starts inside: one crossing
+        var broken = CadOps.BreakAtIntersections([rect, inside]);
+        var piece = Assert.Single(broken.Single(b => b.Source == rect).Pieces).ToPaths().Single();
+        Assert.False(piece.Closed);
+        Assert.Equal(40, piece.Length, 9);
+        Assert.Equal(10, piece.StartPoint.X, 9);
+        Assert.Equal(2, broken.Single(b => b.Source == inside).Pieces.Count);
+    }
+
+    [Fact]
     public void Closed_rectangle_crossed_twice_becomes_two_open_pieces()
     {
         var rect = new PolylineEntity(Path2.FromPoints([new(0, 0), new(10, 0), new(10, 10), new(0, 10)], closed: true));

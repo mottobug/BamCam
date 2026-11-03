@@ -104,6 +104,10 @@ public static class TrimExtend
     /// </summary>
     public static List<Path2>? Break(Path2 path, IReadOnlyList<Path2> cutters, bool self = true)
     {
+        // Without zero-length segments (repeated points, a closed path whose last point repeats the first): their
+        // joints would count as crossings of the path with itself.
+        path = new Path2(path.Vertices.Where((v, i) =>
+            i + 1 < path.Count ? !v.XY.AlmostEquals(path.Vertices[i + 1].XY, 1e-9) : !(path.Closed && v.XY.AlmostEquals(path.Vertices[0].XY, 1e-9))), path.Closed);
         if (path.SegmentCount == 0) return null;
         var segments = path.Segments().ToList();
         var n = segments.Count;

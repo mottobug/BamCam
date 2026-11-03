@@ -1329,6 +1329,7 @@
   "Break at intersections": "An Schnittpunkten trennen",
   "Break at intersections: the selected objects do not cross.": "An Schnittpunkten trennen: Die ausgewählten Objekte kreuzen sich nicht.",
   "Break at intersections: {0} object(s) split into {1} pieces.": "An Schnittpunkten trennen: {0} Objekt(e) in {1} Stücke getrennt.",
+  "{0} closed shape(s) crossed only once: opened at the crossing (one open piece with the same outline).": "{0} geschlossene Form(en) nur einmal gekreuzt: am Schnittpunkt geöffnet (ein offenes Stück mit gleichem Umriss).",
   "{0} object(s) moved to layer {1}.": "{0} Objekt(e) auf Layer {1} verschoben.",
   // 3D-Simulation
   "3D Simulation": "3D-Simulation",
