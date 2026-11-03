@@ -159,4 +159,25 @@ public partial class LocalizationTests(ITestOutputHelper output)
         Assert.Contains(languages, l => l.Code == "de" && l.Name == "Deutsch");
         Assert.Equal("Some text without translation", Tr.T("Some text without translation"));
     }
+
+    [Fact]
+    public void User_language_file_template_lists_built_in_entries_as_comments()
+    {
+        var builtIn = Tr.BuiltIn("de");
+        var template = Tr.Template("de", ["Header line"]);
+        Assert.StartsWith("// Header line", template);
+        // As created nothing is overridden; every built-in entry is one commented line.
+        using (var s = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(template))) Assert.Empty(Tr.Parse(s));
+        Assert.Equal(builtIn.Count, template.Split('\n').Count(l => l.StartsWith("  // \"")));
+
+        // Removing the // of one line overrides exactly that entry; texts with line breaks stay on one line.
+        var key = builtIn.Keys.First(k => k.Contains('\n'));
+        var line = template.Split('\n').Single(l => l.StartsWith("  // " + JsonSerializer.Serialize(key,
+            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + ":"));
+        var edited = template.Replace(line, "  " + line[5..].Replace(": \"", ": \"Mein ", StringComparison.Ordinal));
+        using var t = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(edited));
+        var map = Tr.Parse(t);
+        Assert.Equal("Mein " + builtIn[key], Assert.Single(map).Value);
+        Assert.Equal(key, map.Keys.Single());
+    }
 }

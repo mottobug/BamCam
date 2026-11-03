@@ -17,6 +17,7 @@ public sealed record LanguageInfo(string Code, string Name);
 public static class Tr
 {
     private const string NameKey = "_language";
+    private const string ResourcePrefix = "BamCam.Core.Localization.lang.";
     private static Dictionary<string, string> _map = [];
 
     /// <summary>Folders searched for additional <c>{code}.json</c> files (later folders win).</summary>
@@ -53,13 +54,48 @@ public static class Tr
     {
         if (string.IsNullOrWhiteSpace(code)) code = SystemLanguage();
         code = code.Trim().ToLowerInvariant();
-        var map = code == "en" ? [] : Load(code);
+        // English needs no file, but an external en.json may still rename single texts.
+        var map = Load(code);
         if (code != "en" && map.Count == 0) code = "en";
         var changed = code != Language || map.Count != _map.Count;
         _map = map;
         Language = code;
         Culture = CultureFor(code);
         if (changed) Changed?.Invoke();
+    }
+
+    /// <summary>Reads the files of the active language again (after the user edited one) and raises <see cref="Changed"/>.</summary>
+    public static void Reload()
+    {
+        _map = Load(Language);
+        Changed?.Invoke();
+    }
+
+    /// <summary>The entries built into the application for a language (without external files).</summary>
+    public static Dictionary<string, string> BuiltIn(string code)
+    {
+        var asm = typeof(Tr).Assembly;
+        var name = $"{ResourcePrefix}{code}.json";
+        return asm.GetManifestResourceNames().Contains(name) ? ReadResource(asm, name) : [];
+    }
+
+    /// <summary>
+    /// Text of a new user language file: the header as comment lines, then every built-in entry as a commented
+    /// line. Removing the <c>//</c> of a line overrides that text; everything else keeps following the built-in
+    /// translation (also after updates).
+    /// </summary>
+    public static string Template(string code, IEnumerable<string> header)
+    {
+        var options = new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        var sb = new System.Text.StringBuilder();
+        foreach (var line in header) sb.Append("// ").AppendLine(line);
+        sb.AppendLine("{");
+        var builtIn = BuiltIn(code);
+        if (!builtIn.ContainsKey(NameKey) && code != "en") sb.AppendLine($"  \"{NameKey}\": {JsonSerializer.Serialize(code, options)},");
+        foreach (var (key, value) in builtIn)
+            sb.AppendLine($"  // {JsonSerializer.Serialize(key, options)}: {JsonSerializer.Serialize(value, options)},");
+        sb.AppendLine("}");
+        return sb.ToString();
     }
 
     /// <summary>Number format for a language code (see <see cref="Culture"/>).</summary>
@@ -93,7 +129,9 @@ public static class Tr
             try
             {
                 var map = read();
-                result[code] = map.TryGetValue(NameKey, out var n) && n.Length > 0 ? n : code;
+                // A file that only overrides single entries keeps the name given before (built-in or "English").
+                if (map.TryGetValue(NameKey, out var n) && n.Length > 0) result[code] = n;
+                else result.TryAdd(code, code);
             }
             catch (Exception)
             {
@@ -132,11 +170,10 @@ public static class Tr
     private static IEnumerable<(string Code, Func<Dictionary<string, string>> Read)> Sources()
     {
         var asm = typeof(Tr).Assembly;
-        const string prefix = "BamCam.Core.Localization.lang.";
-        foreach (var name in asm.GetManifestResourceNames().Where(n => n.StartsWith(prefix) && n.EndsWith(".json")))
+        foreach (var name in asm.GetManifestResourceNames().Where(n => n.StartsWith(ResourcePrefix) && n.EndsWith(".json")))
         {
             var resource = name;
-            yield return (name[prefix.Length..^".json".Length], () => ReadResource(asm, resource));
+            yield return (name[ResourcePrefix.Length..^".json".Length], () => ReadResource(asm, resource));
         }
         foreach (var folder in SearchFolders.Where(Directory.Exists))
         {

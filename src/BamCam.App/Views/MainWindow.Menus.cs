@@ -153,7 +153,10 @@ public partial class MainWindow
             Item("_Clear Messages", () => Messages.Text = ""),
             "-",
             Item("Reload Post Processors", () => { _system.Reload(); BuildSystemTree(); Log(F("{0} post processors loaded.", _system.Posts.Count)); }),
-            Item("Browse System Folder", () => OpenFolder(Services.SystemLibrary.SystemFolder))));
+            Item("Browse System Folder", () => OpenFolder(Services.SystemLibrary.SystemFolder)),
+            "-",
+            Item("Edit _Language File...", EditLanguageFile),
+            Item("Reload Language File", ReloadLanguageFile)));
 
         if (PluginMenuItems("Plugins") is { Length: > 0 } pluginItems) MainMenu.Items.Add(Sub("P_lugins", pluginItems));
 

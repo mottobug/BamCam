@@ -270,6 +270,9 @@ language in that language. Missing entries are shown in English.
 - Built in: `src/BamCam.Core/Localization/lang/*.json` (e.g. `de.json`).
 - Without rebuilding: put a `<code>.json` file (e.g. `fr.json`) into a `lang` folder next to the program or
   in the system folder. Single entries of a built-in language can be overridden there too.
+- Tools ▸ Edit Language File creates the file of the active language in the system folder (`lang/<code>.json`)
+  with every built-in entry as a commented line and opens it; remove the `//` of a line to change its text.
+  Tools ▸ Reload Language File applies the changes without a restart.
 - New language: copy `de.json`, translate `"_language"` and all values. An underscore in menu texts marks
   the access key (exactly one per text); keep placeholders such as `{0}` or `{0:0.###}`.
 - The `LocalizationTests` collect every user interface text and report missing translations; the missing
