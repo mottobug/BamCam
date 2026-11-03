@@ -164,6 +164,10 @@ display, drawing, files, post processor and update settings.
 | `Ctrl+G` | Snap to grid | `Ctrl+F` | Toolpath view filter |
 | `Ctrl+T` | Generate toolpaths | `Ctrl+W` | Produce G-code |
 | `Ctrl+Shift+P` | Print | `F2` | Rename |
+| `Ctrl+B` | Break at intersections | `Ctrl+L` | Align |
+| `Ctrl+1` / `2` / `3` / `4` | View XY / XZ / YZ / isometric | `Home` | Reset view (XY, zoom to fit) |
+| `Ctrl+Shift+T` | 3D simulation | `F5` | Run script objects again |
+| `F1` | User guide | | |
 
 ## 8. Files
 

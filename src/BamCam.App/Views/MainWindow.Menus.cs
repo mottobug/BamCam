@@ -36,6 +36,25 @@ public partial class MainWindow
         return item;
     }
 
+    /// <summary>
+    /// Menu item with keys Avalonia would show badly (Ctrl+D1 for Ctrl+1): the key text is shown in the header,
+    /// the keys work as shortcuts.
+    /// </summary>
+    private MenuItem Item(string header, Action action, string keyText, params (Key Key, KeyModifiers Mods)[] keys)
+    {
+        var text = new AccessText { Text = T(header) };
+        var shown = new TextBlock { Text = keyText, Foreground = Brushes.Gray, Margin = new Thickness(24, 0, 0, 0) };
+        var panel = new DockPanel();
+        DockPanel.SetDock(shown, Dock.Right);
+        panel.Children.Add(shown);
+        panel.Children.Add(text);
+        var item = new MenuItem { Header = panel };
+        item.Click += (_, _) => action();
+        if (_registering)
+            foreach (var k in keys) _shortcuts[k] = action;
+        return item;
+    }
+
     private MenuItem Check(string header, Func<bool> get, Action<bool> set, string? gesture = null)
     {
         var item = Item(header, () => { }, gesture);
@@ -139,6 +158,8 @@ public partial class MainWindow
         if (PluginMenuItems("Plugins") is { Length: > 0 } pluginItems) MainMenu.Items.Add(Sub("P_lugins", pluginItems));
 
         MainMenu.Items.Add(Sub("_Help", [
+            Item("User _Guide", OpenUserGuide, "F1"),
+            "-",
             .. UpdateMenuItems(),
             "-",
             Item("_About BamCam", () => _ = Dialogs.Message(this, T("About BamCam"),
@@ -154,6 +175,12 @@ public partial class MainWindow
         _shortcuts[(Key.T, KeyModifiers.None)] = DrawText;
         _shortcuts[(Key.M, KeyModifiers.None)] = () => View.SetTool(new MeasureTool((a, b) => ReportMeasure(a, b)));
         _shortcuts[(Key.F2, KeyModifiers.None)] = () => _ = RenameSelected();
+        // As in CamBam: F5 runs the scripts of the selected script objects, Ctrl+L aligns.
+        _shortcuts[(Key.F5, KeyModifiers.None)] = RunSelectedScripts;
+        _shortcuts[(Key.L, KeyModifiers.Control)] = () =>
+        {
+            if (_alignButton != null) ShowAlignMenu(_alignButton);
+        };
         _registering = false;
     }
 
@@ -179,7 +206,7 @@ public partial class MainWindow
         Item("_Offset...", () => Offset(false)),
         Item("Open Offset...", () => Offset(true)),
         Item("_Trim / Extend", () => View.SetTool(new TrimExtendTool()), "Ctrl+OemPlus"),
-        Item("_Break at Intersections", BreakAtIntersections),
+        Item("_Break at Intersections", BreakAtIntersections, "Ctrl+B"),
         Item("_Union", () => BooleanOp("Union"), "Ctrl+U"),
         Item("_Subtract", () => BooleanOp("Subtract")),
         Item("_Intersection", () => BooleanOp("Intersection")),
@@ -217,10 +244,10 @@ public partial class MainWindow
             Item("_Reset", () => View.ResetView(), "Home"),
             Item("Zoom To _Fit", () => View.ZoomToFit()),
             "-",
-            Item("_XY Plane", () => View.SetStandardView("XY")),
-            Item("X_Z Plane", () => View.SetStandardView("XZ")),
-            Item("_YZ Plane", () => View.SetStandardView("YZ")),
-            Item("_Isometric", () => View.SetStandardView("ISO")),
+            Item("_XY Plane", () => View.SetStandardView("XY"), "Ctrl+1", (Key.D1, KeyModifiers.Control), (Key.NumPad1, KeyModifiers.Control)),
+            Item("X_Z Plane", () => View.SetStandardView("XZ"), "Ctrl+2", (Key.D2, KeyModifiers.Control), (Key.NumPad2, KeyModifiers.Control)),
+            Item("_YZ Plane", () => View.SetStandardView("YZ"), "Ctrl+3", (Key.D3, KeyModifiers.Control), (Key.NumPad3, KeyModifiers.Control)),
+            Item("_Isometric", () => View.SetStandardView("ISO"), "Ctrl+4", (Key.D4, KeyModifiers.Control), (Key.NumPad4, KeyModifiers.Control)),
             "-",
             Check("Show _Toolpaths", () => s.ShowToolpaths, v => s.ShowToolpaths = v),
             Check("Show Cut _Widths", () => _session.Document.ShowCutWidths, v => _session.Document.ShowCutWidths = v),
@@ -535,7 +562,7 @@ public partial class MainWindow
             Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { IconPath("IconAlignLeft"), arrow } },
         };
         align.Click += (_, _) => ShowAlignMenu(align);
-        ToolTip.SetTip(align, T("Align"));
+        ToolTip.SetTip(align, T("Align (Ctrl+L)"));
         _alignButton = align;
         p.Children.Add(align);
         p.Children.Add(ToolSeparator());

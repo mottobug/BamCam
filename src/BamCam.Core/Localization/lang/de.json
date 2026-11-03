@@ -1326,6 +1326,9 @@
   "Choose colour": "Farbe wählen",
   "Move to layer {0}": "Auf Layer {0} verschieben",
   "_Break at Intersections": "An Schnittpunkten _trennen",
+  "Align (Ctrl+L)": "Ausrichten (Strg+L)",
+  "User _Guide": "_Benutzerhandbuch",
+  "{0} script object(s) run.": "{0} Skriptobjekt(e) ausgeführt.",
   // Stil- und Werkzeugbibliotheken
   "New Style Library...": "Neue Stilbibliothek...",
   "New Style Library": "Neue Stilbibliothek",

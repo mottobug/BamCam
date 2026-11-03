@@ -25,6 +25,14 @@ public partial class MainWindow
         SaveSettings();
     }
 
+    /// <summary>Help ▸ User Guide (F1): the user guide on GitHub in the browser.</summary>
+    private void OpenUserGuide()
+    {
+        const string url = "https://github.com/mottobug/BamCam/blob/main/docs/user-guide.md";
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = url, UseShellExecute = true }); }
+        catch (Exception ex) { Log(F("Could not open {0}: {1}", url, ex.Message)); }
+    }
+
     /// <summary>
     /// After opening a drawing: scripts not allowed yet are asked about once; until then their saved outlines show.
     /// </summary>
@@ -44,6 +52,24 @@ public partial class MainWindow
         foreach (var s in pending) s.Invalidate();
         ReportScriptErrors(pending);
         _session.NotifyChanged();
+    }
+
+    /// <summary>
+    /// F5 (as in CamBam): runs the scripts of the selected script objects again (all of the drawing when none is
+    /// selected). Scripts not allowed yet are asked about first, as after opening a drawing.
+    /// </summary>
+    private async void RunSelectedScripts()
+    {
+        var doc = _session.Document;
+        var scripts = _session.Selection.OfType<ScriptEntity>().ToList();
+        if (scripts.Count == 0) scripts = doc.AllEntities().OfType<ScriptEntity>().ToList();
+        if (scripts.Count == 0) return;
+        if (scripts.Any(s => !ScriptEntity.IsAllowed(ScriptEntity.Hash(s.Script)))) await AskForScripts(doc);
+        var allowed = scripts.Where(s => ScriptEntity.IsAllowed(ScriptEntity.Hash(s.Script))).ToList();
+        foreach (var s in allowed) s.Invalidate();
+        ReportScriptErrors(allowed);
+        _session.NotifyChanged();
+        Log(F("{0} script object(s) run.", allowed.Count));
     }
 
     private void ReportScriptErrors(IEnumerable<ScriptEntity> scripts)
