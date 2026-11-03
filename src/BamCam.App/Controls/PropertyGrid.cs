@@ -521,6 +521,22 @@ public sealed partial class PropertyGrid : DockPanel
             };
             DockPanel.SetDock(swatch, Dock.Left);
             panel.Children.Add(swatch);
+            if (!readOnly)
+            {
+                // Choose by clicking: the swatch or [...] opens the colour window.
+                async void Choose()
+                {
+                    if (TopLevel.GetTopLevel(this) is not Window owner) return;
+                    if (await Views.ColorDialog.Pick(owner, color) is { } picked && picked != color) Apply(node, picked);
+                }
+                swatch.Cursor = new Cursor(StandardCursorType.Hand);
+                swatch.PointerPressed += (_, _) => Choose();
+                var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+                ToolTip.SetTip(button, Tr.T("Choose colour"));
+                button.Click += (_, _) => Choose();
+                DockPanel.SetDock(button, Dock.Right);
+                panel.Children.Add(button);
+            }
             panel.Children.Add(TextEditor(node, color.ToString(), readOnly, isDefault, s =>
             {
                 var parts = s.Split(',');

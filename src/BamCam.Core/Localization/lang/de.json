@@ -1323,6 +1323,7 @@
   "Switches the THC off before the torch is switched off.": "Schaltet das THC aus, bevor der Brenner ausgeschaltet wird.",
   "Plasma Cut Data": "Plasma-Schnittdaten",
   "Show and edit the entries": "Einträge anzeigen und bearbeiten",
+  "Choose colour": "Farbe wählen",
   // 3D-Simulation
   "3D Simulation": "3D-Simulation",
   "3D _Simulation...": "3D-_Simulation...",
