@@ -21,7 +21,7 @@ requested from GitHub). The interface follows the system language (English or Ge
 |---|---|
 | Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code). |
 | **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
-| **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. |
+| **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (per kind of operation; D = inherited). |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
 | Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms; right button opens the context menu. |
 | Messages (bottom) | What BamCam did, warnings and errors. |

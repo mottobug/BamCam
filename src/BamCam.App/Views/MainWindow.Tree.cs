@@ -459,21 +459,47 @@ public partial class MainWindow
         SystemTree.Items.Add(posts);
 
         var styles = new TreeViewItem { Header = T("CAM Styles"), IsExpanded = true };
+        styles.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Style Library...", NewStyleLibrary) } };
         foreach (var lib in CamLibraries.StyleLibraries)
         {
-            var li = new TreeViewItem { Header = lib.Name, Tag = lib };
+            var own = IsOwnLibrary(lib.SourcePath, "styles");
+            var li = new TreeViewItem { Header = lib.Name + (own ? "" : "  " + T("(read-only)")), Tag = lib };
             ToolTip.SetTip(li, lib.SourcePath);
-            foreach (var s in lib.Styles) li.Items.Add(new TreeViewItem { Header = s.ToString() + (s.ParentStyle.Length > 0 ? $"  ← {s.ParentStyle}" : ""), Tag = s });
+            li.ContextMenu = new ContextMenu
+            {
+                ItemsSource = own
+                    ? new[] { Item("New Style...", () => NewStyle(lib, null)) }
+                    : new[] { Item("Copy to BamCam (editable)", () => CopyLibrary(lib.SourcePath, "styles")) },
+            };
+            foreach (var s in lib.Styles)
+            {
+                var si = new TreeViewItem { Header = s.ToString() + (s.ParentStyle.Length > 0 ? $"  ← {s.ParentStyle}" : ""), Tag = s };
+                si.DoubleTapped += (_, _) => EditStyle(lib, s);
+                var items = new List<object> { Item(own ? "Edit Style..." : "Show Style...", () => EditStyle(lib, s)) };
+                if (own)
+                {
+                    items.Add(Item("Duplicate Style...", () => NewStyle(lib, s)));
+                    if (s.Name.Length > 0) items.Add(Item("Delete Style", () => DeleteStyle(lib, s)));
+                }
+                si.ContextMenu = new ContextMenu { ItemsSource = items };
+                li.Items.Add(si);
+            }
             styles.Items.Add(li);
         }
         SystemTree.Items.Add(styles);
 
         var tools = new TreeViewItem { Header = T("Tools"), IsExpanded = true };
+        tools.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Tool Library...", NewToolLibrary) } };
         foreach (var lib in CamLibraries.ToolLibraries)
         {
             var li = new TreeViewItem { Header = lib.Name + (IsOwnLibrary(lib) ? "" : "  " + T("(read-only)")), Tag = lib };
             ToolTip.SetTip(li, lib.SourcePath);
-            if (IsOwnLibrary(lib)) li.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Tool", () => NewTool(lib, null)) } };
+            li.ContextMenu = new ContextMenu
+            {
+                ItemsSource = IsOwnLibrary(lib)
+                    ? new[] { Item("New Tool", () => NewTool(lib, null)) }
+                    : new[] { Item("Copy to BamCam (editable)", () => CopyLibrary(lib.SourcePath, "tools")) },
+            };
             foreach (var t in lib.Tools.OrderBy(t => t.Index))
             {
                 var ti = new TreeViewItem { Header = t.ToString(), Tag = t };

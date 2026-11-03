@@ -33,6 +33,9 @@ public sealed partial class PropertyGrid : DockPanel
 
     public double NameColumnWidth { get; set; } = 150;
 
+    /// <summary>Hides properties for which this returns false (e.g. the general settings of an operation in the style editor).</summary>
+    public Func<PropertyInfo, bool>? PropertyFilter { get; set; }
+
     /// <summary>Raised before a value is changed (used for undo snapshots).</summary>
     public event EventHandler? ValueChanging;
 
@@ -136,6 +139,7 @@ public sealed partial class PropertyGrid : DockPanel
             if (prop.GetCustomAttribute<BrowsableAttribute>() is { Browsable: false }) continue;
             if (prop.Name is "EqualityContract") continue;
             if (target is MachineOp op && op.HiddenParameters.Contains(prop.Name)) continue;
+            if (PropertyFilter != null && !PropertyFilter(prop)) continue;
 
             var categoryKey = CategoryOf(prop);
             var category = Tr.T(categoryKey);

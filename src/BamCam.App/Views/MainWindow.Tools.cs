@@ -8,9 +8,137 @@ namespace BamCam.App.Views;
 public partial class MainWindow
 {
     /// <summary>Libraries in BamCam's own tool folder can be edited; those of a CamBam installation are read-only.</summary>
-    private static bool IsOwnLibrary(ToolLibrary lib) =>
-        lib.SourcePath != null && Path.GetFullPath(lib.SourcePath).StartsWith(
-            Path.GetFullPath(Path.Combine(SystemLibrary.SystemFolder, "tools")), StringComparison.OrdinalIgnoreCase);
+    private static bool IsOwnLibrary(ToolLibrary lib) => IsOwnLibrary(lib.SourcePath, "tools");
+
+    /// <summary>A library file in BamCam's own folder <paramref name="sub"/> (styles, tools) of the system folder.</summary>
+    private static bool IsOwnLibrary(string? path, string sub) =>
+        path != null && Path.GetFullPath(path).StartsWith(
+            Path.GetFullPath(Path.Combine(SystemLibrary.SystemFolder, sub)), StringComparison.OrdinalIgnoreCase);
+
+    private string UnitsSuffix => _session.Document.Units == Core.Model.DrawingUnits.Inches ? "in" : "mm";
+
+    /// <summary>
+    /// Copies a library of a CamBam installation into BamCam's own folder under the same name; the copy is loaded
+    /// instead of the original and can be edited.
+    /// </summary>
+    private void CopyLibrary(string? source, string sub)
+    {
+        if (source == null || !File.Exists(source)) return;
+        var target = Path.Combine(SystemLibrary.SystemFolder, sub, Path.GetFileName(source));
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            if (!File.Exists(target)) File.Copy(source, target);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Could not copy '{0}': {1}", source, ex.Message));
+            return;
+        }
+        ReloadLibraries();
+        Log(F("Copied to {0}; this copy is used from now on and can be edited.", target));
+    }
+
+    private void ReloadLibraries()
+    {
+        _system.Reload();
+        BuildSystemTree();
+        foreach (var op in _session.Document.Parts.SelectMany(p => p.Operations)) LibraryFiles.ApplyStyle(_session.Document, op);
+        _session.NotifyChanged();
+    }
+
+    private async void NewStyleLibrary()
+    {
+        var name = (await Dialogs.Prompt(this, T("New Style Library"), T("Name of the library:"), $"My-{UnitsSuffix}"))?.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (CamLibraries.StyleLibraries.Any(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Log(F("A style library '{0}' exists already.", name));
+            return;
+        }
+        var lib = new CamStyleLibrary { Name = name };
+        lib.Styles.Add(new CamStyle { Name = "" });
+        try { LibraryFiles.SaveStyles(lib, Path.Combine(SystemLibrary.SystemFolder, "styles", name + ".xml")); }
+        catch (Exception ex)
+        {
+            Log(F("Could not save style library '{0}': {1}", name, ex.Message));
+            return;
+        }
+        CamLibraries.StyleLibraries.Add(lib);
+        BuildSystemTree();
+        Log(F("Style library '{0}' created. Choose it in the properties of Machining (Style Library); a library named Standard-{1} is used by default.", name, UnitsSuffix));
+    }
+
+    /// <summary>A new style in the library, as a copy of <paramref name="template"/> when given (else inheriting the default).</summary>
+    private async void NewStyle(CamStyleLibrary lib, CamStyle? template)
+    {
+        var suggestion = template != null ? template.Name + " " + T("(copy)") : T("New Style");
+        var name = (await Dialogs.Prompt(this, T("New Style"), T("Name of the style:"), suggestion.Trim()))?.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (lib.Find(name) != null)
+        {
+            Log(F("A style '{0}' exists already.", name));
+            return;
+        }
+        var style = new CamStyle { Name = name, ParentStyle = template?.ParentStyle ?? "" };
+        if (template != null)
+            foreach (var (key, value) in template.Values) style.Values[key] = new System.Xml.Linq.XElement(value);
+        lib.Styles.Add(style);
+        SaveStyleLibrary(lib);
+        BuildSystemTree();
+        EditStyle(lib, style);
+    }
+
+    private async void DeleteStyle(CamStyleLibrary lib, CamStyle style)
+    {
+        if (await Dialogs.Ask(this, T("Delete Style"), F("Delete style '{0}' from '{1}'?", style, lib.Name), withCancel: false) != true) return;
+        // Styles inheriting from it inherit from its parent instead.
+        foreach (var child in lib.Styles.Where(s => s.ParentStyle == style.Name)) child.ParentStyle = style.ParentStyle;
+        lib.Styles.Remove(style);
+        SaveStyleLibrary(lib);
+        BuildSystemTree();
+        foreach (var op in _session.Document.Parts.SelectMany(p => p.Operations)) LibraryFiles.ApplyStyle(_session.Document, op);
+        _session.NotifyChanged();
+    }
+
+    private void EditStyle(CamStyleLibrary lib, CamStyle style)
+    {
+        var own = IsOwnLibrary(lib.SourcePath, "styles");
+        new StyleEditorWindow(lib, style, !own, () =>
+        {
+            // Operations with Default values follow the edited style.
+            foreach (var op in _session.Document.Parts.SelectMany(p => p.Operations)) LibraryFiles.ApplyStyle(_session.Document, op);
+            _session.NotifyChanged();
+        }).Show(this);
+    }
+
+    private void SaveStyleLibrary(CamStyleLibrary lib)
+    {
+        try { LibraryFiles.SaveStyles(lib, lib.SourcePath!); }
+        catch (Exception ex) { Log(F("Could not save style library '{0}': {1}", lib.Name, ex.Message)); }
+    }
+
+    private async void NewToolLibrary()
+    {
+        var name = (await Dialogs.Prompt(this, T("New Tool Library"), T("Name of the library:"), $"My-{UnitsSuffix}"))?.Trim();
+        if (string.IsNullOrEmpty(name)) return;
+        if (CamLibraries.ToolLibraries.Any(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+        {
+            Log(F("A tool library '{0}' exists already.", name));
+            return;
+        }
+        var lib = new ToolLibrary { Name = name };
+        try { LibraryFiles.SaveTools(lib, Path.Combine(SystemLibrary.SystemFolder, "tools", name + ".xml")); }
+        catch (Exception ex)
+        {
+            Log(F("Could not save tool library '{0}': {1}", name, ex.Message));
+            return;
+        }
+        CamLibraries.ToolLibraries.Add(lib);
+        BuildSystemTree();
+        NewTool(lib, null);
+        Log(F("Tool library '{0}' created. Choose it in the properties of Machining (Tool Library); a library named Default-{1} is used by default.", name, UnitsSuffix));
+    }
 
     private static ToolLibrary? LibraryOf(ToolDefinition tool) => CamLibraries.ToolLibraries.FirstOrDefault(l => l.Tools.Contains(tool));
 

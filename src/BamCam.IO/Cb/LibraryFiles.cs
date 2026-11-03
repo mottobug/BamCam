@@ -25,6 +25,54 @@ public static class LibraryFiles
         return lib;
     }
 
+    /// <summary>Writes a CAM style library in the CamBam format (values kept as read or edited).</summary>
+    public static void SaveStyles(CamStyleLibrary lib, string path)
+    {
+        var root = new XElement("CAMStyleLibrary", new XAttribute("Version", "0.9.8.0"));
+        foreach (var style in lib.Styles)
+        {
+            var el = new XElement("CAMStyle", new XAttribute("Name", style.Name), new XElement("Style", style.ParentStyle));
+            foreach (var value in style.Values.Values) el.Add(new XElement(value));
+            root.Add(el);
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+        new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+        lib.SourcePath = path;
+    }
+
+    /// <summary>
+    /// Shows a style in the parameters of <paramref name="op"/> (a new operation of the type to edit): the values set
+    /// in the style keep their state (Value / Auto), all others are Default with the value inherited from the parent
+    /// styles.
+    /// </summary>
+    public static void LoadStyle(CamStyleLibrary lib, CamStyle style, MachineOp op)
+    {
+        var inherited = new Dictionary<string, XElement>();
+        foreach (var s in lib.Chain(style.Name).Where(s => s != style))
+        foreach (var (name, el) in s.Values)
+            inherited[name] = el;
+        foreach (var (name, param, _) in op.Parameters())
+        {
+            if (style.Values.TryGetValue(name, out var own))
+            {
+                CbParams.Read(param, own);
+                continue;
+            }
+            if (inherited.TryGetValue(name, out var el)) CbParams.Read(param, el);
+            param.State = ParamState.Default;
+        }
+    }
+
+    /// <summary>Writes the parameters of <paramref name="op"/> back into the style: Default ones are removed (inherited).</summary>
+    public static void StoreStyle(CamStyle style, MachineOp op)
+    {
+        foreach (var (name, param, _) in op.Parameters())
+        {
+            if (param.State == ParamState.Default) style.Values.Remove(name);
+            else style.Values[name] = CbParams.Write(name, param);
+        }
+    }
+
     public static ToolLibrary LoadTools(string path)
     {
         var root = XDocument.Load(path).Root ?? throw new InvalidDataException(Tr.T("Empty tool library"));

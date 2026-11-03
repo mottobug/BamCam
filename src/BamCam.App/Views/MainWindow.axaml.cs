@@ -332,6 +332,8 @@ public partial class MainWindow : Window
                     "speeds" => NewSpeedsFeedsWindow().Window,
                     "simulation" => SimulationForDiagnostics(),
                     "color" => ColorDialog.Preview(Core.Model.RgbColor.DefaultLayer),
+                    "style" when Core.Cam.CamLibraries.StyleLibraries.FirstOrDefault() is { } styleLib && styleLib.Styles.Count > 0 =>
+                        new StyleEditorWindow(styleLib, styleLib.Styles[0], true, () => { }),
                     "trace" when options.TryGetValue("--image", out var image) =>
                         new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
