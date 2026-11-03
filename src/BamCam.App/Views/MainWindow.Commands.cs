@@ -93,6 +93,33 @@ public partial class MainWindow
         ReplaceSelection(T("Join"), s => CadOps.Join(s, tol.Value));
     }
 
+    /// <summary>Splits the selected objects where they cross each other (or themselves) into separate polylines.</summary>
+    private void BreakAtIntersections()
+    {
+        if (!RequireSelection()) return;
+        var sources = Selected;
+        var broken = CadOps.BreakAtIntersections(sources);
+        if (broken.Count == 0)
+        {
+            Log(T("Break at intersections: the selected objects do not cross."));
+            return;
+        }
+        var doc = _session.Document;
+        _session.Execute(T("Break at intersections"), () =>
+        {
+            foreach (var (source, pieces) in broken)
+            {
+                var layer = source.Layer ?? doc.ActiveLayer;
+                doc.RemoveEntity(source);
+                foreach (var piece in pieces) doc.AddEntity(piece, layer);
+            }
+        });
+        var replaced = broken.Select(b => b.Source).ToHashSet();
+        _session.Select(sources.Where(s => !replaced.Contains(s)).Concat(broken.SelectMany(b => b.Pieces)).ToList());
+        Log(F("Break at intersections: {0} object(s) split into {1} pieces.", broken.Count, broken.Sum(b => b.Pieces.Count)));
+        WarnBrokenReferences(replaced, true);
+    }
+
     private async void Offset(bool open)
     {
         if (!RequireSelection()) return;

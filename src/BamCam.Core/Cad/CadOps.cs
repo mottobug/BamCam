@@ -11,6 +11,29 @@ public static class CadOps
         e.ToPaths().Where(p => p.Count >= 2).Select(p => new PolylineEntity(p)).ToList();
 
     /// <summary>Splits entities into their parts: polylines → lines/arcs, point lists → points, regions, texts and splines → polylines.</summary>
+    /// <summary>
+    /// Splits lines, arcs, circles, rectangles, polylines and splines where they cross or touch each other (and
+    /// themselves). Returns, for each object that was split, its pieces as polylines; objects without a crossing
+    /// are not listed.
+    /// </summary>
+    public static List<(Entity Source, List<PolylineEntity> Pieces)> BreakAtIntersections(IReadOnlyList<Entity> entities)
+    {
+        var breakable = entities
+            .Where(e => e is PolylineEntity or LineEntity or ArcEntity or CircleEntity or RectEntity or SplineEntity)
+            .Select(e => (Entity: e, Paths: e.ToPaths().ToList()))
+            .Where(x => x.Paths.Count == 1)
+            .ToList();
+        var result = new List<(Entity, List<PolylineEntity>)>();
+        foreach (var (entity, paths) in breakable)
+        {
+            var others = breakable.Where(x => x.Entity != entity).Select(x => x.Paths[0]).ToList();
+            if (TrimExtend.Break(paths[0], others) is { Count: > 0 } pieces &&
+                !(pieces.Count == 1 && !paths[0].Closed))
+                result.Add((entity, pieces.Select(p => new PolylineEntity(p)).ToList()));
+        }
+        return result;
+    }
+
     public static List<Entity> Explode(Entity e)
     {
         var result = new List<Entity>();

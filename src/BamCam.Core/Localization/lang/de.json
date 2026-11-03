@@ -1325,6 +1325,10 @@
   "Show and edit the entries": "Einträge anzeigen und bearbeiten",
   "Choose colour": "Farbe wählen",
   "Move to layer {0}": "Auf Layer {0} verschieben",
+  "_Break at Intersections": "An Schnittpunkten _trennen",
+  "Break at intersections": "An Schnittpunkten trennen",
+  "Break at intersections: the selected objects do not cross.": "An Schnittpunkten trennen: Die ausgewählten Objekte kreuzen sich nicht.",
+  "Break at intersections: {0} object(s) split into {1} pieces.": "An Schnittpunkten trennen: {0} Objekt(e) in {1} Stücke getrennt.",
   "{0} object(s) moved to layer {1}.": "{0} Objekt(e) auf Layer {1} verschoben.",
   // 3D-Simulation
   "3D Simulation": "3D-Simulation",

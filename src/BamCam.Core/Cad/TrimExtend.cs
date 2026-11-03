@@ -97,6 +97,69 @@ public static class TrimExtend
         return pieces;
     }
 
+    /// <summary>
+    /// Splits <paramref name="path"/> where it crosses or touches the <paramref name="cutters"/> (and, with
+    /// <paramref name="self"/>, itself). Open paths are not split at their ends; a closed path becomes open pieces
+    /// from crossing to crossing. Null when there is no crossing.
+    /// </summary>
+    public static List<Path2>? Break(Path2 path, IReadOnlyList<Path2> cutters, bool self = true)
+    {
+        if (path.SegmentCount == 0) return null;
+        var segments = path.Segments().ToList();
+        var n = segments.Count;
+        var cuts = new List<Position>();
+        var cutterSegments = cutters.SelectMany(c => c.Segments()).ToList();
+        for (var i = 0; i < n; i++)
+        {
+            foreach (var s in cutterSegments)
+            foreach (var p in ObjectSnap.Intersections(segments[i], s))
+                cuts.Add(new Position(i, ParameterOf(segments[i], p)));
+            if (!self) continue;
+            // Crossings with its own segments, except at the joints of neighbouring segments.
+            for (var j = i + 2; j < n; j++)
+            {
+                if (path.Closed && i == 0 && j == n - 1) continue;
+                foreach (var p in ObjectSnap.Intersections(segments[i], segments[j]))
+                {
+                    cuts.Add(new Position(i, ParameterOf(segments[i], p)));
+                    cuts.Add(new Position(j, ParameterOf(segments[j], p)));
+                }
+            }
+        }
+        const double eps = 1e-7;
+        // The same place may come from two segments (a crossing at a joint) or two cutters: one cut.
+        var values = cuts.Select(c => c.Value).Select(v => path.Closed && v > n - eps ? 0 : v)
+            .Where(v => path.Closed || (v > eps && v < n - eps)).Order().ToList();
+        var unique = new List<double>();
+        foreach (var v in values)
+            if (unique.Count == 0 || v - unique[^1] > eps) unique.Add(v);
+        if (path.Closed && unique.Count > 1 && unique[0] + n - unique[^1] <= eps) unique.RemoveAt(unique.Count - 1);
+        if (unique.Count == 0) return null;
+        Position At(double v) => v >= n ? new Position(n - 1, 1) : new Position((int)Math.Floor(v), v - Math.Floor(v));
+
+        var pieces = new List<Path2>();
+        if (!path.Closed)
+        {
+            var bounds = unique.Prepend(0.0).Append(n).ToList();
+            for (var k = 0; k + 1 < bounds.Count; k++) pieces.Add(Piece(segments, At(bounds[k]), At(bounds[k + 1])));
+            return pieces;
+        }
+        for (var k = 0; k + 1 < unique.Count; k++) pieces.Add(Piece(segments, At(unique[k]), At(unique[k + 1])));
+        // From the last cut around the start to the first one.
+        var wrap = Piece(segments, At(unique[^1]), At(n));
+        pieces.Add(unique[0] < eps ? wrap : Concat(wrap, Piece(segments, At(0), At(unique[0]))));
+        return pieces;
+    }
+
+    /// <summary>Two open paths, the second starting where the first ends, as one.</summary>
+    private static Path2 Concat(Path2 a, Path2 b)
+    {
+        var vertices = a.Vertices.Take(a.Count - 1).ToList();
+        vertices.Add(a.Vertices[^1] with { Bulge = b.Vertices[0].Bulge });
+        vertices.AddRange(b.Vertices.Skip(1));
+        return new Path2(vertices, false);
+    }
+
     /// <summary>Position on the segment of a point lying on it.</summary>
     private static double ParameterOf(Segment s, Point2 p)
     {

@@ -140,6 +140,7 @@ angle as `25<30`, circle diameter, rectangle width x height; Shift snaps the dir
 **CAD:** move, rotate, mirror, resize, array and polar array copy, center, join, offset, open offset,
 explode, union/subtract/intersection, convert to polyline/region, reverse/clean polylines,
 fillet / chamfer / corner overcut at polyline corners, trim / extend lines and arcs against boundaries,
+break objects at their intersections,
 align objects (left, centre, right, top, middle, bottom) to the last or first selected object, the selection,
 the drawing, the origin or the stock, text along a polyline (Draw ▸ Text on Polyline, start point clicked on the guide),
 divide geometry/centers, cut/copy/paste (also between instances), undo/redo.

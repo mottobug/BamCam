@@ -53,6 +53,8 @@ quadrants (diamond) and intersections (cross).
 - offset, join (`Ctrl+J`), union / subtract / intersection, explode, convert to polyline (`Ctrl+P`) or region;
 - **fillet / chamfer** (Edit ▸ Polyline): select a polyline or rectangle, type the radius, click corners;
   Space switches fillet / chamfer / corner overcut, `-` gives an inverted fillet, Esc ends;
+- **break at intersections** (Edit menu): select objects that cross; each line, arc, circle, rectangle, polyline or
+  spline is split into separate polylines where it crosses another selected object (or itself);
 - **trim / extend** (`Ctrl` + `+`): click the boundaries (or just press Enter for all objects), then click a line
   near its end to extend it, Shift+click a piece to trim it.
 
