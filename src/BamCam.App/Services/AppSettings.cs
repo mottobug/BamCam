@@ -78,6 +78,9 @@ public sealed class AppSettings
     public string DefaultFontFamily { get; set; } = "Arial";
     [Category("Drawing"), DisplayName("Repeat Commands"), Description("Drawing commands restart after finishing an object until Esc.")]
     public bool RepeatCommands { get; set; } = true;
+    [Category("Drawing"), DisplayName("Rotation Mode"),
+     Description("Mouse buttons that rotate the view: Alt + left drag; Left Middle: hold the middle button and drag with the left one; Left Right: hold the right button and drag with the left one (for mice without a middle button). Alt + left drag works in every mode.")]
+    public RotationMode RotationMode { get; set; } = RotationMode.AltLeft;
     [Category("Drawing"), DisplayName("Snap To Grid")] public bool SnapToGrid { get; set; } = true;
     [Category("Drawing"), DisplayName("Snap To Points")] public bool SnapToPoints { get; set; }
     /// <summary>Kinds of object snap points (View ▸ Object Snap Modes).</summary>
@@ -255,6 +258,7 @@ public sealed class AppSettings
         v.SnapToGrid = SnapToGrid;
         v.SnapToObjects = SnapToPoints;
         v.ObjectSnapKinds = ObjectSnap;
+        v.RotationMode = RotationMode;
         v.Background = C(ViewBackColor);
         v.GridMinorColor = C(GridMinorColor);
         v.GridMajorColor = C(GridMajorColor);
@@ -286,6 +290,7 @@ public sealed class AppSettings
         SnapToGrid = v.SnapToGrid;
         SnapToPoints = v.SnapToObjects;
         ObjectSnap = v.ObjectSnapKinds;
+        RotationMode = v.RotationMode;
     }
 }
 

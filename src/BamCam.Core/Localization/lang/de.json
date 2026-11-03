@@ -1327,6 +1327,11 @@
   "Move to layer {0}": "Auf Layer {0} verschieben",
   "_Break at Intersections": "An Schnittpunkten _trennen",
   "Align (Ctrl+L)": "Ausrichten (Strg+L)",
+  "Rotation Mode": "Drehmodus",
+  "Alt Left": "Alt + links",
+  "Left Middle": "Mitte halten + links",
+  "Left Right": "Rechts halten + links",
+  "Mouse buttons that rotate the view: Alt + left drag; Left Middle: hold the middle button and drag with the left one; Left Right: hold the right button and drag with the left one (for mice without a middle button). Alt + left drag works in every mode.": "Maustasten zum Drehen der Ansicht: Alt + links ziehen; Mitte halten + links: mittlere Taste halten und mit der linken ziehen; Rechts halten + links: rechte Taste halten und mit der linken ziehen (für Mäuse ohne mittlere Taste). Alt + links ziehen geht in jedem Modus.",
   "User _Guide": "_Benutzerhandbuch",
   "{0} script object(s) run.": "{0} Skriptobjekt(e) ausgeführt.",
   // Stil- und Werkzeugbibliotheken

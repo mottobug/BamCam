@@ -27,6 +27,10 @@ public sealed partial class DrawingView : Control, IToolHost
     private Point _dragLast;
     private bool _dragMoved;
     private double _rotYaw0, _rotPitch0;
+    /// <summary>Button whose release ends the drag (other buttons may be released meanwhile).</summary>
+    private MouseButton _dragButton;
+    /// <summary>The right button helped to rotate: its release must not open the context menu.</summary>
+    private bool _rightUsedForRotation;
 
     private Point _cursorScreen;
     private SnapPoint? _snapMarker;
@@ -169,12 +173,13 @@ public sealed partial class DrawingView : Control, IToolHost
                 ResetView();
                 return;
             }
-            BeginDrag(DragMode.Rotate, pos, e);
+            BeginDrag(DragMode.Rotate, pos, e, MouseButton.Left);
             return;
         }
+        if (TryBeginButtonRotation(e, props, pos)) return;
         if (props.IsMiddleButtonPressed)
         {
-            BeginDrag(DragMode.Pan, pos, e);
+            BeginDrag(DragMode.Pan, pos, e, MouseButton.Middle);
             return;
         }
         if (props.IsRightButtonPressed) return;
@@ -230,8 +235,34 @@ public sealed partial class DrawingView : Control, IToolHost
         InvalidateVisual();
     }
 
-    private void BeginDrag(DragMode mode, Point pos, PointerPressedEventArgs e)
+    /// <summary>
+    /// Rotation Mode Left Middle / Left Right: the left button pressed while the middle / right one is held starts
+    /// rotating (a double click resets the view). Also called from pointer moves: a second button pressed while
+    /// another is down may arrive as a move.
+    /// </summary>
+    private bool TryBeginButtonRotation(PointerEventArgs e, PointerPointProperties props, Point pos)
     {
+        var held = Settings.RotationMode switch
+        {
+            RotationMode.LeftRight => props.IsRightButtonPressed,
+            RotationMode.LeftMiddle => props.IsMiddleButtonPressed,
+            _ => false,
+        };
+        if (!props.IsLeftButtonPressed || !held) return false;
+        if (Settings.RotationMode == RotationMode.LeftRight) _rightUsedForRotation = true;
+        if (e is PointerPressedEventArgs { ClickCount: 2 })
+        {
+            _drag = DragMode.None;
+            ResetView();
+            return true;
+        }
+        BeginDrag(DragMode.Rotate, pos, e, MouseButton.Left);
+        return true;
+    }
+
+    private void BeginDrag(DragMode mode, Point pos, PointerEventArgs e, MouseButton button)
+    {
+        _dragButton = button;
         _drag = mode;
         _dragStart = pos;
         _dragLast = pos;
@@ -246,6 +277,11 @@ public sealed partial class DrawingView : Control, IToolHost
         base.OnPointerMoved(e);
         var pos = e.GetPosition(this);
         _cursorScreen = pos;
+
+        var point = e.GetCurrentPoint(this);
+        if (point.Properties.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed && _drag != DragMode.Rotate &&
+            TryBeginButtonRotation(e, point.Properties, pos))
+            return;
 
         if (_drag != DragMode.None)
         {
@@ -292,6 +328,13 @@ public sealed partial class DrawingView : Control, IToolHost
 
         if (_drag != DragMode.None)
         {
+            if (e.InitialPressMouseButton != _dragButton)
+            {
+                // The held button of Left Middle / Left Right may be released while rotating.
+                if (e.InitialPressMouseButton == MouseButton.Right) _rightUsedForRotation = false;
+                e.Pointer.Capture(this);
+                return;
+            }
             var wasPan = _drag == DragMode.Pan;
             _drag = DragMode.None;
             // A middle click without movement is a "finish" command for tools.
@@ -302,6 +345,11 @@ public sealed partial class DrawingView : Control, IToolHost
 
         if (e.InitialPressMouseButton == MouseButton.Right)
         {
+            if (_rightUsedForRotation)
+            {
+                _rightUsedForRotation = false; // it was held for rotating, not clicked
+                return;
+            }
             ContextMenuRequested?.Invoke(this, pos);
             return;
         }
@@ -826,6 +874,12 @@ public sealed partial class DrawingView : Control, IToolHost
 }
 
 /// <summary>Display options of the drawing view (View menu toggles and colours).</summary>
+/// <summary>
+/// How the view is rotated (as CamBam's Rotation Mode): Alt + left drag; or hold the middle (LeftMiddle) or the right
+/// button (LeftRight) and drag with the left one, the held button may then be released.
+/// </summary>
+public enum RotationMode { AltLeft, LeftMiddle, LeftRight }
+
 public sealed class ViewSettings
 {
     public bool ShowGrid { get; set; } = true;
@@ -839,6 +893,8 @@ public sealed class ViewSettings
     public bool SnapToObjects { get; set; }
     /// <summary>Which object points <see cref="SnapToObjects"/> catches.</summary>
     public SnapKinds ObjectSnapKinds { get; set; } = SnapKinds.All;
+    /// <summary>Mouse buttons that rotate the view besides Alt + left drag (CamBam's Rotation Mode).</summary>
+    public RotationMode RotationMode { get; set; } = RotationMode.AltLeft;
     public bool SelectFade { get; set; } = true;
     /// <summary>Show nest copies while their Part is selected.</summary>
     public bool ShowNests { get; set; } = true;
