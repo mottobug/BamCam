@@ -268,6 +268,49 @@ public class CamParameterTests
         Assert.All(Cuts(tp), m => Assert.InRange(m.To.X, 2 - Tol, 28 + Tol));
     }
 
+    /// <summary>Chord length of the feed moves that start and end at <paramref name="z"/> (flat laps).</summary>
+    private static double FlatLengthAt(Toolpath tp, double z)
+    {
+        Point3? pos = null;
+        double len = 0;
+        foreach (var m in tp.Moves.Where(m => m.IsMotion))
+        {
+            if (pos is { } p && m.Kind is MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW &&
+                Math.Abs(p.Z - z) < 1e-6 && Math.Abs(m.To.Z - z) < 1e-6)
+                len += Point2.Distance(p.XY, m.To.XY);
+            pos = m.To;
+        }
+        return len;
+    }
+
+    [Fact]
+    public void Spiral_lead_with_angle_0_runs_one_helix_down_to_the_final_lap()
+    {
+        // As in CamBam: one helix lap per depth increment without a flat lap in between; flat only at the target depth.
+        var op = Profile(-12, 6);
+        op.LeadInMove.Set(new LeadMove(LeadMoveType.Spiral, 0));
+        var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(30, 20)));
+        var tp = Generate(doc, op);
+        Assert.Equal(0, FlatLengthAt(tp, -6), 6);
+        var lap = FlatLengthAt(tp, -12);
+        Assert.InRange(lap, 100, 130); // one lap around the offset rectangle
+        // No retract or plunge between the levels: the depth only goes down while cutting.
+        var below = tp.Moves.Where(m => m.IsMotion).SkipWhile(m => m.To.Z > -1e-9).TakeWhile(m => m.Kind != MoveKind.Rapid).ToList();
+        Assert.Equal(-12, below[^1].To.Z, 6);
+        Assert.All(below.Zip(below.Skip(1)), p => Assert.True(p.Second.To.Z <= p.First.To.Z + 1e-9));
+    }
+
+    [Fact]
+    public void Spiral_lead_with_an_angle_keeps_the_lap_at_every_level()
+    {
+        // A steeper ramp is shorter than one lap: each level is finished at its depth.
+        var op = Profile(-12, 6);
+        op.LeadInMove.Set(new LeadMove(LeadMoveType.Spiral, 30));
+        var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(30, 20)));
+        var tp = Generate(doc, op);
+        Assert.True(FlatLengthAt(tp, -6) > 100);
+    }
+
     // ------------------------------------------------------------------ open shapes
 
     [Fact]

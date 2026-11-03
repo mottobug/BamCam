@@ -118,12 +118,18 @@ internal static class ProfileGenerator
         var ordered = LoopTools.OrderLoops(loops, startPos, op.OptimisationMode.Value);
         var tabMap = ordered.ToDictionary(l => l, l => ComputeTabs(op, l, dia, tabsSettings, tp));
 
+        // Spiral entry with angle 0: the helix laps of one loop run on from level to level; only the final depth
+        // gets a flat lap. Needs the loop's levels in a row (depth first, or a single loop) and one direction.
+        bool HelixContinues(Loop loop, int li) =>
+            !mixed && li < levels.Count - 1 && (op.CutOrdering.Value != CutOrdering.LevelFirst || ordered.Count == 1) &&
+            cutter.ContinuesAsHelix(loop, levels[li]);
+
         if (op.CutOrdering.Value == CutOrdering.LevelFirst)
         {
             var prev = ctx.StockSurface;
             for (var li = 0; li < levels.Count; li++)
             {
-                foreach (var loop in ordered) CutDirected(cutter, mb, loop, levels[li], prev, tabMap[loop], mixed && li % 2 == 1);
+                foreach (var loop in ordered) CutDirected(cutter, mb, loop, levels[li], prev, tabMap[loop], mixed && li % 2 == 1, HelixContinues(loop, li));
                 prev = levels[li];
             }
         }
@@ -138,7 +144,7 @@ internal static class ProfileGenerator
                     var reverse = mixed && li % 2 == 1;
                     var entry = reverse && !loop.Closed ? loop.End : loop.Start;
                     if (!loop.Closed && mb.Position is { } p && !p.XY.AlmostEquals(entry, 1e-7)) mb.Retract();
-                    CutDirected(cutter, mb, loop, z, prev, tabMap[loop], reverse);
+                    CutDirected(cutter, mb, loop, z, prev, tabMap[loop], reverse, HelixContinues(loop, li));
                     prev = z;
                 }
             }
@@ -152,11 +158,11 @@ internal static class ProfileGenerator
     /// reversed arc length. Open paths reversed start at their far end, saving the trip back.
     /// </summary>
     private static void CutDirected(LoopCutter cutter, MoveBuilder mb, Loop loop, double z, double prev,
-        IReadOnlyList<TabInterval> tabs, bool reverse)
+        IReadOnlyList<TabInterval> tabs, bool reverse, bool helixContinues = false)
     {
         if (!reverse)
         {
-            cutter.Cut(loop, z, prev, tabs);
+            cutter.Cut(loop, z, prev, tabs, helixContinues: helixContinues);
             return;
         }
         Loop rev;

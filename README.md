@@ -147,7 +147,8 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 
 **CAM:**
 - **Profile:** inside/outside, cut width with several passes, collision detection, corner overcut,
-  holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins.
+  holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins (spiral angle 0: one continuous
+  helix, one lap per depth increment, with a flat lap only at the target depth).
 - **Pocket:** offset and hatch fills, islands.
 - **Trochoidal pocket** (high speed clearing): circles along the centre lines of the pocket, each reaching at most
   the step over into new material; helix entry, islands, final pass along the walls.

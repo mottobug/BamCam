@@ -26,10 +26,20 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
     public Func<Loop, Point2, Point2>? AwayNormal { get; init; }
 
     /// <summary>
+    /// True when the spiral entry of <paramref name="loop"/> at level <paramref name="z"/> can run straight into
+    /// the next level: spiral angle 0 (one helix lap per depth increment, as in CamBam), a closed loop, and no
+    /// holding tabs at this level.
+    /// </summary>
+    public bool ContinuesAsHelix(Loop loop, double z) =>
+        LeadIn.LeadMoveType == LeadMoveType.Spiral && LeadIn.SpiralAngle <= 0.01 && loop.Closed && z >= TabTop - 1e-9;
+
+    /// <summary>
     /// Cuts <paramref name="loop"/> at <paramref name="z"/>. <paramref name="prevZ"/> is the previous cut level
     /// (or stock surface) used for the rapid-down rule. Linking feed is used when the tool is already close.
+    /// With <paramref name="helixContinues"/> a spiral entry ends after its helix lap at <paramref name="z"/>
+    /// (no flat lap, no lead out): the next level's lap follows without a step.
     /// </summary>
-    public void Cut(Loop loop, double z, double prevZ, IReadOnlyList<TabInterval> tabs, double? linkFeed = null)
+    public void Cut(Loop loop, double z, double prevZ, IReadOnlyList<TabInterval> tabs, double? linkFeed = null, bool helixContinues = false)
     {
         _loop = loop;
         var start = loop.Start.ToPoint3(z);
@@ -50,6 +60,7 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
         {
             mb.MoveToAndPlunge(loop.Start.ToPoint3(prevZ), ctx.PlungeFeed, prevZ);
             Ramp(loop, prevZ, z);
+            if (helixContinues) return;
         }
         else if (LeadIn.LeadMoveType == LeadMoveType.Spiral && !loop.Closed && loop.Points.Count > 1 && z < prevZ - 1e-9)
         {
@@ -102,12 +113,13 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
         var len = loop.Length;
         if (len < 1e-9) return;
         var angle = LeadIn.SpiralAngle;
-        var rampLen = angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : len;
         var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
         _loop = loop;
         // Ramp along the fitted (exact) geometry: lines and helical arcs, not the dense polygon.
         var segments = Fitted(new List<Point2>(loop.Points) { loop.Points[0] }).Segments().ToList();
         if (segments.Count == 0) return;
+        // Angle 0: exactly one lap of the fitted geometry (slightly longer than the polygon), so depth is reached at the start point.
+        var rampLen = angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : segments.Sum(s => s.Length);
         double s = 0;
         double ZAt(double dist) => fromZ - (fromZ - toZ) * Math.Min(dist, rampLen) / rampLen;
         for (var guard = 0; guard < 10000; guard++)
