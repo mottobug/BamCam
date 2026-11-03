@@ -1324,6 +1324,8 @@
   "Plasma Cut Data": "Plasma-Schnittdaten",
   "Show and edit the entries": "Einträge anzeigen und bearbeiten",
   "Choose colour": "Farbe wählen",
+  "Move to layer {0}": "Auf Layer {0} verschieben",
+  "{0} object(s) moved to layer {1}.": "{0} Objekt(e) auf Layer {1} verschoben.",
   // 3D-Simulation
   "3D Simulation": "3D-Simulation",
   "3D _Simulation...": "3D-_Simulation...",

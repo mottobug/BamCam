@@ -77,6 +77,7 @@ public partial class MainWindow : Window
         };
 
         DrawingTree.SelectionChanged += OnTreeSelectionChanged;
+        SetupTreeDragDrop();
         DrawingTree.KeyDown += OnTreeKeyDown;
         DrawingTree.DoubleTapped += OnTreeDoubleTapped;
         SystemTree.SelectionChanged += OnSystemTreeSelectionChanged;

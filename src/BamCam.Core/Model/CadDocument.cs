@@ -208,6 +208,24 @@ public sealed class CadDocument
         target.MutableEntities.Add(entity);
     }
 
+    /// <summary>
+    /// Moves operations (in the given order) to <paramref name="target"/> at <paramref name="index"/>, counted in the
+    /// target part as it is before the move; they may come from any parts, also from the target itself.
+    /// </summary>
+    public void MoveOperations(IReadOnlyList<MachineOp> ops, Part target, int index)
+    {
+        foreach (var op in ops)
+        {
+            var from = Parts.FirstOrDefault(p => p.Operations.Contains(op));
+            if (from == null) continue;
+            var i = from.Operations.IndexOf(op);
+            // Removing an operation before the insertion point of the same part moves that point up.
+            if (from == target && i < index) index--;
+            from.Operations.RemoveAt(i);
+        }
+        foreach (var op in ops) target.Operations.Insert(Math.Clamp(index++, 0, target.Operations.Count), op);
+    }
+
     public BoundingBox Bounds(bool visibleOnly = true)
     {
         var b = BoundingBox.Empty;

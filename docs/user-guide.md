@@ -20,7 +20,7 @@ requested from GitHub). The interface follows the system language (English or Ge
 | Area | What it is for |
 |---|---|
 | Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code). |
-| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. |
+| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
 | **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
 | Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms; right button opens the context menu. |
