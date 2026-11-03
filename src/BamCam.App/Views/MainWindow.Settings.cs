@@ -79,52 +79,14 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Tools ▸ Edit Language File: the user's own file of the active language in the system folder (created with
-    /// all built-in entries as comment lines when missing), opened in the program the system uses for .json files.
+    /// Tools ▸ Edit Language File: the texts of the active language with the user's own overrides
+    /// (<c>lang/{code}.json</c> in the system folder). An editor of its own: the Windows 11 Notepad cannot open
+    /// files in the AppData folder of other programs.
     /// </summary>
     private void EditLanguageFile()
     {
-        var folder = Path.Combine(SystemLibrary.SystemFolder, "lang");
-        var file = Path.Combine(folder, Tr.Language + ".json");
-        try
-        {
-            if (!File.Exists(file))
-            {
-                Directory.CreateDirectory(folder);
-                var name = Tr.Available().FirstOrDefault(l => l.Code == Tr.Language)?.Name ?? Tr.Language;
-                File.WriteAllText(file, Tr.Template(Tr.Language, [
-                    F("BamCam language file for {0}: your own changes to the built-in texts.", name),
-                    T("Remove the // in front of a line to change its text. The left side is the English original and must stay unchanged."),
-                    T("Keep placeholders like {0}; an _ in front of a letter marks the access key in menus."),
-                    T("Lines with // keep following the built-in translation, also after updates."),
-                    T("After saving: Tools > Reload Language File (or restart BamCam)."),
-                ]), new System.Text.UTF8Encoding(false));
-                Log(F("Language file created: {0}", file));
-            }
-        }
-        catch (Exception ex)
-        {
-            Log(F("Could not create {0}: {1}", file, ex.Message));
-            return;
-        }
-        try
-        {
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = file, UseShellExecute = true });
-        }
-        catch (Exception)
-        {
-            // No program for .json files: Notepad on Windows, otherwise the folder.
-            try
-            {
-                if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
-                System.Diagnostics.Process.Start("notepad.exe", $"\"{file}\"");
-            }
-            catch (Exception)
-            {
-                OpenFolder(folder);
-            }
-        }
-        Log(F("Editing {0}. After saving: Tools > Reload Language File.", file));
+        var name = Tr.Available().FirstOrDefault(l => l.Code == Tr.Language)?.Name ?? Tr.Language;
+        _ = new LanguageEditorWindow(Path.Combine(SystemLibrary.SystemFolder, "lang"), Tr.Language, name).ShowDialog(this);
     }
 
     /// <summary>Tools ▸ Reload Language File: applies changed language files without a restart.</summary>

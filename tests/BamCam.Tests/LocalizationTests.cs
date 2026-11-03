@@ -161,23 +161,37 @@ public partial class LocalizationTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void User_language_file_template_lists_built_in_entries_as_comments()
+    public void User_language_file_round_trips_line_breaks_quotes_and_umlauts()
     {
-        var builtIn = Tr.BuiltIn("de");
-        var template = Tr.Template("de", ["Header line"]);
-        Assert.StartsWith("// Header line", template);
-        // As created nothing is overridden; every built-in entry is one commented line.
-        using (var s = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(template))) Assert.Empty(Tr.Parse(s));
-        Assert.Equal(builtIn.Count, template.Split('\n').Count(l => l.StartsWith("  // \"")));
+        var entries = new Dictionary<string, string>
+        {
+            ["_language"] = "Deutsch",
+            ["Pocket"] = "Tasche ausräumen",
+            ["Line one\nline two \"quoted\""] = "Zeile eins\nZeile zwei „zitiert“ \"x\"",
+        };
+        var text = Tr.Serialize(entries, ["Header"]);
+        Assert.StartsWith("// Header", text);
+        Assert.Contains("ä", text); // readable, not ä
+        using var s = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text));
+        Assert.Equal(entries, Tr.Parse(s));
+    }
 
-        // Removing the // of one line overrides exactly that entry; texts with line breaks stay on one line.
-        var key = builtIn.Keys.First(k => k.Contains('\n'));
-        var line = template.Split('\n').Single(l => l.StartsWith("  // " + JsonSerializer.Serialize(key,
-            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }) + ":"));
-        var edited = template.Replace(line, "  " + line[5..].Replace(": \"", ": \"Mein ", StringComparison.Ordinal));
-        using var t = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(edited));
-        var map = Tr.Parse(t);
-        Assert.Equal("Mein " + builtIn[key], Assert.Single(map).Value);
-        Assert.Equal(key, map.Keys.Single());
+    [Theory]
+    [InlineData("Pocket", "Tasche", true)]
+    [InlineData("{0} moves", "{0} Bewegungen", true)]
+    [InlineData("{0}: {1:0.###} mm", "{1:0.###} mm bei {0}", true)]
+    [InlineData("{0} moves", "Bewegungen", false)]
+    [InlineData("{0} moves", "{1} Bewegungen", false)]
+    [InlineData("{0} moves", "{0} Bewegungen {", false)]
+    [InlineData("Pocket", "Tasche {0}", false)]
+    public void Own_texts_must_keep_the_placeholders(string english, string own, bool valid) =>
+        Assert.Equal(valid, Tr.IsValidTranslation(english, own));
+
+    [Fact]
+    public void Built_in_keys_cover_the_german_translation()
+    {
+        var keys = Tr.BuiltInKeys();
+        Assert.DoesNotContain("_language", keys);
+        Assert.All(Tr.BuiltIn("de").Keys.Where(k => k != "_language"), k => Assert.Contains(k, keys));
     }
 }

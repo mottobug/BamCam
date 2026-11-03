@@ -14,9 +14,9 @@ Download the package for your system from the [releases](https://github.com/mott
 
 At the first start BamCam asks whether it may check for new versions once a day (only the version list is
 requested from GitHub). The interface follows the system language (English or German); Tools ▸ Options changes it.
-To change single texts, choose Tools ▸ Edit Language File: it opens your own language file, which lists every
-built-in text as a line starting with `//`. Remove the `//` and change the right side, save, then choose Tools ▸
-Reload Language File.
+To change single texts, choose Tools ▸ Edit Language File: search for the text, double-click its cell in the
+column *Own text*, type your wording and save. Own texts apply at once and stay after updates; an empty cell
+uses the built-in text again.
 
 ## 2. The window
 

@@ -14,7 +14,7 @@ public sealed record LanguageInfo(string Code, string Name);
 /// Built-in languages are embedded in this assembly; files in the <see cref="SearchFolders"/> add new
 /// languages or override single entries without rebuilding the application.
 /// </summary>
-public static class Tr
+public static partial class Tr
 {
     private const string NameKey = "_language";
     private const string ResourcePrefix = "BamCam.Core.Localization.lang.";
@@ -79,23 +79,51 @@ public static class Tr
         return asm.GetManifestResourceNames().Contains(name) ? ReadResource(asm, name) : [];
     }
 
-    /// <summary>
-    /// Text of a new user language file: the header as comment lines, then every built-in entry as a commented
-    /// line. Removing the <c>//</c> of a line overrides that text; everything else keeps following the built-in
-    /// translation (also after updates).
-    /// </summary>
-    public static string Template(string code, IEnumerable<string> header)
+    /// <summary>English texts of all built-in languages (the texts a user language file can override).</summary>
+    public static SortedSet<string> BuiltInKeys()
+    {
+        var keys = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var name in typeof(Tr).Assembly.GetManifestResourceNames().Where(n => n.StartsWith(ResourcePrefix) && n.EndsWith(".json")))
+            foreach (var key in ReadResource(typeof(Tr).Assembly, name).Keys.Where(k => k != NameKey))
+                keys.Add(key);
+        return keys;
+    }
+
+    /// <summary>Text of a language file: the header as comment lines, then one entry per line.</summary>
+    public static string Serialize(IEnumerable<KeyValuePair<string, string>> entries, IEnumerable<string> header)
     {
         var options = new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
         var sb = new System.Text.StringBuilder();
         foreach (var line in header) sb.Append("// ").AppendLine(line);
         sb.AppendLine("{");
-        var builtIn = BuiltIn(code);
-        if (!builtIn.ContainsKey(NameKey) && code != "en") sb.AppendLine($"  \"{NameKey}\": {JsonSerializer.Serialize(code, options)},");
-        foreach (var (key, value) in builtIn)
-            sb.AppendLine($"  // {JsonSerializer.Serialize(key, options)}: {JsonSerializer.Serialize(value, options)},");
+        foreach (var (key, value) in entries)
+            sb.AppendLine($"  {JsonSerializer.Serialize(key, options)}: {JsonSerializer.Serialize(value, options)},");
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\{(\d+)(?:[,:][^}]*)?\}")]
+    private static partial System.Text.RegularExpressions.Regex Placeholder();
+
+    /// <summary>
+    /// True when <paramref name="translation"/> can replace <paramref name="english"/>: the same placeholders
+    /// ({0}, {1:0.###}) and, for format strings, valid braces, so formatting it cannot fail.
+    /// </summary>
+    public static bool IsValidTranslation(string english, string translation)
+    {
+        var a = Placeholder().Matches(english).Select(m => m.Groups[1].Value).Distinct().Order();
+        var b = Placeholder().Matches(translation).Select(m => m.Groups[1].Value).Distinct().Order();
+        if (!a.SequenceEqual(b)) return false;
+        if (!a.Any()) return true;
+        try
+        {
+            _ = string.Format(CultureInfo.InvariantCulture, translation, Enumerable.Range(0, 10).Select(i => (object)i).ToArray());
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Number format for a language code (see <see cref="Culture"/>).</summary>

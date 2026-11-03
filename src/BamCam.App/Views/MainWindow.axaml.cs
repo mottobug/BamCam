@@ -332,6 +332,7 @@ public partial class MainWindow : Window
                     "speeds" => NewSpeedsFeedsWindow().Window,
                     "simulation" => SimulationForDiagnostics(),
                     "color" => ColorDialog.Preview(Core.Model.RgbColor.DefaultLayer),
+                    "language" => new LanguageEditorWindow(Path.Combine(Services.SystemLibrary.SystemFolder, "lang"), Core.Localization.Tr.Language, Core.Localization.Tr.Language),
                     "style" when Core.Cam.CamLibraries.StyleLibraries.FirstOrDefault() is { } styleLib && styleLib.Styles.Count > 0 =>
                         new StyleEditorWindow(styleLib, styleLib.Styles[0], true, () => { }),
                     "trace" when options.TryGetValue("--image", out var image) =>
