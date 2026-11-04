@@ -142,6 +142,23 @@ public class PlasmaTests
     }
 
     [Fact]
+    public void Post_warns_when_the_machine_cannot_load_all_lines()
+    {
+        var (doc, op) = Plate();
+        var paths = new Dictionary<MachineOp, Toolpath> { [op] = ToolpathGenerator.Generate(doc, op) };
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "RedGear Plasma");
+        Assert.Equal(32000, post.MaximumLines);
+        Assert.Empty(GCodePoster.Post(doc, paths, post).Warnings);
+
+        var lines = GCodePoster.Post(doc, paths, post).LineCount;
+        post.MaximumLines = lines;
+        Assert.Empty(GCodePoster.Post(doc, paths, post).Warnings); // exactly the limit still fits
+        post.MaximumLines = lines - 1;
+        var warning = Assert.Single(GCodePoster.Post(doc, paths, post).Warnings);
+        Assert.Contains(lines.ToString(), warning);
+    }
+
+    [Fact]
     public void RedGear_post_uploads_the_file_with_its_spaces_in_one_argument()
     {
         var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "RedGear Plasma");

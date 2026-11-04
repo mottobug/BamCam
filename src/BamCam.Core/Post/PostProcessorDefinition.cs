@@ -147,6 +147,9 @@ public sealed class PostProcessorDefinition
     [Category("Options")] public bool RapidDownToClearance { get; set; } = true;
     [Category("Options")] public bool SuppressParserErrors { get; set; }
     [Category("Options")] public bool UpperCase { get; set; }
+    [Category("Options"), DisplayName("Maximum Lines"),
+     Description("Warns when the G-code has more lines than the machine can load (0 = no limit).")]
+    public int MaximumLines { get; set; }
 
     // ---- Post build ----
     [Category("Post Build"), DisplayName("Post-Build Command"),
@@ -256,6 +259,8 @@ public sealed class PostProcessorDefinition
             // As in the Z-Probe instructions: G38.3 raises no alarm without contact.
             TorchProbe = "G38.3 {$z} {$f}",
             NumberFormat = "0.0##",
+            // The hand controller loads a program into its memory, which holds 32,000 lines.
+            MaximumLines = 32000,
             // Upload to the SD card of the controller, whose WLAN the computer must be connected to. HTTP 1.0 because
             // its HTTP 1.1 reply is malformed (curl: "chunk hex-length char not a hex digit") although the upload worked.
             PostBuildCommand = "curl",

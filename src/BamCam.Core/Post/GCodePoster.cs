@@ -97,6 +97,8 @@ public sealed partial class GCodePoster
         var result = new PostResult { Text = string.Join(eol, lines) + eol, LineCount = lines.Count };
         result.Warnings.AddRange(poster._warnings);
         if (jobs.Count == 0) result.Warnings.Add(Tr.T("No toolpaths to post. Generate toolpaths first."));
+        if (post.MaximumLines > 0 && lines.Count > post.MaximumLines)
+            result.Warnings.Add(Tr.F("The G-code has {0} lines, the machine takes at most {1}. Split it into several parts.", lines.Count, post.MaximumLines));
         return result;
     }
 
