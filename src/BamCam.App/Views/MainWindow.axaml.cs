@@ -221,7 +221,7 @@ public partial class MainWindow : Window
             if (options.TryGetValue("--inspect", out var name))
             {
                 var doc = _session.Document;
-                object? target = doc.Parts.FirstOrDefault(p => p.Name == name)
+                object? target = name == "Machining" ? doc.Machining : doc.Parts.FirstOrDefault(p => p.Name == name)
                                  ?? (object?)doc.Parts.SelectMany(p => p.Operations).FirstOrDefault(o => o.Name == name);
                 if (target == null) Log($"--inspect: '{name}' not found.");
                 _session.Inspect(target);

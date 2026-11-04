@@ -490,6 +490,7 @@ public sealed partial class PropertyGrid : DockPanel
             var choices = node.Choices ?? Enum.GetNames(t)
                 .Select(n => new KeyValuePair<string, string>(n, Tr.T(Humanize(n)))).ToList();
             var current = value?.ToString() ?? "";
+            if (node.Choices != null) choices = ChoicesWithCurrent(choices, current);
             var combo = new ComboBox
             {
                 ItemsSource = choices.Select(c => c.Value).ToList(),
@@ -623,6 +624,15 @@ public sealed partial class PropertyGrid : DockPanel
     }
 
     private static string F(double v) => v.ToString("0.######", Inv);
+
+    /// <summary>
+    /// Adds a stored value that is not in the list (a post processor of another computer), marked as not found:
+    /// the list shows what the file holds, instead of an empty field.
+    /// </summary>
+    public static IReadOnlyList<KeyValuePair<string, string>> ChoicesWithCurrent(IReadOnlyList<KeyValuePair<string, string>> choices, string current) =>
+        current.Length == 0 || choices.Any(c => c.Key == current)
+            ? choices
+            : [.. choices, new KeyValuePair<string, string>(current, Tr.F("{0} (not found)", current))];
 
     /// <summary>"6, 9, 13" (also separated by spaces or semicolons, optionally in braces) → ids.</summary>
     public static List<int> ParseIds(string s)

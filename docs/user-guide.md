@@ -83,8 +83,9 @@ Everything can be undone with `Ctrl+Z`.
    speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation.
 4. **Generate toolpaths** (`Ctrl+T`) and check them in the drawing; View ▸ Toolpath View Filter (`Ctrl+F`) steps
    through them.
-5. **Choose the post processor** (Machining ▸ Post Processor, or set a default in the options) and
-   **produce G-code** (`Ctrl+W`).
+5. **Choose the post processor** (Machining ▸ Post Processor, or the list *Post Processor* of the machining options
+   in the drawing tree; it is saved in the drawing, so each file can have its own machine. Without a choice the default
+   from the options applies) and **produce G-code** (`Ctrl+W`).
 
 **3D simulation** (Machining ▸ 3D Simulation, `Ctrl+Shift+T`, toolbar button next to *Generate*): a separate
 window shows the stock after the milling operations as a shaded 3D model, cut with the real tool shape (end mill,

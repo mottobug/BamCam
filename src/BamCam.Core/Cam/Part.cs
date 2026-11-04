@@ -128,8 +128,14 @@ public sealed class MachiningOptions
     [Category("Output"), DisplayName("Out File")]
     public string OutFile { get; set; } = "";
 
-    [Category("Output"), DisplayName("Post Processor"), Description("Blank = system default post processor.")]
+    [Category("Output"), DisplayName("Post Processor"), Choices(nameof(PostProcessorChoices)),
+     Description("Post processor of this drawing, saved in the file. (Default) = the system default post processor.")]
     public string PostProcessor { get; set; } = "";
+
+    /// <summary>The default and all available post processors, for the drop-down list.</summary>
+    public static IEnumerable<KeyValuePair<string, string>> PostProcessorChoices() =>
+        CamLibraries.PostProcessors.Select(n => new KeyValuePair<string, string>(n, n))
+            .Prepend(new KeyValuePair<string, string>("", Localization.Tr.F("(Default: {0})", CamLibraries.DefaultPostProcessor)));
 
     [Category("Output"), DisplayName("Post Processor Macros"), Description("Lines of the form $name=value.")]
     public string PostProcessorMacros { get; set; } = "";

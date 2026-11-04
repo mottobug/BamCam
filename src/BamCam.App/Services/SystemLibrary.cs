@@ -33,7 +33,11 @@ public sealed class SystemLibrary
     /// <summary>Where each post came from (null = built in).</summary>
     public Dictionary<PostProcessorDefinition, string?> PostSources { get; } = [];
 
-    public string DefaultPostName { get; set; } = "Default";
+    public string DefaultPostName
+    {
+        get => CamLibraries.DefaultPostProcessor;
+        set => CamLibraries.DefaultPostProcessor = value;
+    }
 
     public List<string> LoadMessages { get; } = [];
 
@@ -162,6 +166,8 @@ public sealed class SystemLibrary
                 }
             }
         }
+        CamLibraries.PostProcessors.Clear();
+        CamLibraries.PostProcessors.AddRange(Posts.Select(p => p.Name));
     }
 
     private void Add(PostProcessorDefinition def, string? source)

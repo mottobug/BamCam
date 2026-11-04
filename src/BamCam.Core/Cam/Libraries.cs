@@ -105,6 +105,12 @@ public static class CamLibraries
     public static List<ToolLibrary> ToolLibraries { get; } = [];
     public static List<PlasmaCutTable> PlasmaTables { get; } = [];
 
+    /// <summary>Names of the available post processors, for the drop-down list of the machining options.</summary>
+    public static List<string> PostProcessors { get; } = [];
+
+    /// <summary>Name of the post processor used when a drawing does not choose one.</summary>
+    public static string DefaultPostProcessor { get; set; } = "Default";
+
     /// <summary>Plasma cut data by name: tables in the drawing's units first, then all others.</summary>
     public static PlasmaCutData? FindCutData(Model.CadDocument doc, string? name)
     {

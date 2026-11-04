@@ -628,6 +628,9 @@ public partial class MainWindow
         }
 
         var post = _system.Resolve(doc.Machining.PostProcessor);
+        // A file from another computer: G-code for the wrong machine must not go unnoticed.
+        if (!string.IsNullOrWhiteSpace(doc.Machining.PostProcessor) && !post.Name.Equals(doc.Machining.PostProcessor, StringComparison.OrdinalIgnoreCase))
+            Log(F("Post processor '{0}' of this drawing not found; using '{1}'.", doc.Machining.PostProcessor, post.Name));
         var result = GCodePoster.Post(doc, _session.Toolpaths, post, scope);
         foreach (var w in result.Warnings.Distinct()) Log(F("Post: {0}", w));
         try
