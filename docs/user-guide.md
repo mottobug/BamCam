@@ -7,7 +7,8 @@ geometry, add machining operations to it, generate toolpaths and let a post proc
 
 Download the package for your system from the [releases](https://github.com/mottobug/BamCam/releases):
 
-- **Windows:** `BamCam-x.y.z-win-x64-setup.exe` (installer) or the `.zip` (unpack and run `BamCam.exe`).
+- **Windows** (10 version 1607 or later, or 11; 64 bit; not Windows 7 or 8): `BamCam-x.y.z-win-x64-setup.exe`
+  (installer) or the `.zip` (unpack and run `BamCam.exe`).
 - **macOS:** the `.zip` for Apple Silicon (`osx-arm64`) or Intel (`osx-x64`). The app is not notarised: open it
   once with right click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
 - **Linux:** the `.tar.gz` for x64 or arm64; unpack and run `BamCam`.

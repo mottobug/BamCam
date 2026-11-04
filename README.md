@@ -9,6 +9,9 @@ STL and G-code, and produces G-code through a template engine that understands t
 
 ![BamCam on Windows: T-Bar with the toolpaths of both profiles](docs/screenshots/t-bar-toolpaths.png)
 
+BamCam needs a system supported by .NET 10; on Windows that is Windows 10 version 1607 or later or Windows 11,
+64 bit (not Windows 7 or 8).
+
 <table>
   <tr>
     <td width="33%"><a href="docs/screenshots/battery-bridge-toolpaths.png"><img src="docs/screenshots/battery-bridge-toolpaths.png" alt="Battery bridge with pockets and profiles"></a></td>
