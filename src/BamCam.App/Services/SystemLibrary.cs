@@ -53,6 +53,13 @@ public sealed class SystemLibrary
         }
     }
 
+    /// <summary>Data folders of the CamBam installations on this computer.</summary>
+    public static IEnumerable<string> CamBamDataFolders()
+    {
+        var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        return Directory.Exists(common) ? Directory.GetDirectories(common, "CamBam*") : [];
+    }
+
     public static string PlasmaFolder => Path.Combine(SystemFolder, "plasma");
 
     private void LoadLibraries()

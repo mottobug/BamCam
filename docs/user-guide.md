@@ -19,6 +19,14 @@ To change single texts, choose Tools ▸ Edit Language File: search for the text
 column *Own text*, type your wording and save. Own texts apply at once and stay after updates; an empty cell
 uses the built-in text again.
 
+**Bringing your settings along:** Tools ▸ Import from CamBam copies the CAM styles, tool libraries and post processors
+of a CamBam data folder (also from another computer or a copied folder) into BamCam, where they can be edited. Files
+that exist already are kept, and so are post processors named like a built-in one. Tools ▸ Export Configuration saves settings, libraries, post processors, cut data, translations and
+plugins in one `.zip` file, for a backup or a new computer; drawings are not part of it. Tools ▸ Import Configuration
+restores such a file: files with the same name are overwritten, and the previous state is saved first in the folder
+`backups` of the system folder. Permissions do not come along: BamCam asks again before it runs scripts, post-build
+commands and plugins.
+
 ## 2. The window
 
 | Area | What it is for |

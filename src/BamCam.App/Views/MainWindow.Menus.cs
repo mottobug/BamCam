@@ -156,7 +156,11 @@ public partial class MainWindow
             Item("Browse System Folder", () => OpenFolder(Services.SystemLibrary.SystemFolder)),
             "-",
             Item("Edit _Language File...", EditLanguageFile),
-            Item("Reload Language File", ReloadLanguageFile)));
+            Item("Reload Language File", ReloadLanguageFile),
+            "-",
+            Item("Import from Cam_Bam...", ImportFromCamBam),
+            Item("E_xport Configuration...", ExportConfiguration),
+            Item("Import Con_figuration...", ImportConfiguration)));
 
         if (PluginMenuItems("Plugins") is { Length: > 0 } pluginItems) MainMenu.Items.Add(Sub("P_lugins", pluginItems));
 
