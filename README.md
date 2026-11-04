@@ -204,7 +204,7 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   bull nose, V-bit), shaded and rotatable, with the rest material above each operation's target in colour and a
   slider to step through the moves.
 
-**G-code:** built-in post processors Default, Mach3, LinuxCNC, LinuxCNC Turn, GRBL and GRBL Plasma; existing `.cbpp` files are loaded
+**G-code:** built-in post processors Default, Mach3, LinuxCNC, LinuxCNC Turn, GRBL, GRBL Plasma and RedGear Plasma; existing `.cbpp` files are loaded
 (own system folder `%APPDATA%/BamCam/post` or `~/.config/BamCam/post`, and a local CamBam installation).
 **DXF export** as R2000 (splines stay splines) or R12, selectable in the options.
 **Post-build command** of a post processor (as in CamBam): an external program run on the written G-code file,

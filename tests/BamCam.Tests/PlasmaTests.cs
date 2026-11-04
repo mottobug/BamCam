@@ -124,6 +124,35 @@ public class PlasmaTests
     }
 
     [Fact]
+    public void RedGear_post_probes_as_in_the_instructions_and_keeps_the_zero()
+    {
+        var (doc, op) = Plate();
+        var tp = ToolpathGenerator.Generate(doc, op);
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "RedGear Plasma");
+        var lines = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text.Split("\r\n");
+        var firstProbe = Array.FindIndex(lines, l => l.StartsWith("G38.3 "));
+        Assert.True(firstProbe > 0);
+        Assert.DoesNotContain(lines, l => l.StartsWith("G38.2"));
+        Assert.DoesNotContain("G92.1", lines);
+        // Probe, set Z, up to pierce height, torch on, wait, down to cut height.
+        Assert.StartsWith("G92 Z", lines[firstProbe + 1]);
+        Assert.StartsWith("G0 Z", lines[firstProbe + 2]);
+        Assert.Equal(["M3 S1000", "G4 P0.5"], lines[(firstProbe + 3)..(firstProbe + 5)]);
+        Assert.StartsWith("G1 ", lines[firstProbe + 5]);
+    }
+
+    [Fact]
+    public void RedGear_post_uploads_the_file_with_its_spaces_in_one_argument()
+    {
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "RedGear Plasma");
+        var (program, args) = PostBuild.Prepare(post, @"C:\My Parts\Ohne Namen.Teil1 [Profil1].nc", "x")!.Value;
+        Assert.Equal("curl", program);
+        Assert.Contains("--http1.0", args);
+        Assert.Equal(@"fupload=@C:\My Parts\Ohne Namen.Teil1 [Profil1].nc", args[args.IndexOf("-F") + 1]);
+        Assert.Equal("http://192.168.4.1/fupload", args[^1]);
+    }
+
+    [Fact]
     public void Grbl_plasma_post_switches_the_torch_per_cut()
     {
         var (doc, op) = Plate(o => o.SwitchOffset.Set(1.2));

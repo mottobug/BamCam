@@ -237,6 +237,31 @@ public sealed class PostProcessorDefinition
             TorchOn = "M3 S1000",
             NumberFormat = "0.0##",
         };
+        yield return new PostProcessorDefinition
+        {
+            // RedGear Plasma_8060_MPG hand controller (GRBL on an MKS-DLC32) with the Z-Probe extension.
+            Name = "RedGear Plasma",
+            Header = "{$comment} {$cbfile.name} {$date} {$endcomment}\r\n{$cbfile.header}\r\n{$units} {$distancemode} G17\r\n{$clearance}",
+            // No G92.1: it would clear all axes, also an X/Y zero the hand controller may have set with G92.
+            Footer = "{$clearance}\r\n{$spindle(off)}\r\n{$cbfile.footer}\r\n{$endrewind}",
+            MOP = "{$comment} {$mop.name} {$mop.cutdata} {$endcomment}\r\n{$mop.header}\r\n{$blocks}\r\n{$mop.footer}",
+            ToolChange = "",
+            ToolTableItem = "",
+            CannedCycleStart = "",
+            CannedCycleEnd = "",
+            DrillPeck = "",
+            VelocityModeExactStop = "",
+            VelocityModeConstantVelocity = "",
+            TorchOn = "M3 S1000",
+            // As in the Z-Probe instructions: G38.3 raises no alarm without contact.
+            TorchProbe = "G38.3 {$z} {$f}",
+            NumberFormat = "0.0##",
+            // Upload to the SD card of the controller, whose WLAN the computer must be connected to. HTTP 1.0 because
+            // its HTTP 1.1 reply is malformed (curl: "chunk hex-length char not a hex digit") although the upload worked.
+            PostBuildCommand = "curl",
+            PostBuildCommandArgs = "-sS --fail --http1.0 --connect-timeout 5 --max-time 55 -o " + (OperatingSystem.IsWindows() ? "NUL" : "/dev/null") +
+                                   " -F \"fupload=@{$outfile}\" http://192.168.4.1/fupload",
+        };
     }
 
     public PostProcessorDefinition Clone()

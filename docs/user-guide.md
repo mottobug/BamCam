@@ -143,6 +143,14 @@ Special operations:
   only switches the torch while the machine moves. Try a new setup in the air first (torch off or without
   material). Example: `examples_to_test/Plasma (bracket).cb`.
 
+  The post processor *RedGear Plasma* is for the RedGear hand controller Plasma_8060_MPG with the Z-Probe extension
+  (firmware 1.05 or later, `$6=1`): it probes with `G38.3` and `G92` as in the instructions of the extension, and
+  after writing the G-code it uploads the file to the SD card of the controller with `curl`. Connect the computer to
+  the WLAN `RG-CNC` first; if the controller cannot be reached, the message window says so and the file stays on the
+  computer. Load the file at the controller under *Load File*; it takes up to 32,000 lines. `G38.3` raises no alarm
+  without contact, so set *Probe Depth* large enough to reach the material (the instructions use 100 mm at
+  *Probe Feedrate* 150).
+
 ## 5. Printing and export
 
 File ▸ Print writes a true-to-scale PDF and opens it in your PDF viewer (choose "actual size" there for 1:1);
