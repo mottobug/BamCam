@@ -98,4 +98,28 @@ public class CbFormatTests
         Assert.Equal(-2, op2.TargetDepth.Value);
         Assert.Equal(ParamState.Value, op2.TargetDepth.State);
     }
+
+    /// <summary>
+    /// The spelling CamBam saves. BamCam used to write "Automatic (Outer)", and CamBam refused such a whole file with an
+    /// XML error; these older files can still be read.
+    /// </summary>
+    [Theory]
+    [InlineData(TabMethod.AutomaticOuter, "AutomaticOuter", "Automatic (Outer)")]
+    [InlineData(TabMethod.AutomaticInner, "AutomaticInner", "Automatic (Inner)")]
+    public void Holding_tab_methods_are_written_as_cambam_does(TabMethod method, string spelling, string older)
+    {
+        var doc = CadDocument.CreateNew();
+        var shape = doc.AddEntity(RectEntity.FromCorners(new(0, 0), new(40, 30)));
+        var op = new ProfileOp { Name = "p" };
+        op.PrimitiveIds.Add(shape.Id);
+        op.HoldingTabs.Set(new HoldingTabSettings(method));
+        doc.ActivePart.Operations.Add(op);
+
+        var xml = CbWriter.ToString(doc);
+        Assert.Contains($"<TabMethod>{spelling}</TabMethod>", xml);
+        Assert.Equal(method, Assert.IsType<ProfileOp>(CbReader.Parse(xml).Parts[0].Operations[0]).HoldingTabs.Value.TabMethod);
+
+        var oldFile = CbReader.Parse(xml.Replace(spelling, older));
+        Assert.Equal(method, Assert.IsType<ProfileOp>(oldFile.Parts[0].Operations[0]).HoldingTabs.Value.TabMethod);
+    }
 }

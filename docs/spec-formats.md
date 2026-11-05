@@ -613,7 +613,7 @@ Holding tabs composite:
 
 ```xml
 <HoldingTabs state="Value">
-  <TabMethod>Manual</TabMethod>      <!-- None | Automatic | Manual (help: Automatic Outer/Inner – spelling UNVERIFIED) -->
+  <TabMethod>Manual</TabMethod>      <!-- None | Automatic | Manual | AutomaticOuter | AutomaticInner (written by CamBam 1.0) -->
   <Width>0.8</Width>                 <!-- narrowest tab width -->
   <Height>0.8</Height>               <!-- above TargetDepth -->
   <MinimumTabs>2</MinimumTabs>

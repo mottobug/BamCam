@@ -38,8 +38,8 @@ public enum TabMethod
     None,
     Automatic,
     Manual,
-    [EnumMember(Value = "Automatic (Outer)")] AutomaticOuter,
-    [EnumMember(Value = "Automatic (Inner)")] AutomaticInner,
+    AutomaticOuter,
+    AutomaticInner,
 }
 
 public enum TabStyle { Square, Triangle, Skip }
