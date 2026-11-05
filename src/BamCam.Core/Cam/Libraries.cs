@@ -111,6 +111,11 @@ public static class CamLibraries
     /// <summary>Name of the post processor used when a drawing does not choose one.</summary>
     public static string DefaultPostProcessor { get; set; } = "Default";
 
+    /// <summary>All tool libraries for a drop-down list; empty = none chosen (see <see cref="FindTool"/>).</summary>
+    public static IEnumerable<KeyValuePair<string, string>> ToolLibraryChoices() =>
+        ToolLibraries.Select(l => new KeyValuePair<string, string>(l.Name, l.Name))
+            .Prepend(new KeyValuePair<string, string>("", Localization.Tr.T("(default)")));
+
     /// <summary>Plasma cut data by name: tables in the drawing's units first, then all others.</summary>
     public static PlasmaCutData? FindCutData(Model.CadDocument doc, string? name)
     {

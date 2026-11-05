@@ -642,6 +642,8 @@
   "Tool Number": "Werkzeugnummer",
   "Tool Profile": "Werkzeugform",
   "Tool Library": "Werkzeugbibliothek",
+  "Library in which tool numbers are looked up, before Default-mm or Default-in. A part can choose another one.": "Bibliothek, in der Werkzeugnummern gesucht werden, vor Default-mm bzw. Default-in. Ein Teil kann eine andere wählen.",
+  "Library in which the tool numbers of this part are looked up, before the library of the machining options.": "Bibliothek, in der die Werkzeugnummern dieses Teils gesucht werden, vor der Bibliothek der Bearbeitungsoptionen.",
   "End Mill": "Schaftfräser",
   "Ball Nose": "Kugelfräser",
   "Bull Nose": "Radiusfräser",

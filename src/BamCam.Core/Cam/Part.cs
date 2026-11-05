@@ -91,8 +91,12 @@ public sealed class Part
     [Category("Machining"), DisplayName("Style Library")]
     public string StyleLibrary { get; set; } = "";
 
-    [Category("Tool"), DisplayName("Tool Library")]
+    [Category("Tool"), DisplayName("Tool Library"), Choices(nameof(ToolLibraryChoices)),
+     Description("Library in which the tool numbers of this part are looked up, before the library of the machining options.")]
     public string ToolLibrary { get; set; } = "";
+
+    /// <summary>The tool libraries, for the drop-down list.</summary>
+    public static IEnumerable<KeyValuePair<string, string>> ToolLibraryChoices() => CamLibraries.ToolLibraryChoices();
 
     [Category("Tool"), DisplayName("Tool Number")]
     public int ToolNumber { get; set; }
@@ -168,8 +172,12 @@ public sealed class MachiningOptions
     [Category("Machining"), DisplayName("Style Library")]
     public string StyleLibrary { get; set; } = "";
 
-    [Category("Tool"), DisplayName("Tool Library")]
+    [Category("Tool"), DisplayName("Tool Library"), Choices(nameof(ToolLibraryChoices)),
+     Description("Library in which tool numbers are looked up, before Default-mm or Default-in. A part can choose another one.")]
     public string ToolLibrary { get; set; } = "";
+
+    /// <summary>The tool libraries, for the drop-down list.</summary>
+    public static IEnumerable<KeyValuePair<string, string>> ToolLibraryChoices() => CamLibraries.ToolLibraryChoices();
 
     [Category("Tool"), DisplayName("Tool Number")]
     public int ToolNumber { get; set; }

@@ -235,28 +235,25 @@ public static class LibraryFiles
         var changed = new List<string>();
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
         var lib = CamLibraries.FindStyleLibrary(doc, part);
-        if (lib == null) return changed;
         var styleName = !string.IsNullOrEmpty(op.Style) ? op.Style
             : !string.IsNullOrEmpty(part?.Style) ? part!.Style
             : doc.Machining.Style;
-        if (!string.IsNullOrEmpty(styleName) && lib.Find(styleName) == null)
-        {
-            // The style may live in another library; if it is unknown on this computer (e.g. a drawing from
-            // someone else's CamBam), keep the values stored in the drawing instead of silently using the
-            // defaults of the root style (that changed feed rates and depths of edited operations).
-            var other = CamLibraries.StyleLibraries.FirstOrDefault(l => l.Find(styleName) != null);
-            if (other == null) return changed;
-            lib = other;
-        }
+        // The style may live in another library; if it is unknown on this computer (e.g. a drawing from
+        // someone else's CamBam), keep the values stored in the drawing instead of silently using the
+        // defaults of the root style (that changed feed rates and depths of edited operations).
+        if (lib != null && !string.IsNullOrEmpty(styleName) && lib.Find(styleName) == null)
+            lib = CamLibraries.StyleLibraries.FirstOrDefault(l => l.Find(styleName) != null);
 
         var resolved = new Dictionary<string, XElement>();
-        foreach (var style in lib.Chain(styleName))
-        foreach (var (name, el) in style.Values)
-            resolved[name] = el;
+        if (lib != null)
+            foreach (var style in lib.Chain(styleName))
+            foreach (var (name, el) in style.Values)
+                resolved[name] = el;
 
-        // Default tool cascade: a tool chosen on the part or in the machining options wins over the style;
-        // its diameter and profile come from the tool library.
-        var cascadeTool = part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
+        // Tool cascade, also without any style: a tool chosen on the operation, the part or in the machining options
+        // wins over the style; its diameter and profile come from the tool library unless typed in the operation.
+        var cascadeTool = op.ToolNumber is { State: ParamState.Value, Value: > 0 } ? op.ToolNumber.Value
+            : part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
         if (cascadeTool > 0)
         {
             var tool = CamLibraries.FindTool(doc, part, cascadeTool, op is TurningOp);

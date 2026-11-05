@@ -179,8 +179,20 @@ public partial class MainWindow : Window
         }
         if (_session.Inspected is CadDocument)
             OnDocumentReplacedSettingsOnly();
+        // Tool and style of a part or of the machining options are inherited by the operations.
+        if (_session.Inspected is Core.Cam.Part inherited) ApplyInheritedValues(inherited.Operations);
+        if (_session.Inspected is Core.Cam.MachiningOptions) ApplyInheritedValues(_session.Document.Parts.SelectMany(p => p.Operations));
         if (_session.Inspected is Core.Cam.Part part) UpdateNesting([part]);
         _session.NotifyChanged();
+    }
+
+    private void ApplyInheritedValues(IEnumerable<Core.Cam.MachineOp> operations)
+    {
+        foreach (var op in operations)
+        {
+            var changed = LibraryFiles.ApplyStyle(_session.Document, op);
+            if (changed.Count > 0) Log(F("{0}: style values updated ({1}).", op.Name, string.Join(", ", changed)));
+        }
     }
 
     private void OnDocumentReplacedSettingsOnly()

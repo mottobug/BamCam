@@ -443,8 +443,8 @@ public partial class MainWindow
         _session.Execute(F("Insert {0}", T(op.DisplayType)), () =>
         {
             part.Operations.Add(op);
-            if (CamLibraries.FindStyleLibrary(doc, part) != null) LibraryFiles.ApplyStyle(doc, op);
-            else ApplyUnitDefaults(op);
+            if (CamLibraries.FindStyleLibrary(doc, part) == null) ApplyUnitDefaults(op);
+            LibraryFiles.ApplyStyle(doc, op);
             if (op is DragKnifeOp knife && doc.Units == DrawingUnits.Inches) knife.UseInchDefaults();
             if (op is PlasmaOp plasma && doc.Units == DrawingUnits.Inches) plasma.UseInchDefaults();
             if (op is VEngraveOp vEngrave && doc.Units == DrawingUnits.Inches) vEngrave.UseInchDefaults();
@@ -458,8 +458,6 @@ public partial class MainWindow
             }
             if (op is DepthOp depth && (depth.TargetDepth.Value >= depth.StockSurface.Value && (stockEmpty || depth.TargetDepth.State != ParamState.Auto)))
                 depth.TargetDepth.Set(doc.Units == DrawingUnits.Inches ? -0.04 : -1);
-            if (op.ToolDiameter.Value <= 0 && CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc), op is TurningOp) == null)
-                op.ToolDiameter.Set(doc.Units == DrawingUnits.Inches ? 0.125 : 3);
         });
         _session.Inspect(op);
         Log(F("{0} added to {1} ({2} object(s)). Set Target Depth and tool, then generate toolpaths.", op.Name, part.Name, sel.Count));
