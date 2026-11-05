@@ -66,6 +66,15 @@ public class UserExampleTests(ITestOutputHelper output)
         Assert.Equal(0, mismatches);
     }
 
+    /// <summary>Cut width, roughing clearance, side profile and corner overcut, with CamBam's order of passes.</summary>
+    [Fact]
+    public void Cut_width_and_corner_overcut_gcode_is_identical_to_cambam()
+    {
+        if (!File.Exists(Path.Combine(Dir, "Vergleich Schnittbreite.cb"))) return;
+        var (mismatches, _, _) = Compare("Vergleich Schnittbreite.cb", "Vergleich Schnittbreite.Part1.nc");
+        Assert.Equal(0, mismatches);
+    }
+
     /// <summary>
     /// Geometric comparison for every example: back-plot both G-code files and require the same plunge points
     /// (order of features) and a toolpath that never deviates from CamBam's by more than 0.01 mm.

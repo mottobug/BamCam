@@ -68,14 +68,14 @@ public class CamParameterTests
     // ------------------------------------------------------------------ side profile
 
     [Fact]
-    public void Slope_side_profile_widens_the_offset_towards_the_top()
+    public void Slope_side_profile_widens_the_offset_with_depth()
     {
         var op = Profile(-10, 2);
         op.SideProfile.Set(new SideProfile(SideProfileMethod.Slope, 45));
         var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 40)));
         var tp = Generate(doc, op);
         foreach (var z in new[] { -2.0, -4, -6, -8, -10 })
-            Assert.Equal(40 + 2 + (z + 10), MaxXAt(tp, z), 2);
+            Assert.Equal(40 + 2 - z, MaxXAt(tp, z), 2);
     }
 
     [Fact]
@@ -112,11 +112,28 @@ public class CamParameterTests
         op.SideProfile.Set(new SideProfile(SideProfileMethod.Slope, 45, AdjustCutWidth: true));
         var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 40)));
         var tp = Generate(doc, op);
-        // At the bottom the profile is at +0, but passes reach out to the widest offset (+8 at the top level).
-        var xs = Cuts(tp).Where(m => Math.Abs(m.To.Z + 10) < 1e-9).Select(m => Math.Round(m.To.X, 3)).Distinct().ToList();
-        Assert.Contains(42.0, xs);
-        Assert.Contains(50.0, xs);
-        Assert.True(xs.Count(x => x > 42 && x <= 50) >= 4);
+        // At the first level the wall is at +2, but passes reach out to the widest offset (+10 at the bottom level).
+        var xs = Cuts(tp).Where(m => Math.Abs(m.To.Z + 2) < 1e-9).Select(m => Math.Round(m.To.X, 3)).Distinct().ToList();
+        Assert.Contains(44.0, xs);
+        Assert.Contains(52.0, xs);
+        Assert.True(xs.Count(x => x > 44 && x <= 52) >= 4);
+    }
+
+    [Fact]
+    public void Cut_width_ends_each_level_at_the_wall_without_retracting_between_near_passes()
+    {
+        var op = Profile(-4, 2);
+        op.CutWidth.Set(15);
+        op.StepOver.Set(0.5);
+        var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 30)));
+        op.ToolDiameter.Set(6);
+        var moves = Generate(doc, op).Moves.Where(m => m.IsMotion).ToList();
+
+        // The straight side at +X, per level from the far pass to the wall (offset 3).
+        var sides = moves.Where(m => m.To.Z < -Tol && m.To.Y > 29 && m.To.Y < 31 && m.To.X > 40).Select(m => (Math.Round(m.To.Z, 3), Math.Round(m.To.X, 3))).ToList();
+        Assert.Equal([(-2.0, 52.0), (-2.0, 49.0), (-2.0, 46.0), (-2.0, 43.0), (-4.0, 52.0), (-4.0, 49.0), (-4.0, 46.0), (-4.0, 43.0)], sides);
+        // One retract between the levels, and one at the end of the operation.
+        Assert.Equal(3, moves.Count(m => m.Kind == MoveKind.Rapid && Math.Abs(m.To.Z - 5) < Tol));
     }
 
     // ------------------------------------------------------------------ milling direction

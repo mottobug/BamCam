@@ -383,6 +383,7 @@ internal static class LoopTools
     /// </summary>
     public static Loop StartAt(Loop loop, Point2 target)
     {
+        if (OntoEdge(loop, target) is { } exact) return exact;
         var l = loop.StartNearest(target);
         if (!l.Closed || l.Points.Count < 8) return l;
         // The polygon only approximates arcs, so its nearest point is off by up to half a chord. If the start lies
@@ -399,6 +400,49 @@ internal static class LoopTools
         var pts = new List<Point2> { start };
         pts.AddRange(l.Points.Skip(1).Where(p => Point2.Distance(p, start) > 1e-3));
         return l.WithPoints(pts);
+    }
+
+    /// <summary>Point of a closed loop nearest to <paramref name="target"/>, also between its vertices.</summary>
+    public static Point2 NearestPoint(Loop loop, Point2 target)
+    {
+        var pts = loop.Points;
+        var best = pts[0];
+        var bestDistance = double.MaxValue;
+        for (var i = 0; i < pts.Count; i++)
+        {
+            var p = ClosestOnEdge(pts[i], pts[(i + 1) % pts.Count], target);
+            var d = Point2.Distance(p, target);
+            if (d < bestDistance - 1e-9) (best, bestDistance) = (p, d);
+        }
+        return best;
+    }
+
+    private static Point2 ClosestOnEdge(Point2 a, Point2 b, Point2 target)
+    {
+        var d = b - a;
+        return a + d * Math.Clamp(Point2.Dot(target - a, d) / Math.Max(Point2.Dot(d, d), 1e-18), 0, 1);
+    }
+
+    /// <summary>
+    /// A closed loop starting exactly at <paramref name="target"/> if that lies on it, or null: a start between line
+    /// and arc has no vertex of its own in a flattened offset, which would leave a micro segment.
+    /// </summary>
+    private static Loop? OntoEdge(Loop loop, Point2 target)
+    {
+        var pts = loop.Points;
+        if (!loop.Closed || pts.Count < 3) return null;
+        for (var i = 0; i < pts.Count; i++)
+        {
+            if (Point2.Distance(ClosestOnEdge(pts[i], pts[(i + 1) % pts.Count], target), target) > 2 * ToolpathGenerator.ChordTolerance) continue;
+            var result = new List<Point2> { target };
+            for (var k = 1; k <= pts.Count; k++)
+            {
+                var p = pts[(i + k) % pts.Count];
+                if (Point2.Distance(p, target) > 1e-3) result.Add(p);
+            }
+            return loop.WithPoints(result);
+        }
+        return null;
     }
 
     /// <summary>Circle through the points around index 0 of a closed loop, if they lie on one.</summary>
