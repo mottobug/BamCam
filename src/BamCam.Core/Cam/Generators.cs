@@ -325,13 +325,18 @@ internal static class ProfileGenerator
         return loop.IsOutside ? outward : -outward;
     }
 
-    /// <summary>Inserts dog-bone style moves into the concave corners of a profile loop.</summary>
+    /// <summary>
+    /// Inserts dog-bone style moves into the inside corners of the part, which the round tool cannot reach: where an
+    /// outside loop turns against its direction (a notch in the outline) and where an inside loop turns with it (the
+    /// corners of a slot).
+    /// </summary>
     private static Loop CornerOvercut(Loop loop, double r)
     {
         var pts = loop.Points;
         var n = pts.Count;
         var area = loop.SignedArea();
         var result = new List<Point2>(n * 2);
+        Point2? firstCorner = null;
         for (var i = 0; i < n; i++)
         {
             var p = pts[i];
@@ -344,14 +349,25 @@ internal static class ProfileGenerator
             var d2 = (nextPt - p).Normalized();
             var cross = Point2.Cross(d1, d2);
             var turn = Math.Atan2(cross, Point2.Dot(d1, d2));
-            if (Math.Abs(turn) < Angles.ToRadians(10) || Math.Sign(cross) == Math.Sign(area)) continue;
+            if (Math.Abs(turn) < Angles.ToRadians(10) || (Math.Sign(cross) == Math.Sign(area)) == loop.IsOutside) continue;
             // Interior angle of the nook between the incoming and outgoing edges.
             var phi = Math.PI - Math.Abs(turn);
             var dir = (d1 - d2).Normalized();
             var dist = r / Math.Sin(phi / 2) - r;
             if (dist <= 1e-6) continue;
+            // The corner at the start of the loop is cut at the end of the lap (as the reference output).
+            if (i == 0)
+            {
+                firstCorner = p + dir * dist;
+                continue;
+            }
             result.Add(p + dir * dist);
             result.Add(p);
+        }
+        if (firstCorner is { } corner)
+        {
+            result.Add(pts[0]);
+            result.Add(corner);
         }
         return loop.WithPoints(result);
     }

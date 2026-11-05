@@ -1,5 +1,6 @@
 using System.Reflection;
 using BamCam.App.Controls;
+using BamCam.App.Drawing;
 using BamCam.Core.Cam;
 using BamCam.Core.Model;
 
@@ -55,6 +56,33 @@ public class PropertyGridTests
             CamLibraries.PostProcessors.AddRange(names);
             CamLibraries.DefaultPostProcessor = defaultName;
         }
+    }
+
+    [Theory]
+    // Z depth only, level 2 chosen: level 1 is already cut, level 3 not yet.
+    [InlineData(false, true, 1, 1, 0, 2, ToolpathFilterLook.Cut)]
+    [InlineData(false, true, 2, 2, 0, 2, ToolpathFilterLook.Current)]
+    [InlineData(false, true, 3, 3, 0, 2, ToolpathFilterLook.Hidden)]
+    // Index only, path 5 chosen.
+    [InlineData(true, false, 4, 1, 5, 0, ToolpathFilterLook.Cut)]
+    [InlineData(true, false, 5, 1, 5, 0, ToolpathFilterLook.Current)]
+    [InlineData(true, false, 6, 1, 5, 0, ToolpathFilterLook.Hidden)]
+    // Both: a path before the index on a deeper level is not shown.
+    [InlineData(true, true, 4, 3, 5, 2, ToolpathFilterLook.Hidden)]
+    [InlineData(true, true, 4, 2, 5, 2, ToolpathFilterLook.Cut)]
+    public void Filter_shows_what_is_already_cut(bool byIndex, bool byZ, int number, int level, int index, int zLevel, ToolpathFilterLook expected)
+    {
+        var filter = new ToolpathFilterSettings { IndexEnabled = byIndex, ZEnabled = byZ };
+        Assert.Equal(expected, filter.LookOf(number, level, index, zLevel));
+    }
+
+    [Fact]
+    public void Filter_options_change_the_look_of_cut_and_current_paths()
+    {
+        var filter = new ToolpathFilterSettings { ZEnabled = true, ShowCut = false, Highlight = false };
+        Assert.Equal(ToolpathFilterLook.Hidden, filter.LookOf(1, 1, 0, 2));
+        Assert.Equal(ToolpathFilterLook.Normal, filter.LookOf(2, 2, 0, 2));
+        Assert.Equal(ToolpathFilterLook.Normal, new ToolpathFilterSettings().LookOf(9, 9, 1, 1));
     }
 
     [Fact]

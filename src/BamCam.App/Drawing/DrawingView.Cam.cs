@@ -280,24 +280,10 @@ public sealed partial class DrawingView
         {
             var path = paths[idx];
             var number = idx + 1;
-            var level = LevelIndex(levels, path.Z);
-            IPen? pen = null; // null = normal colours
-            if (f.IndexEnabled)
-            {
-                if (number > n) continue;
-                if (f.ZEnabled && level > zn) continue;
-                if (number < n)
-                {
-                    if (!f.ShowCut) continue;
-                    pen = donePen;
-                }
-                else if (f.Highlight) pen = highlightPen;
-            }
-            else if (f.ZEnabled)
-            {
-                if (level != zn) continue;
-                if (f.Highlight) pen = highlightPen;
-            }
+            var look = f.LookOf(number, LevelIndex(levels, path.Z), n, zn);
+            if (look == ToolpathFilterLook.Hidden) continue;
+            // null = normal colours
+            IPen? pen = look == ToolpathFilterLook.Cut ? donePen : look == ToolpathFilterLook.Current ? highlightPen : null;
             foreach (var (from, to, kind) in path.Segments)
             {
                 if (kind == MoveKind.Rapid)
@@ -321,11 +307,31 @@ public sealed class ToolpathFilterSettings
     /// <summary>1-based Z level, counted from the top.</summary>
     public int ZIndex { get; set; } = 1;
     public bool ShowCut { get; set; } = true;
-    public Color CutColor { get; set; } = Color.FromRgb(120, 120, 140);
+    public Color CutColor { get; set; } = Color.FromRgb(90, 170, 255);
     public bool Highlight { get; set; } = true;
     public Color HighlightColor { get; set; } = Colors.Yellow;
     public double LineWidth { get; set; } = 1;
     public double Alpha { get; set; } = 1;
 
     public bool Active => IndexEnabled || ZEnabled;
+
+    /// <summary>
+    /// How a path appears when path <paramref name="index"/> and Z level <paramref name="zLevel"/> (both 1-based) are
+    /// chosen: what comes before them is already cut, what comes after them is not shown yet.
+    /// </summary>
+    public ToolpathFilterLook LookOf(int number, int level, int index, int zLevel)
+    {
+        var current = Highlight ? ToolpathFilterLook.Current : ToolpathFilterLook.Normal;
+        var cut = ShowCut ? ToolpathFilterLook.Cut : ToolpathFilterLook.Hidden;
+        if (IndexEnabled)
+        {
+            if (number > index || (ZEnabled && level > zLevel)) return ToolpathFilterLook.Hidden;
+            return number < index ? cut : current;
+        }
+        if (!ZEnabled) return ToolpathFilterLook.Normal;
+        return level > zLevel ? ToolpathFilterLook.Hidden : level < zLevel ? cut : current;
+    }
 }
+
+/// <summary>Appearance of a toolpath in the Toolpath View Filter.</summary>
+public enum ToolpathFilterLook { Hidden, Normal, Cut, Current }

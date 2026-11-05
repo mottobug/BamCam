@@ -311,6 +311,56 @@ public class CamParameterTests
         Assert.True(FlatLengthAt(tp, -6) > 100);
     }
 
+    [Fact]
+    public void Corner_overcut_reaches_the_corners_of_an_inside_profile()
+    {
+        var op = Profile(-1, 1);
+        op.InsideOutside.Set(InsideOutside.Inside);
+        op.CornerOvercut.Set(true);
+        var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 30)));
+        op.ToolDiameter.Set(6);
+        var cuts = Cuts(Generate(doc, op)).Where(m => m.To.Z < -Tol).ToList();
+
+        // All four corners: the tool centre goes 3 * (sqrt(2) - 1) beyond the loop corner, and its edge reaches the corner.
+        foreach (var (x, y) in new[] { (0.0, 0.0), (40.0, 0.0), (40.0, 30.0), (0.0, 30.0) })
+            Assert.Contains(cuts, m => Math.Abs(Point2.Distance(m.To.XY, new Point2(x, y)) - 3) < Tol);
+        // Nothing goes further into the part than the tool radius beyond the walls.
+        Assert.All(cuts, m => Assert.InRange(m.To.X, 3 - 3 * (Math.Sqrt(2) - 1) / Math.Sqrt(2) - Tol, 37 + 3 * (Math.Sqrt(2) - 1) / Math.Sqrt(2) + Tol));
+    }
+
+    [Fact]
+    public void Corner_overcut_leaves_the_outer_corners_of_an_outside_profile_alone()
+    {
+        var op = Profile(-1, 1);
+        op.CornerOvercut.Set(true);
+        // An L: only the notch at (20, 15) is an inside corner of the part.
+        var (doc, _) = Setup(op, new PolylineEntity(Path2.FromPoints([new(0, 0), new(40, 0), new(40, 15), new(20, 15), new(20, 30), new(0, 30)], closed: true)));
+        op.ToolDiameter.Set(6);
+        var cuts = Cuts(Generate(doc, op)).Where(m => m.To.Z < -Tol).ToList();
+
+        Assert.Contains(cuts, m => Math.Abs(Point2.Distance(m.To.XY, new Point2(20, 15)) - 3) < Tol);
+        // The round outer corners keep their distance of the tool radius.
+        Assert.All(cuts, m => Assert.True(Point2.Distance(m.To.XY, new Point2(0, 0)) >= 3 - Tol));
+        Assert.All(cuts, m => Assert.True(Point2.Distance(m.To.XY, new Point2(40, 15)) >= 3 - Tol));
+    }
+
+    [Fact]
+    public void Roughing_clearance_leaves_stock_for_a_finishing_operation_also_with_a_cut_width()
+    {
+        Point3[] Wall(double clearance)
+        {
+            var op = Profile(-1, 1);
+            op.CutWidth.Set(15);
+            op.StepOver.Set(0.5);
+            op.RoughingClearance.Set(clearance);
+            var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 30)));
+            op.ToolDiameter.Set(6);
+            return Cuts(Generate(doc, op)).Select(m => m.To).ToArray();
+        }
+        Assert.Equal(43, Wall(0).Min(p => p.X > 40 ? p.X : double.MaxValue), 6);
+        Assert.Equal(43.5, Wall(0.5).Min(p => p.X > 40 ? p.X : double.MaxValue), 6);
+    }
+
     // ------------------------------------------------------------------ open shapes
 
     [Fact]
