@@ -149,7 +149,8 @@ the drawing, the origin or the stock, text along a polyline (Draw ▸ Text on Po
 divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
 
 **CAM:**
-- **Profile:** inside/outside, cut width with several passes, collision detection, corner overcut,
+- **Profile:** inside/outside (open shapes are cut beside the line: outside to the right of its point order, inside to
+  the left), cut width with several passes, collision detection, corner overcut,
   holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins (spiral angle 0: one continuous
   helix, one lap per depth increment, with a flat lap only at the target depth).
 - **Pocket:** offset and hatch fills, islands.

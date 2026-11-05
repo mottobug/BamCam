@@ -55,11 +55,15 @@ internal static class ProfileGenerator
                                   ?? (src.Closed ? DefaultStart(src, ccw, sign * (baseOffset + extra)) : src.StartPoint.XY);
                 if (!src.Closed)
                 {
-                    // Open shapes are cut along their centreline.
+                    // As in the reference output, an open shape is cut beside the line: Outside is to the right of its
+                    // point order, Inside to the left. The direction keeps the side of travel of the milling direction.
+                    var side = baseOffset + extra;
+                    var open = Polygons.OffsetOpenSide(src, side, outside, ToolpathGenerator.ChordTolerance);
+                    if (outside == climb) open.Reverse();
                     passLoops.Add(new Loop
                     {
-                        Points = LoopTools.Clean(src.Flatten(ToolpathGenerator.ChordTolerance)),
-                        Closed = false, SourceId = entity.Id, Source = src, SnapSources = [src], SnapOffset = 0,
+                        Points = LoopTools.Clean(open),
+                        Closed = false, SourceId = entity.Id, Source = src, IsOutside = outside, SnapSources = [src], SnapOffset = side,
                     });
                     continue;
                 }
@@ -122,7 +126,7 @@ internal static class ProfileGenerator
 
         var startPos = op.StartPoint.Value.Point?.XY ?? loops[0].Start;
         var ordered = LoopTools.OrderLoops(loops, startPos, op.OptimisationMode.Value);
-        if (passes > 1 && loops.All(l => l.Closed))
+        if (passes > 1)
         {
             CutPasses(ctx, op, tp, mb, cutter, levels, levels.ToDictionary(z => z, _ => loops), ordered.Select(l => l.SourceId).Distinct().ToList(), mixed);
             mb.Retract();
@@ -155,8 +159,6 @@ internal static class ProfileGenerator
                 {
                     var z = levels[li];
                     var reverse = mixed && li % 2 == 1;
-                    var entry = reverse && !loop.Closed ? loop.End : loop.Start;
-                    if (!loop.Closed && mb.Position is { } p && !p.XY.AlmostEquals(entry, 1e-7)) mb.Retract();
                     CutDirected(cutter, mb, loop, z, prev, tabMap[loop], reverse, HelixContinues(loop, li));
                     prev = z;
                 }

@@ -114,6 +114,56 @@ public static class Polygons
         return res.Select(p => FromClipper(p)).ToList();
     }
 
+    /// <summary>
+    /// One side of an open path, in its direction: round at outer corners, cut off at inner ones, and ending exactly
+    /// beside the path's ends. It is the matching stretch of the band around the path. A negative distance gives the
+    /// other side.
+    /// </summary>
+    public static List<Point2> OffsetOpenSide(Path2 path, double distance, bool right, double tolerance = Tolerance.Chord)
+    {
+        var flat = path.Flatten(tolerance);
+        if (flat.Count < 2 || Math.Abs(distance) < 1e-9) return flat.ToList();
+        if (distance < 0) (distance, right) = (-distance, !right);
+
+        static Point2 Normal(Point2 a, Point2 b)
+        {
+            var d = (b - a).Normalized();
+            return new Point2(d.Y, -d.X);
+        }
+        var sign = right ? 1 : -1;
+        var startNormal = Normal(flat[0], flat[1]) * (sign * distance);
+        var endNormal = Normal(flat[^2], flat[^1]) * (sign * distance);
+        var (start, end) = (flat[0] + startNormal, flat[^1] + endNormal);
+        var otherStart = flat[0] - startNormal;
+
+        var src = new PathsD { new PathD(flat.Select(p => new PointD(p.X, p.Y))) };
+        var band = Clipper.InflatePaths(src, distance, JoinType.Round, EndType.Butt, 2.0, Precision, JoinArcTolerance(tolerance))
+            .OrderByDescending(p => Math.Abs(Clipper.Area(p))).FirstOrDefault();
+        if (band == null || band.Count < 4) return [start, end];
+
+        var pts = band.Select(p => new Point2(p.x, p.y)).ToList();
+        int Nearest(Point2 target) => Enumerable.Range(0, pts.Count).MinBy(i => Point2.Distance(pts[i], target));
+        var (from, to, avoid) = (Nearest(start), Nearest(end), Nearest(otherStart));
+
+        // Of the two ways round the band, the one that does not pass the other side of the start.
+        List<Point2> Walk(int step)
+        {
+            var result = new List<Point2>();
+            for (var i = from; ; i = (i + step + pts.Count) % pts.Count)
+            {
+                if (i == avoid) return [];
+                result.Add(pts[i]);
+                if (i == to) return result;
+            }
+        }
+        var side = Walk(1);
+        if (side.Count == 0) side = Walk(-1);
+        if (side.Count < 2) return [start, end];
+        side[0] = start;
+        side[^1] = end;
+        return side;
+    }
+
     /// <summary>Resolves self-overlaps / nesting with an even-odd union.</summary>
     private static PathsD Normalize(PathsD paths) =>
         Clipper.BooleanOp(ClipType.Union, paths, null, FillRule.EvenOdd, Precision);

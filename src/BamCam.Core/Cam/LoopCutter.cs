@@ -64,7 +64,6 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
         }
         else if (LeadIn.LeadMoveType == LeadMoveType.Spiral && !loop.Closed && loop.Points.Count > 1 && z < prevZ - 1e-9)
         {
-            mb.MoveToAndPlunge(loop.Start.ToPoint3(prevZ), ctx.PlungeFeed, prevZ);
             RampOpen(loop, prevZ, z);
         }
         else
@@ -83,28 +82,41 @@ internal sealed class LoopCutter(GenContext ctx, MoveBuilder mb)
     }
 
     /// <summary>
-    /// Ramped entry on an open path: descend along the path (one path length for angle 0, otherwise by the
-    /// ramp angle), then feed back to the start at depth.
+    /// Ramped entry on an open path, as the reference output: enter at the ramp length along the path (its far end
+    /// for angle 0) and descend backwards to the start; the pass itself then cuts forwards at depth.
     /// </summary>
     private void RampOpen(Loop loop, double fromZ, double toZ)
     {
-        var pts = loop.Points;
-        var len = loop.Length;
-        if (len < 1e-9) return;
+        _loop = loop;
+        var segments = Fitted(loop.Points).Segments().ToList();
+        var total = segments.Sum(s => s.Length);
+        if (total < 1e-9) return;
         var angle = LeadIn.SpiralAngle;
-        var rampLen = Math.Min(angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : len, len);
+        var rampLen = Math.Min(angle > 0.01 ? (fromZ - toZ) / Math.Tan(Angles.ToRadians(angle)) : total, total);
         var feed = LeadIn.LeadMoveFeedrate > 0 ? LeadIn.LeadMoveFeedrate : ctx.CutFeed;
-        var back = new List<Point2> { pts[0] };
-        double s = 0;
-        for (var i = 1; i < pts.Count && s < rampLen - 1e-9; i++)
+
+        var ramp = new List<Segment>();
+        double along = 0;
+        foreach (var seg in segments)
         {
-            var seg = Point2.Distance(pts[i - 1], pts[i]);
-            var p = s + seg > rampLen ? Point2.Lerp(pts[i - 1], pts[i], (rampLen - s) / seg) : pts[i];
-            s = Math.Min(s + seg, rampLen);
-            mb.Line(p.ToPoint3(fromZ - (fromZ - toZ) * s / rampLen), feed);
-            back.Add(p);
+            if (along + seg.Length < rampLen - 1e-9)
+            {
+                ramp.Add(seg);
+                along += seg.Length;
+                continue;
+            }
+            ramp.Add(Split(seg, seg.Length < 1e-12 ? 1 : (rampLen - along) / seg.Length).First);
+            break;
         }
-        for (var i = back.Count - 2; i >= 0; i--) mb.Line(back[i].ToPoint3(toZ), ctx.CutFeed);
+
+        mb.MoveToAndPlunge(ramp[^1].End.XY.ToPoint3(fromZ), ctx.PlungeFeed, fromZ);
+        double walked = 0;
+        for (var i = ramp.Count - 1; i >= 0; i--)
+        {
+            walked += ramp[i].Length;
+            var z = fromZ - (fromZ - toZ) * Math.Min(walked, rampLen) / rampLen;
+            mb.Segment(new Segment(ramp[i].End, ramp[i].Start with { Z = z }, -ramp[i].Bulge), feed);
+        }
     }
 
     /// <summary>Spiral (ramped) entry along the loop from <paramref name="fromZ"/> down to <paramref name="toZ"/>.</summary>

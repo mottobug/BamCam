@@ -381,7 +381,7 @@ public class CamParameterTests
     // ------------------------------------------------------------------ open shapes
 
     [Fact]
-    public void Open_profile_spiral_lead_ramps_along_the_path()
+    public void Open_profile_spiral_lead_ramps_backwards_to_the_start()
     {
         var op = Profile(-2, 1);
         op.LeadInMove.Set(new LeadMove(LeadMoveType.Spiral, 0));
@@ -389,14 +389,34 @@ public class CamParameterTests
         line.Points.AddRange([new Point3(0, 0, 0), new Point3(50, 0, 0)]);
         var (doc, _) = Setup(op, line);
         var tp = Generate(doc, op);
-        // The first move below the stock surface travels along the path while descending (no vertical plunge):
-        // angle 0 = ramp over the whole path length, here the single 50 mm segment.
+        // Angle 0: the ramp is the whole path, from its far end down to the start (no vertical plunge)...
         var cuts = Cuts(tp);
         var firstBelow = cuts.First(m => m.To.Z < -1e-9);
-        Assert.Equal(50, firstBelow.To.X, 6);
+        Assert.Equal(0, firstBelow.To.X, 6);
         Assert.Equal(-1, firstBelow.To.Z, 6);
-        // ...then back to the start at depth before the actual pass.
-        Assert.Equal(0, cuts[cuts.IndexOf(firstBelow) + 1].To.X, 6);
+        // ...then forwards at depth.
+        Assert.Equal(50, cuts[cuts.IndexOf(firstBelow) + 1].To.X, 6);
+    }
+
+    [Theory]
+    // Tool of 4 mm. Outside: right of the point order, Inside: left; conventional milling keeps the tool to the right of travel.
+    [InlineData(InsideOutside.Outside, MillingDirection.Conventional, 0, -2, 40, -2)]
+    [InlineData(InsideOutside.Inside, MillingDirection.Conventional, 40, 2, 0, 2)]
+    [InlineData(InsideOutside.Outside, MillingDirection.Climb, 40, -2, 0, -2)]
+    [InlineData(InsideOutside.Inside, MillingDirection.Climb, 0, 2, 40, 2)]
+    public void Open_profile_cuts_beside_the_line(InsideOutside side, MillingDirection direction, double x1, double y1, double x2, double y2)
+    {
+        var op = Profile(-1, 1);
+        op.InsideOutside.Set(side);
+        op.MillingDirection.Set(direction);
+        var (doc, _) = Setup(op, new PolylineEntity(Path2.FromPoints([new(0, 0), new(40, 0)], closed: false)));
+        var moves = Generate(doc, op).Moves.Where(m => m.IsMotion).ToList();
+        var first = moves.First(m => m.Kind == MoveKind.Rapid && m.To.Z > 1);
+        var entry = moves.First(m => m.Kind == MoveKind.Rapid && Math.Abs(m.To.X - x1) < Tol);
+        Assert.Equal(y1, entry.To.Y, 6);
+        var cut = Cuts(Generate(doc, op)).Last();
+        Assert.Equal(x2, cut.To.X, 6);
+        Assert.Equal(y2, cut.To.Y, 6);
     }
 
     [Fact]
@@ -409,6 +429,6 @@ public class CamParameterTests
         var (doc, _) = Setup(op, line);
         var tp = Generate(doc, op);
         var arc = tp.Moves.First(m => m.IsArc);
-        Assert.Equal(-2, arc.Center.Y, 6); // travelling +X, right side is -Y
+        Assert.Equal(-4, arc.Center.Y, 6); // beside the line at -2, and travelling +X the right side is -Y
     }
 }

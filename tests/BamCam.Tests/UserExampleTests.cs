@@ -15,6 +15,7 @@ public class UserExampleTests(ITestOutputHelper output)
     private static readonly string Dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test"));
 
     private const string SideProfileDrawing = "Vergleich Seitenprofil";
+    private const string OpenShapeDrawing = "Vergleich Offene Linien";
 
     public static IEnumerable<object[]> Examples()
     {
@@ -24,7 +25,7 @@ public class UserExampleTests(ITestOutputHelper output)
             // Turning examples are compared with CamBam's turning post in LatheTests.
             if (File.ReadAllText(cb).Contains("MOPLathe")) continue;
             // Compared operation by operation, see below.
-            if (Path.GetFileNameWithoutExtension(cb) == SideProfileDrawing) continue;
+            if (Path.GetFileNameWithoutExtension(cb) is SideProfileDrawing or OpenShapeDrawing) continue;
             var nc = Directory.GetFiles(Dir, Path.GetFileNameWithoutExtension(cb) + ".*.nc").FirstOrDefault();
             if (nc != null) yield return [Path.GetFileName(cb), Path.GetFileName(nc)];
         }
@@ -82,15 +83,26 @@ public class UserExampleTests(ITestOutputHelper output)
     /// <summary>
     /// Side profiles and combinations with a cut width, operation by operation. Not identical yet: G (equally near
     /// start points), L, M, N (the end of a lap on a corner arc is segmented differently; in L its end point differs by
-    /// about 0.005 mm) and U (CamBam offsets an open shape with a cut width to its side).
+    /// about 0.005 mm).
     /// </summary>
     [Theory]
     [InlineData('A'), InlineData('B'), InlineData('C'), InlineData('D'), InlineData('E'), InlineData('F'), InlineData('H')]
     [InlineData('I'), InlineData('J'), InlineData('K'), InlineData('O'), InlineData('P'), InlineData('Q'), InlineData('R')]
-    [InlineData('S'), InlineData('T')]
-    public void Side_profile_gcode_is_identical_to_cambam(char operation)
+    [InlineData('S'), InlineData('T'), InlineData('U')]
+    public void Side_profile_gcode_is_identical_to_cambam(char operation) => CompareOperation(SideProfileDrawing, operation);
+
+    /// <summary>
+    /// Open shapes are cut beside the line, operation by operation. This drawing was saved by CamBam. Not identical yet:
+    /// A (holding tabs on an open shape are not made) and H, I, L, M (the same passes in another order).
+    /// </summary>
+    [Theory]
+    [InlineData('B'), InlineData('C'), InlineData('D'), InlineData('E'), InlineData('F'), InlineData('G'), InlineData('J')]
+    [InlineData('K'), InlineData('N'), InlineData('O'), InlineData('P'), InlineData('Q'), InlineData('R')]
+    public void Open_shape_gcode_is_identical_to_cambam(char operation) => CompareOperation(OpenShapeDrawing, operation);
+
+    private static void CompareOperation(string drawing, char operation)
     {
-        var (cb, nc) = (Path.Combine(Dir, SideProfileDrawing + ".cb"), Path.Combine(Dir, SideProfileDrawing + ".Part1.nc"));
+        var (cb, nc) = (Path.Combine(Dir, drawing + ".cb"), Path.Combine(Dir, drawing + ".Part1.nc"));
         if (!File.Exists(cb)) return;
         var doc = CbReader.Load(cb);
         var paths = doc.Parts.SelectMany(p => p.Operations).ToDictionary(op => op, op => ToolpathGenerator.Generate(doc, op));
