@@ -197,6 +197,11 @@ BamCam reads and writes CamBam drawings (`.cb`) and post processors (`.cbpp`), i
 Values and objects BamCam does not know are kept when a file is saved again. Objects of plugins and script objects
 are also saved as plain polylines, so CamBam (and BamCam without the plugin) can still open and machine them.
 
+**Operations only BamCam has:** Plasma, V-Engrave, Trochoidal Pocket, Drag Knife and the lathe operations Facing,
+Grooving, Threading and Lathe Drilling are saved in the `.cb` file, but CamBam does not know them. It opens such a
+drawing without them and without a message, and if you save it in CamBam they are gone. When you save such a drawing,
+BamCam says so in the message window. Keep a copy, or generate the G-code in BamCam.
+
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 
 - **`.cb` and `.dxf`:** the objects stay at their original position and are selected afterwards, so they can be moved

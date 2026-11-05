@@ -605,6 +605,9 @@ public partial class MainWindow : Window
             CbWriter.Save(_session.Document, path, backups: _settings.FileBackups);
             AddRecentFile(path);
             Log(F("Saved {0}", path));
+            var onlyHere = _session.Document.Parts.SelectMany(p => p.Operations).Where(o => o.OnlyInBamCam).Select(o => T(o.DisplayType)).Distinct().ToList();
+            if (onlyHere.Count > 0)
+                Log(F("Note: CamBam does not know these operations: {0}. It opens this drawing without them, and saving it there loses them.", string.Join(", ", onlyHere)));
             UpdateTitle();
             return true;
         }

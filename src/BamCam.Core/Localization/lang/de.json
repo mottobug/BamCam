@@ -272,6 +272,7 @@
   "Opened {0}: {1} objects, {2} layers, {3} machining operations.": "{0} geöffnet: {1} Objekte, {2} Layer, {3} Bearbeitungen.",
   "Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.": "Hinweis: Die Bearbeitung '{0}' ({1}) bleibt in der Datei erhalten, kann von dieser Version aber nicht berechnet werden.",
   "Error opening {0}: {1}": "Fehler beim Öffnen von {0}: {1}",
+  "Note: CamBam does not know these operations: {0}. It opens this drawing without them, and saving it there loses them.": "Hinweis: CamBam kennt diese Bearbeitungen nicht: {0}. Es öffnet diese Zeichnung ohne sie, und beim Speichern dort gehen sie verloren.",
   "Saved {0}": "{0} gespeichert",
   "Error saving {0}: {1}": "Fehler beim Speichern von {0}: {1}",
   "Exported {0}": "{0} exportiert",

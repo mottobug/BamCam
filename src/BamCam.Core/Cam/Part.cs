@@ -216,6 +216,13 @@ public abstract class MachineOp
     [Browsable(false)]
     public abstract string DisplayType { get; }
 
+    /// <summary>
+    /// A kind of operation CamBam does not know: it opens a drawing without such operations and without a message,
+    /// so that saving there loses them.
+    /// </summary>
+    [Browsable(false)]
+    public bool OnlyInBamCam => XmlName.StartsWith("BamCam", StringComparison.Ordinal);
+
     [Category("General")]
     public string Name { get; set; } = "";
 

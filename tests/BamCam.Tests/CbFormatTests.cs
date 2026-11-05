@@ -128,6 +128,16 @@ public class CbFormatTests
         Assert.True(Has(CbWriter.ToString(CbReader.Load(file)), element, value));
     }
 
+    /// <summary>A drawing with these opened in CamBam without them, while the operations of CamBam itself stayed.</summary>
+    [Fact]
+    public void Operations_cambam_does_not_know_are_marked()
+    {
+        MachineOp[] onlyHere = [new PlasmaOp(), new VEngraveOp(), new TrochoidalPocketOp(), new DragKnifeOp(), new LatheFacingOp(), new LatheGrooveOp(), new LatheThreadOp(), new LatheDrillOp()];
+        MachineOp[] known = [new ProfileOp(), new PocketOp(), new EngraveOp(), new DrillOp(), new Profile3DOp(), new NcFileOp(), new LatheOp(), new UnsupportedOp("from a plugin")];
+        Assert.All(onlyHere, op => Assert.True(op.OnlyInBamCam, op.XmlName));
+        Assert.All(known, op => Assert.False(op.OnlyInBamCam, op.XmlName));
+    }
+
     /// <summary>The same for nesting, saved by CamBam; it leaves out Grid Order for Right Up, its default.</summary>
     [Theory]
     [InlineData("NestMethod", "Grid")]
