@@ -426,6 +426,95 @@ public partial class MainWindow : Window
         if (files[0].TryGetLocalPath() is { } path) OpenPath(path);
     }
 
+    /// <summary>
+    /// File ▸ Insert File: adds a file to this drawing. Drawings (.cb, .dxf) bring their objects and, if wanted, their
+    /// operations; an STL file becomes a surface; anything else is treated as G-code and becomes an NC File operation.
+    /// </summary>
+    private async void InsertFile()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = T("Insert File"),
+            AllowMultiple = false,
+            FileTypeFilter = [new FilePickerFileType(T("Drawings, STL and G-code")) { Patterns = ["*.cb", "*.dxf", "*.stl", .. NcType.Patterns!] },
+                CbType, DxfType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }, NcType, AllType],
+        });
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path) return;
+        CadDocument source;
+        try
+        {
+            switch (Path.GetExtension(path).ToLowerInvariant())
+            {
+                case ".stl":
+                    InsertSurface(path);
+                    return;
+                case ".cb":
+                    source = CbReader.Load(path);
+                    break;
+                case ".dxf":
+                    source = DxfReader.Load(path, out var warnings);
+                    foreach (var w in warnings.Distinct()) Log(F("DXF: {0}", w));
+                    // The reader takes no units from the file: the numbers are meant in the units of this drawing.
+                    source.Units = _session.Document.Units;
+                    break;
+                default:
+                    InsertNcFile(path);
+                    return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log(F("Error opening {0}: {1}", path, ex.Message));
+            return;
+        }
+        var doc = _session.Document;
+        var withOperations = false;
+        var operations = source.Parts.Sum(p => p.Operations.Count);
+        if (operations > 0 && !DrawingMerge.UnitsDiffer(doc, source))
+        {
+            var answer = await Dialogs.Ask(this, T("Insert File"), F("Also insert the {0} machining operations of this drawing?", operations));
+            if (answer == null) return;
+            withOperations = answer == true;
+        }
+
+        InsertedDrawing inserted = null!;
+        _session.Execute(T("Insert drawing"), () => inserted = DrawingMerge.Insert(doc, source, withOperations));
+        foreach (var op in inserted.Operations) LibraryFiles.ApplyStyle(doc, op);
+        _session.Select(inserted.Entities);
+        View.ZoomToFit();
+        Log(F("Inserted {0}: {1} objects, {2} new layers, {3} new parts, {4} machining operations.",
+            path, inserted.Entities.Count, inserted.NewLayers.Count, inserted.NewParts.Count, inserted.Operations.Count));
+        if (inserted.Scale != 1)
+            Log(F("The drawing has other units: the geometry was scaled by {0}, machining operations were not inserted.", inserted.Scale));
+        foreach (var op in inserted.Operations.OfType<Core.Cam.UnsupportedOp>())
+            Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
+        if (withOperations)
+            foreach (var style in LibraryFiles.MissingStyles(doc))
+                Log(F("Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.", style));
+        _ = AskForScripts(doc);
+    }
+
+    /// <summary>Adds an STL file as a surface on the active layer.</summary>
+    private void InsertSurface(string path)
+    {
+        var surface = IO.Stl.StlReader.Load(path);
+        _session.Execute(T("Insert surface"), () => _session.Document.AddEntity(surface));
+        _session.Select([surface]);
+        Log(F("Inserted {0}: {1} triangles.", path, surface.Faces.Count / 3));
+        View.ZoomToFit();
+    }
+
+    /// <summary>Adds a G-code file as an NC File operation of the active part and back-plots it.</summary>
+    private void InsertNcFile(string path)
+    {
+        var nc = new Core.Cam.NcFileOp { Name = Path.GetFileNameWithoutExtension(path) };
+        nc.SourceFile.Set(path);
+        var part = _session.Document.ActivePart;
+        _session.Execute(T("Insert NC file"), () => part.Operations.Add(nc));
+        GenerateToolpaths(new Core.Post.PostScope(Operation: nc));
+        View.ZoomToFit();
+    }
+
     private void OpenPath(string path)
     {
         try
@@ -434,23 +523,14 @@ public partial class MainWindow : Window
             var ext = Path.GetExtension(path).ToLowerInvariant();
             if (ext == ".stl")
             {
-                var surface = IO.Stl.StlReader.Load(path);
-                _session.Execute(T("Insert surface"), () => _session.Document.AddEntity(surface));
-                _session.Select([surface]);
-                Log(F("Inserted {0}: {1} triangles.", path, surface.Faces.Count / 3));
-                View.ZoomToFit();
+                InsertSurface(path);
                 return;
             }
             var importer = ext is ".cb" or ".dxf" ? null : _plugins.Importers.FirstOrDefault(i => i.Handles(path));
             if (importer == null && ext is not (".cb" or ".dxf"))
             {
                 // Anything else is treated as G-code and back-plotted as an NC File operation.
-                var nc = new Core.Cam.NcFileOp { Name = Path.GetFileNameWithoutExtension(path) };
-                nc.SourceFile.Set(path);
-                var part = _session.Document.ActivePart;
-                _session.Execute(T("Insert NC file"), () => part.Operations.Add(nc));
-                GenerateToolpaths(new Core.Post.PostScope(Operation: nc));
-                View.ZoomToFit();
+                InsertNcFile(path);
                 return;
             }
             if (importer != null)

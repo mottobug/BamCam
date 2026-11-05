@@ -126,6 +126,7 @@ public partial class MainWindow
             Item("_Save", () => _ = Save(), "Ctrl+S"),
             Item("Save _As...", () => _ = SaveAs(), "Ctrl+Shift+S"),
             "-",
+            Item("Insert _File...", InsertFile),
             Sub("_Import Image",
                 Item("As _Height Map...", ImportHeightMap),
                 Item("_Trace Outlines...", TraceImage)),
