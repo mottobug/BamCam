@@ -366,14 +366,20 @@ public partial class MainWindow
 
     // ------------------------------------------------------------------ toolbar
 
-    private Button ToolButton(string iconKey, string tip, Action action)
+    // Icon colours of the toolbar groups; dark enough for thin lines on the light background, and blue and orange stay
+    // apart with red-green colour blindness. File and view buttons remain black.
+    private static readonly IBrush DrawIconBrush = new SolidColorBrush(Color.FromRgb(0x15, 0x65, 0xC0));
+    private static readonly IBrush OperationIconBrush = new SolidColorBrush(Color.FromRgb(0xC2, 0x41, 0x0C));
+    private static readonly IBrush ActionIconBrush = new SolidColorBrush(Color.FromRgb(0x7B, 0x1F, 0xA2));
+
+    private Button ToolButton(string iconKey, string tip, Action action, IBrush? iconBrush = null)
     {
         var geo = (Geometry)this.FindResource(iconKey)!;
         var b = new Button
         {
             Content = new Path
             {
-                Data = geo, Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.Uniform,
+                Data = geo, Stroke = iconBrush ?? Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.Uniform,
                 StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
             },
         };
@@ -422,7 +428,7 @@ public partial class MainWindow
     /// <summary>Toolbar button that starts a drawing tool and is highlighted while that tool is active.</summary>
     private Button ToolModeButton(string iconKey, string tip, Action start, Func<ViewTool, bool> isActive)
     {
-        var b = ToolButton(iconKey, tip, start);
+        var b = ToolButton(iconKey, tip, start, DrawIconBrush);
         _toolButtons.Add((b, isActive));
         return b;
     }
@@ -436,7 +442,7 @@ public partial class MainWindow
             var active = isActive(View.Tool);
             if (active) button.Background = accent;
             else button.ClearValue(BackgroundProperty);
-            if (button.Content is Path icon) icon.Stroke = active ? Brushes.White : Brushes.Black;
+            if (button.Content is Path icon) icon.Stroke = active ? Brushes.White : DrawIconBrush;
         }
     }
 
@@ -574,14 +580,14 @@ public partial class MainWindow
         _alignButton = align;
         p.Children.Add(align);
         p.Children.Add(ToolSeparator());
-        p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp())));
-        p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp())));
-        p.Children.Add(ToolButton("IconTrochoidal", "Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp())));
-        p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp())));
-        p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp())));
-        p.Children.Add(ToolButton("IconVEngrave", "V-Engrave", () => CreateOp(new VEngraveOp())));
-        p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp())));
-        p.Children.Add(ToolButton("IconPlasma", "Plasma", () => CreateOp(new PlasmaOp())));
+        p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconTrochoidal", "Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconVEngrave", "V-Engrave", () => CreateOp(new VEngraveOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("Icon3D", "3D Profile", () => CreateOp(new Profile3DOp()), OperationIconBrush));
+        p.Children.Add(ToolButton("IconPlasma", "Plasma", () => CreateOp(new PlasmaOp()), OperationIconBrush));
         p.Children.Add(ToolSeparator());
         // Toolbar buttons of plugin commands with an icon.
         var pluginButtons = _plugins.Commands.Where(c => !string.IsNullOrWhiteSpace(c.Command.Icon)).ToList();
@@ -611,9 +617,9 @@ public partial class MainWindow
             }
             p.Children.Add(ToolSeparator());
         }
-        p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths()));
-        p.Children.Add(ToolButton("IconSimulate", "3D simulation (Ctrl+Shift+T)", () => _ = ShowSimulation()));
-        p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All)));
+        p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths(), ActionIconBrush));
+        p.Children.Add(ToolButton("IconSimulate", "3D simulation (Ctrl+Shift+T)", () => _ = ShowSimulation(), ActionIconBrush));
+        p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All), ActionIconBrush));
         RefreshToolButtons();
     }
 }
