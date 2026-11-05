@@ -4,10 +4,11 @@ using BamCam.Core.Geometry;
 namespace BamCam.Core.Cam;
 
 /// <summary>
-/// Trochoidal (high speed) pocketing: the tool clears the pocket in circles along the centre lines (medial axis) of
-/// the area it can reach. Each circle reaches at most Step Over beyond the previous one, so the tool never cuts with
-/// more than that width, also in corners and slots: suited to full depth cuts with a small step over. A helix enters
-/// at the widest place; a final pass along the walls removes what the circles leave.
+/// Trochoidal (high speed) pocketing: the tool clears the pocket in arcs along the centre lines (medial axis) of the
+/// area it can reach. Each arc is the part of a circle outside the earlier ones: it enters the material with no
+/// engagement, widens to at most Step Over and leaves it again, then a straight chord through the cleared area leads
+/// to the next arc. Suited to full depth cuts with a small step over, also in corners and slots. A helix enters at
+/// the widest place; a final pass along the walls removes what the arcs leave.
 /// </summary>
 public sealed class TrochoidalPocketOp : DepthOp
 {
@@ -15,15 +16,15 @@ public sealed class TrochoidalPocketOp : DepthOp
     public override string DisplayType => "Trochoidal Pocket";
 
     [Param(52, "Cutting"), DisplayName("Step Over"),
-     Description("Largest width of new material per circle, as a fraction of the tool diameter (e.g. 0.1 to 0.25).")]
+     Description("Largest width of new material per arc, as a fraction of the tool diameter (e.g. 0.1 to 0.25).")]
     public CamParam<double> StepOver { get; set; } = new(0.15);
 
     [Param(55, "Cutting"), DisplayName("Milling Direction"),
-     Description("Climb milling is usual for trochoidal milling.")]
+     Description("Climb milling is usual for trochoidal milling. Mixed is not supported here: it is cut as Climb, with a warning.")]
     public CamParam<MillingDirection> MillingDirection { get; set; } = new(Cam.MillingDirection.Climb);
 
     [Param(60, "Trochoidal"), DisplayName("Min Circle Radius"),
-     Description("Smallest radius of the circles, as a fraction of the tool radius; narrower places (corners, thin slots) are left to the final pass.")]
+     Description("Smallest radius of the arcs, as a fraction of the tool radius; narrower places (corners, thin slots) are left to the final pass.")]
     public CamParam<double> MinCircleRadius { get; set; } = new(0.1);
 
     [Param(61, "Trochoidal"), DisplayName("Ramp Angle"),
@@ -31,8 +32,12 @@ public sealed class TrochoidalPocketOp : DepthOp
     public CamParam<double> RampAngle { get; set; } = new(3);
 
     [Param(62, "Trochoidal"), DisplayName("Final Pass"),
-     Description("Cut along the walls at each depth level after the circles.")]
+     Description("Cut along the walls at each depth level after the arcs.")]
     public CamParam<bool> FinalPass { get; set; } = new(true);
+
+    [Param(63, "Trochoidal"), DisplayName("Chord Feedrate"),
+     Description("Feedrate of the moves through the cleared area between the arcs; 0 = the cut feedrate.")]
+    public CamParam<double> ChordFeedrate { get; set; } = new(0);
 }
 
 internal static class TrochoidalGenerator
@@ -56,6 +61,9 @@ internal static class TrochoidalGenerator
         var step = Math.Clamp(op.StepOver.Value, 0.01, 1) * 2 * rt;
         var minR = Math.Max(0, op.MinCircleRadius.Value) * rt;
         var ccw = op.MillingDirection.Value != MillingDirection.Conventional; // pocket walls: climb = counter-clockwise
+        if (op.MillingDirection.Value == MillingDirection.Mixed)
+            ctx.Warnings.Add(Localization.Tr.F("{0}: Mixed milling is not supported by this operation; it is cut as Climb.", op.Name));
+        var chordFeed = op.ChordFeedrate.Value > 0 ? op.ChordFeedrate.Value : ctx.CutFeed;
         var closed = ctx.SourcePaths().Select(s => s.Path).Where(p => p.Closed && p.Count > 1).ToList();
         var areas = Polygons.BuildShapes(closed, ToolpathGenerator.ChordTolerance)
             .SelectMany(s => Polygons.InsetShape(s, rt + op.RoughingClearance.Value, ToolpathGenerator.ChordTolerance))
@@ -82,7 +90,8 @@ internal static class TrochoidalGenerator
                 foreach (var c in chains) c.Done = false;
                 var startPoint = chains.SelectMany(c => c.Points).MaxBy(p => p.R);
                 Enter(ctx, op, mb, startPoint, z, prev, step, rt, ccw);
-                var cutter = new Cutter(ctx, mb, z, step, minR, ccw) { Last = startPoint };
+                var cutter = new Cutter(ctx, mb, z, step, minR, ccw, chordFeed) { Last = startPoint };
+                cutter.Cleared(startPoint);
                 Visit(cutter, chains, start);
                 if (op.FinalPass.Value) Walls(ctx, mb, area, z, ccw);
                 mb.Retract();
@@ -163,11 +172,16 @@ internal static class TrochoidalGenerator
         mb.Arc(start.ToPoint3(z), centre, !ccw, feed);
     }
 
-    private sealed class Cutter(GenContext ctx, MoveBuilder mb, double z, double step, double minR, bool ccw)
+    private sealed class Cutter(GenContext ctx, MoveBuilder mb, double z, double step, double minR, bool ccw, double chordFeed)
     {
         public MedialPoint Last;
 
-        /// <summary>Walks along the points, cutting a circle wherever the next one reaches step over beyond the last.</summary>
+        /// <summary>The circles the tool centre has been around: inside them the material at this level is gone.</summary>
+        private readonly List<MedialPoint> _cleared = [];
+
+        public void Cleared(MedialPoint p) => _cleared.Add(p);
+
+        /// <summary>Walks along the points, cutting an arc wherever the next circle reaches step over beyond the last.</summary>
         public void Follow(IEnumerable<MedialPoint> points)
         {
             MedialPoint? prev = null;
@@ -194,30 +208,88 @@ internal static class TrochoidalGenerator
             // How far the new circle reaches beyond the last one.
             var reach = Point2.Distance(p.P, Last.P) + p.R - Last.R;
             if (reach < step) return;
-            var pos = mb.Position!.Value.XY;
-            var dir = pos - p.P;
-            var start = dir.Length < 1e-9 ? p.P + new Point2(p.R, 0) : p.P + dir.Normalized() * p.R;
-            // The direct link is safe where it stays inside the two circles (each lies in the free area); otherwise,
-            // e.g. around the corner of an island, it goes through the centres along the centre line.
-            var last = Last;
-            bool Safe(Point2 x) => Point2.Distance(x, last.P) <= last.R + 1e-6 || Point2.Distance(x, p.P) <= p.R + 1e-6;
-            if (!Enumerable.Range(0, 11).All(k => Safe(pos + (start - pos) * (k / 10.0))))
+            if (UncutArc(p) is { } arc)
             {
-                mb.Line(last.P.ToPoint3(z), ctx.CutFeed);
-                mb.Line(p.P.ToPoint3(z), ctx.CutFeed);
+                var angle = ccw ? arc.From : arc.From + arc.Sweep;
+                var sweep = ccw ? arc.Sweep : -arc.Sweep;
+                Link(p, p.P + Point2.FromAngle(angle, p.R));
+                // No arc over half a circle: both ways round would end at the same point.
+                var parts = sweep * sweep > 0.99 * Math.PI * Math.PI ? 2 : 1;
+                for (var i = 1; i <= parts; i++)
+                    mb.Arc((p.P + Point2.FromAngle(angle + sweep * i / parts, p.R)).ToPoint3(z), p.P, !ccw, ctx.CutFeed);
             }
-            mb.Line(start.ToPoint3(z), ctx.CutFeed);
-            Circle(mb, p.P, start, z, ccw, ctx.CutFeed);
+            _cleared.Add(p);
             Last = p;
+        }
+
+        /// <summary>
+        /// The part of the circle outside all earlier circles, counter-clockwise: where it enters and leaves them the
+        /// tool has no engagement. Null when nothing worth cutting is left. Stretches with cleared parts in between are
+        /// cut in one go, leaving out only the longest cleared one.
+        /// </summary>
+        private (double From, double Sweep)? UncutArc(MedialPoint p)
+        {
+            var covered = new List<(double From, double To)>();
+            foreach (var c in _cleared)
+            {
+                var d = Point2.Distance(p.P, c.P);
+                if (d + p.R <= c.R + 1e-9) return null; // all of it inside
+                if (d >= p.R + c.R || d + c.R <= p.R) continue; // apart, or a smaller circle inside
+                var half = Math.Acos(Math.Clamp((p.R * p.R + d * d - c.R * c.R) / (2 * p.R * d), -1, 1));
+                var mid = Math.Atan2(c.P.Y - p.P.Y, c.P.X - p.P.X);
+                var from = mid - half;
+                if (from < 0) from += 2 * Math.PI;
+                var to = from + 2 * half;
+                covered.Add((from, Math.Min(to, 2 * Math.PI)));
+                if (to > 2 * Math.PI) covered.Add((0, to - 2 * Math.PI));
+            }
+            if (covered.Count == 0) return (0, 2 * Math.PI);
+
+            // Merged, then the free stretches between them around the circle.
+            covered.Sort();
+            var merged = new List<(double From, double To)> { covered[0] };
+            foreach (var (from, to) in covered.Skip(1))
+            {
+                if (from <= merged[^1].To + 1e-9) merged[^1] = (merged[^1].From, Math.Max(merged[^1].To, to));
+                else merged.Add((from, to));
+            }
+            if (merged.Count > 1 && merged[0].From <= 1e-9 && merged[^1].To >= 2 * Math.PI - 1e-9)
+            {
+                merged[0] = (merged[^1].From - 2 * Math.PI, merged[0].To);
+                merged.RemoveAt(merged.Count - 1);
+            }
+            var free = 2 * Math.PI - merged.Sum(m => m.To - m.From);
+            if (free * p.R < step / 10) return null;
+
+            var longest = merged.MaxBy(m => m.To - m.From);
+            return (longest.To, 2 * Math.PI - (longest.To - longest.From));
+        }
+
+        /// <summary>
+        /// To the start of the next arc: straight where the way lies inside the earlier circles, otherwise, e.g. around
+        /// the corner of an island, through the centres along the centre line.
+        /// </summary>
+        private void Link(MedialPoint next, Point2 start)
+        {
+            var pos = mb.Position!.Value.XY;
+            var samples = Math.Max(10, (int)Math.Ceiling(Point2.Distance(pos, start) / (step / 2)));
+            bool Free(Point2 x) => _cleared.Any(c => Point2.Distance(x, c.P) <= c.R + 1e-6);
+            if (!Enumerable.Range(0, samples + 1).All(k => Free(pos + (start - pos) * ((double)k / samples))))
+            {
+                mb.Line(Last.P.ToPoint3(z), chordFeed);
+                mb.Line(next.P.ToPoint3(z), chordFeed);
+            }
+            mb.Line(start.ToPoint3(z), chordFeed);
         }
 
         /// <summary>Back along cleared centre lines to a branch point.</summary>
         public void Return(IEnumerable<MedialPoint> points)
         {
-            foreach (var p in points) mb.Line(p.P.ToPoint3(z), ctx.CutFeed);
+            foreach (var p in points) mb.Line(p.P.ToPoint3(z), chordFeed);
         }
     }
 
+    /// <summary>
     /// <summary>Depth first through the centre line graph; after each branch the tool returns along it.</summary>
     private static void Visit(Cutter cutter, List<Chain> chains, int node)
     {

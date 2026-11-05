@@ -59,14 +59,84 @@ public class TrochoidalTests
     }
 
     [Fact]
-    public void Circles_at_every_depth_level()
+    public void Arcs_at_every_depth_level()
     {
         var (_, _, tp) = Generate(o => o.DepthIncrement.Set(2));
         var levels = tp.Moves.Where(m => m.IsArc).Select(m => Math.Round(m.To.Z, 6)).Distinct().ToList();
         Assert.Contains(-2.0, levels);
         Assert.Contains(-4.0, levels);
-        Assert.True(tp.Moves.Count(m => m.IsArc) > 20, "circles expected");
+        Assert.True(tp.Moves.Count(m => m.IsArc) > 20, "arcs expected");
         Assert.All(tp.Moves.Where(m => m.IsMotion), m => Assert.True(m.To.Z >= -4 - 1e-9));
+    }
+
+    /// <summary>Cutting moves after the entry: the arc from the position before, as (start, sweep in radians).</summary>
+    private static List<(Point2 Start, Point2 Centre, double Sweep)> Arcs(Toolpath tp)
+    {
+        var arcs = new List<(Point2, Point2, double)>();
+        Point3? pos = null;
+        foreach (var m in tp.Moves.Where(m => m.IsMotion))
+        {
+            if (pos is { } p && m.IsArc)
+            {
+                var a = Math.Atan2(p.Y - m.Center.Y, p.X - m.Center.X);
+                var b = Math.Atan2(m.To.Y - m.Center.Y, m.To.X - m.Center.X);
+                var sweep = m.Kind == MoveKind.ArcCCW ? b - a : a - b;
+                if (sweep <= 1e-9) sweep += 2 * Math.PI;
+                arcs.Add((p.XY, m.Center, sweep));
+            }
+            pos = m.To;
+        }
+        return arcs;
+    }
+
+    [Fact]
+    public void Arcs_cover_only_part_of_a_circle()
+    {
+        var (_, _, tp) = Generate(o => { o.FinalPass.Set(false); o.StepOver.Set(0.1); });
+        var arcs = Arcs(tp);
+        Assert.True(arcs.Count > 20);
+        // The entry goes round in half circles; along the centre lines no arc goes further than about half way round.
+        var alongLines = arcs.Where(a => a.Sweep < Math.PI * 0.99).ToList();
+        Assert.True(alongLines.Count > arcs.Count / 2, $"{alongLines.Count} of {arcs.Count} arcs shorter than half a circle");
+    }
+
+    [Fact]
+    public void Arcs_are_shorter_than_full_circles_would_be()
+    {
+        var (_, _, tp) = Generate(o => o.StepOver.Set(0.1));
+        // Total cutting length of the arcs against the same centres as full circles.
+        var arcs = Arcs(tp);
+        var cut = arcs.Sum(a => Point2.Distance(a.Start, a.Centre) * a.Sweep);
+        var circles = arcs.GroupBy(a => (Math.Round(a.Centre.X, 4), Math.Round(a.Centre.Y, 4)))
+            .Sum(g => 2 * Math.PI * Point2.Distance(g.First().Start, g.First().Centre));
+        Assert.True(cut < 0.7 * circles, $"{cut:0} of {circles:0}");
+    }
+
+    [Fact]
+    public void Chords_use_their_own_feedrate()
+    {
+        var (_, _, tp) = Generate(o => { o.CutFeedrate.Set(1000); o.PlungeFeedrate.Set(200); o.ChordFeedrate.Set(3000); });
+        Assert.Contains(tp.Moves, m => m.Kind == MoveKind.Feed && m.Feed == 3000);
+        Assert.DoesNotContain(tp.Moves, m => m.IsArc && m.Feed == 3000);
+    }
+
+    [Theory]
+    [InlineData(MillingDirection.Conventional, MoveKind.ArcCW)]
+    [InlineData(MillingDirection.Climb, MoveKind.ArcCCW)]
+    public void Direction_of_the_arcs_follows_the_milling_direction(MillingDirection direction, MoveKind kind)
+    {
+        var (_, _, tp) = Generate(o => { o.MillingDirection.Set(direction); o.FinalPass.Set(false); });
+        Assert.All(tp.Moves.Where(m => m.IsArc), m => Assert.Equal(kind, m.Kind));
+    }
+
+    [Fact]
+    public void Mixed_milling_warns_and_is_cut_as_climb()
+    {
+        var (_, _, mixed) = Generate(o => o.MillingDirection.Set(MillingDirection.Mixed));
+        Assert.Contains(mixed.Warnings, w => w.Contains("troch") && w.Contains("Mixed"));
+        var (_, _, climb) = Generate(o => o.MillingDirection.Set(MillingDirection.Climb));
+        Assert.Empty(climb.Warnings);
+        Assert.Equal(climb.Moves.Count, mixed.Moves.Count);
     }
 
     [Fact]

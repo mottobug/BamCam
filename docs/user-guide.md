@@ -119,9 +119,9 @@ Special operations:
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
 - **Trochoidal pocket** (Machining ▸ Trochoidal Pocket, toolbar button with the loops) for high speed clearing:
-  the tool enters with a helix (*Ramp Angle*) at the widest place and clears the pocket in circles along its
-  centre lines; each circle reaches at most *Step Over* (a fraction of the tool diameter, e.g. 0.15) beyond the
-  last one, also in corners and slots. That allows deep cuts with a small step over and a high feedrate. Islands
+  the tool enters with a helix (*Ramp Angle*) at the widest place and clears the pocket in arcs along its
+  centre lines. Each arc enters the material with no engagement and widens to at most *Step Over* (a fraction of the tool diameter, e.g. 0.15); a straight chord through the cleared area (at *Chord Feedrate*) leads to the next one,
+  also in corners and slots. That allows deep cuts with a small step over and a high feedrate. *Mixed* is not supported here and is cut as Climb, with a warning. Islands
   are left standing; *Final Pass* cuts along all walls at the end of each depth level. Places narrower than *Min
   Circle Radius* are left to the final pass. Example: `examples_to_test/Trochoidal pocket.cb`.
 - **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
