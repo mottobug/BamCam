@@ -261,6 +261,7 @@ public static class CbReader
     private static void ReadMachining(MachiningOptions m, XElement el)
     {
         m.FastPlungeHeight = -1; // absent = default: one minor grid unit
+        m.RebuildToolpathBeforePost = RebuildToolpath.Always; // CamBam leaves the element out for Always
         foreach (var c in el.Elements())
         {
             var v = c.Value;

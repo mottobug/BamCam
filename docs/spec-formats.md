@@ -440,7 +440,7 @@ Observed children, in this order (only those present per file):
 | Element | n/f | Values | Meaning / default |
 |---|---|---|---|
 | `OutFile` | 10/10 | `lathe-test.nc`, `{$cbfile.name}.nc`, empty | G-code destination; may contain macros |
-| `RebuildToolpathBeforePost` | 1/1 | `Prompt` | help: Always / Prompt / If Needed (spellings for others UNVERIFIED, e.g. `Always`, `IfNeeded`) |
+| `RebuildToolpathBeforePost` | 1/1 | `Prompt` | also `IfNeeded`; CamBam 1.0 leaves the element out for Always |
 | `FastPlungeHeight` | 9/9 | `0.1`, `0.2`, `0.4` | height above stock/last cut level to which a rapid is used before feeding; help: default −1 (= one minor grid unit), 0 = feed all the way |
 | `PostProcessor` | 7/7 | `Mach3-CutViewer+G43`, `Laser2`, `Mach3-Turn-CutViewer`, `Plasma`, `Mach3-CV` (not shipped!) | name of `.cbpp` without extension; absent/empty ⇒ default post (config `DefaultPostProcessor`) |
 | `Stock` | 15/15 | 1.6.1 | |
@@ -556,7 +556,7 @@ mop/MOPLathe (older order):
 | `Enabled` | bool, no state | `false` (laser.cb only) | absent ⇒ true |
 | `Style` | string, no state | `Chamfer`, `PCB Isolate` | CAM style name; absent/empty ⇒ inherit part/machining style |
 | `WorkPlane` | enum | `XY` (Default), `XZ` (Value, lathe) | help: XY / XZ / YZ |
-| `OptimisationMode` | enum | `Experimental` | help names New (0.9.8)/Legacy (0.9.7)/None; `Experimental` = the "New" optimiser. Others UNVERIFIED (`Legacy`, `None`) |
+| `OptimisationMode` | enum | `Experimental` | also `Standard` (CamBam shows it as Legacy) and `None`; `Experimental` = the "New" optimiser |
 | `RoughingFinishing` | enum | `Roughing`, `Finishing` | |
 | `ToolDiameter` | double | `2`, `3`, `6`, `9.525`, `0.18`, `0.008`, `0` | 0 ⇒ look up tool library |
 | `ToolNumber` | int | `0`, `1`, `2`, `3`, `4` | 0 ⇒ never issue tool change |

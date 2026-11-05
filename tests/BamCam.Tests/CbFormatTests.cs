@@ -99,6 +99,92 @@ public class CbFormatTests
         Assert.Equal(ParamState.Value, op2.TargetDepth.State);
     }
 
+    /// <summary>Values as CamBam saved them in a drawing where each was chosen in its user interface.</summary>
+    [Theory]
+    [InlineData("ToolProfile", "BallNose")]
+    [InlineData("SpindleDirection", "CCW")]
+    [InlineData("SpindleDirection", "Off")]
+    [InlineData("VelocityMode", "ConstantVelocity")]
+    [InlineData("VelocityMode", "ExactStop")]
+    [InlineData("WorkPlane", "YZ")]
+    [InlineData("OptimisationMode", "Standard")]
+    [InlineData("StepoverFeedrate", "Cut Feedrate")]
+    [InlineData("TabStyle", "Skip")]
+    [InlineData("DrillingMethod", "CustomScript")]
+    [InlineData("BoundaryMethod", "BoundingBox")]
+    [InlineData("Profile3DMethod", "Vertical")]
+    [InlineData("Profile3DMethod", "WaterlineFinish")]
+    [InlineData("StartCorner", "BottomRight")]
+    [InlineData("StartCorner", "TopLeft")]
+    [InlineData("StartCorner", "TopRight")]
+    [InlineData("LatheCutDirection", "LeftHand")]
+    public void Values_saved_by_cambam_are_written_back_unchanged(string element, string value)
+    {
+        var file = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test/Schreibweisen CamBam.cb"));
+        if (!File.Exists(file)) return;
+        static bool Has(string xml, string element, string value) =>
+            System.Text.RegularExpressions.Regex.IsMatch(xml, $@"<{element}(\s[^>]*)?>{System.Text.RegularExpressions.Regex.Escape(value)}</{element}>");
+        Assert.True(Has(File.ReadAllText(file), element, value), "not in CamBam's file");
+        Assert.True(Has(CbWriter.ToString(CbReader.Load(file)), element, value));
+    }
+
+    [Theory]
+    [InlineData(ArcCenterMode.Absolute, "<ArcCenterMode>Absolute</ArcCenterMode>")]
+    [InlineData(ArcCenterMode.IncrementalFromP1, "<ArcCenterMode>IncrementalFromP1</ArcCenterMode>")]
+    [InlineData(ArcCenterMode.IncrementalToP1, "<ArcCenterMode>IncrementalToP1</ArcCenterMode>")]
+    [InlineData(ArcCenterMode.IncrementalFromP2, "<ArcCenterMode>IncrementalFromP2</ArcCenterMode>")]
+    [InlineData(ArcCenterMode.IncrementalToP2, "<ArcCenterMode>IncrementalToP2</ArcCenterMode>")]
+    public void Arc_center_modes_are_written_as_cambam_does(ArcCenterMode mode, string expected)
+    {
+        var doc = CadDocument.CreateNew();
+        doc.Machining.ArcCenterMode = mode;
+        var xml = CbWriter.ToString(doc);
+        Assert.Contains(expected, xml);
+        Assert.Equal(mode, CbReader.Parse(xml).Machining.ArcCenterMode);
+    }
+
+    [Theory]
+    [InlineData("Incremental (C-P1)", ArcCenterMode.IncrementalFromP1)]
+    [InlineData("Incremental (P1-C)", ArcCenterMode.IncrementalToP1)]
+    [InlineData("Incremental (C-P2)", ArcCenterMode.IncrementalFromP2)]
+    [InlineData("Incremental (P2-C)", ArcCenterMode.IncrementalToP2)]
+    public void Older_arc_center_spellings_can_still_be_read(string older, ArcCenterMode mode)
+    {
+        var doc = CadDocument.CreateNew();
+        doc.Machining.ArcCenterMode = ArcCenterMode.Absolute;
+        var xml = CbWriter.ToString(doc).Replace("<ArcCenterMode>Absolute<", $"<ArcCenterMode>{older}<");
+        Assert.Equal(mode, CbReader.Parse(xml).Machining.ArcCenterMode);
+    }
+
+    [Fact]
+    public void An_older_legacy_optimisation_mode_becomes_standard()
+    {
+        var doc = CadDocument.CreateNew();
+        var shape = doc.AddEntity(RectEntity.FromCorners(new(0, 0), new(40, 30)));
+        var op = new ProfileOp { Name = "p" };
+        op.PrimitiveIds.Add(shape.Id);
+        op.OptimisationMode.Set(OptimisationMode.Standard);
+        doc.ActivePart.Operations.Add(op);
+        var xml = CbWriter.ToString(doc).Replace(">Standard</OptimisationMode>", ">Legacy</OptimisationMode>");
+        Assert.Equal(OptimisationMode.Standard, CbReader.Parse(xml).Parts[0].Operations[0].OptimisationMode.Value);
+    }
+
+    /// <summary>CamBam leaves the element out for Always, so a drawing without it means Always, and If Needed must be written.</summary>
+    [Fact]
+    public void Rebuild_before_post_follows_cambams_default()
+    {
+        var doc = CadDocument.CreateNew();
+        Assert.Equal(RebuildToolpath.IfNeeded, doc.Machining.RebuildToolpathBeforePost);
+        var xml = CbWriter.ToString(doc);
+        Assert.Contains("<RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>", xml);
+        Assert.Equal(RebuildToolpath.IfNeeded, CbReader.Parse(xml).Machining.RebuildToolpathBeforePost);
+
+        var withoutElement = xml.Replace("<RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>", "");
+        var read = CbReader.Parse(withoutElement);
+        Assert.Equal(RebuildToolpath.Always, read.Machining.RebuildToolpathBeforePost);
+        Assert.DoesNotContain("RebuildToolpathBeforePost", CbWriter.ToString(read));
+    }
+
     /// <summary>
     /// The spelling CamBam saves. BamCam used to write "Automatic (Outer)", and CamBam refused such a whole file with an
     /// XML error; these older files can still be read.

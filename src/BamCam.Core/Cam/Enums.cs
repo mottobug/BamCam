@@ -18,7 +18,7 @@ public enum VelocityMode { Undefined, ExactStop, ConstantVelocity, Default }
 
 public enum WorkPlane { XY, XZ, YZ }
 
-public enum OptimisationMode { Experimental, Standard, Legacy, None }
+public enum OptimisationMode { Experimental, Standard, None }
 
 public enum RoughingFinishing { Roughing, Finishing }
 
@@ -60,10 +60,10 @@ public enum ArcCenterMode
 {
     Default,
     Absolute,
-    [EnumMember(Value = "Incremental (C-P1)")] IncrementalCP1,
-    [EnumMember(Value = "Incremental (P1-C)")] IncrementalP1C,
-    [EnumMember(Value = "Incremental (C-P2)")] IncrementalCP2,
-    [EnumMember(Value = "Incremental (P2-C)")] IncrementalP2C,
+    IncrementalFromP1,
+    IncrementalToP1,
+    IncrementalFromP2,
+    IncrementalToP2,
 }
 
 public enum RebuildToolpath { Always, Prompt, IfNeeded }

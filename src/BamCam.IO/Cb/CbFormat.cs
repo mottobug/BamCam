@@ -94,12 +94,23 @@ internal static class CbFormat
 
     // ---- enums -------------------------------------------------------------------------------
 
+    /// <summary>Values earlier BamCam versions wrote in a spelling CamBam does not know, and what CamBam calls them.</summary>
+    private static readonly Dictionary<string, string> OlderSpellings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["IncrementalCP1"] = "IncrementalFromP1",
+        ["IncrementalP1C"] = "IncrementalToP1",
+        ["IncrementalCP2"] = "IncrementalFromP2",
+        ["IncrementalP2C"] = "IncrementalToP2",
+        ["Legacy"] = "Standard",
+    };
+
     public static bool TryParseEnum(Type enumType, string? text, out object value)
     {
         value = Activator.CreateInstance(enumType)!;
         if (string.IsNullOrWhiteSpace(text)) return false;
         var t = text.Trim();
         var compact = t.Replace(" ", "").Replace("(", "").Replace(")", "").Replace("-", "");
+        if (OlderSpellings.TryGetValue(compact, out var current)) (t, compact) = (current, current);
         foreach (var f in enumType.GetFields(BindingFlags.Public | BindingFlags.Static))
         {
             var member = f.GetCustomAttribute<EnumMemberAttribute>()?.Value;

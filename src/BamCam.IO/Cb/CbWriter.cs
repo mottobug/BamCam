@@ -311,7 +311,7 @@ public static class CbWriter
     {
         var el = new XElement("MachiningOptions");
         el.Add(new XElement("OutFile", m.OutFile));
-        if (m.RebuildToolpathBeforePost != RebuildToolpath.IfNeeded)
+        if (m.RebuildToolpathBeforePost != RebuildToolpath.Always)
             el.Add(new XElement("RebuildToolpathBeforePost", CbFormat.EnumText(m.RebuildToolpathBeforePost)));
         el.Add(new XElement("FastPlungeHeight", CbFormat.Double(m.FastPlungeHeight)));
         if (!string.IsNullOrEmpty(m.PostProcessor)) el.Add(new XElement("PostProcessor", m.PostProcessor));
