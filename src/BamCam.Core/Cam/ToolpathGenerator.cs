@@ -402,6 +402,39 @@ internal static class LoopTools
         return l.WithPoints(pts);
     }
 
+    /// <summary>A closed loop starting at its point nearest to <paramref name="target"/>, also between its vertices.</summary>
+    public static Loop StartAtNearest(Loop loop, Point2 target)
+    {
+        var nearest = NearestPoint(loop, target);
+        // The nearest point lies on the polygon only: a start there already is the exact one.
+        if (Point2.Distance(loop.Start, nearest) <= 0.1) return loop;
+        if (StartOnCornerArc(loop, target, nearest) is { } onArc) return onArc;
+        var started = StartAt(loop, target);
+        // On an arc the start is exact already (on the circle, not on a chord of the polygon).
+        return Point2.Distance(started.Start, nearest) <= 0.01 ? started : StartAt(loop, nearest);
+    }
+
+    /// <summary>
+    /// The start on the rounded corner of an offset, if <paramref name="nearest"/> lies on one: its circle around the
+    /// corner of the source shape is known exactly, unlike the chords of the flattened polygon.
+    /// </summary>
+    private static Loop? StartOnCornerArc(Loop loop, Point2 target, Point2 nearest)
+    {
+        var radius = Math.Abs(loop.SnapOffset);
+        if (loop.Source == null || radius < 1e-6) return null;
+        foreach (var corner in loop.Source.Segments().Select(s => s.Start.XY))
+        {
+            if (Math.Abs(Point2.Distance(corner, nearest) - radius) > 2 * ToolpathGenerator.ChordTolerance || Point2.Distance(target, corner) < 1e-9) continue;
+            var start = corner + (target - corner).Normalized() * radius;
+            if (Point2.Distance(start, nearest) > 0.1) continue;
+            var l = loop.StartNearest(start);
+            var pts = new List<Point2> { start };
+            pts.AddRange(l.Points.Skip(1).Where(p => Point2.Distance(p, start) > 1e-3));
+            return l.WithPoints(pts);
+        }
+        return null;
+    }
+
     /// <summary>Point of a closed loop nearest to <paramref name="target"/>, also between its vertices.</summary>
     public static Point2 NearestPoint(Loop loop, Point2 target)
     {

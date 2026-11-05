@@ -85,23 +85,23 @@ public class CamParameterTests
         op.SideProfile.Set(new SideProfile(SideProfileMethod.ConvexRadius, 4));
         var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 40)));
         var tp = Generate(doc, op);
-        // h = 2 below the top: offset reduced by R - sqrt(R² - (R-h)²).
-        Assert.Equal(42 - (4 - Math.Sqrt(16 - 4)), MaxXAt(tp, -2), 2);
-        Assert.Equal(42, MaxXAt(tp, -4), 2);
-        Assert.Equal(42, MaxXAt(tp, -6), 2);
+        // h = 2 below the top: offset grows by sqrt(R² - (R-h)²), and by R from h = R on.
+        Assert.Equal(42 + Math.Sqrt(16 - 4), MaxXAt(tp, -2), 2);
+        Assert.Equal(46, MaxXAt(tp, -4), 2);
+        Assert.Equal(46, MaxXAt(tp, -6), 2);
         Assert.True(MaxXAt(tp, -1) < MaxXAt(tp, -2));
     }
 
     [Fact]
-    public void Concave_radius_forms_a_cove_at_the_bottom()
+    public void Concave_radius_forms_a_cove_below_the_top_edge()
     {
         var op = Profile(-10, 2);
         op.SideProfile.Set(new SideProfile(SideProfileMethod.ConcaveRadius, 4));
         var (doc, _) = Setup(op, RectEntity.FromCorners(new(0, 0), new(40, 40)));
         var tp = Generate(doc, op);
+        Assert.Equal(42 + (4 - Math.Sqrt(16 - 4)), MaxXAt(tp, -2), 2);
+        Assert.Equal(42 + 4, MaxXAt(tp, -4), 2);
         Assert.Equal(42 + 4, MaxXAt(tp, -10), 2);
-        Assert.Equal(42 + (4 - Math.Sqrt(16 - 4)), MaxXAt(tp, -8), 2);
-        Assert.Equal(42, MaxXAt(tp, -6), 2);
     }
 
     [Fact]

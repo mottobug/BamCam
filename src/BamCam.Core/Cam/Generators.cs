@@ -38,6 +38,11 @@ internal static class ProfileGenerator
             }
         }
 
+        var wallExtras = new HashSet<double> { 0 };
+        if (op.SideProfile.Value.Method != SideProfileMethod.None)
+            foreach (var z in ctx.Levels(op))
+                wallExtras.Add(SideProfileExtra(op.SideProfile.Value, z, ctx.StockSurface, ctx.TargetDepth, baseOffset));
+
         // Loops for all source shapes at one offset distance (beyond tool radius + clearance).
         List<Loop> BuildLoops(double extra)
         {
@@ -76,7 +81,8 @@ internal static class ProfileGenerator
             if (op.CollisionDetection.Value && passLoops.Count(l => l.Closed) > 1)
                 passLoops = MergeOverlapping(passLoops, ccw);
 
-            if (op.CornerOvercut.Value)
+            // Only the wall has corners of the part to reach.
+            if (op.CornerOvercut.Value && wallExtras.Contains(extra))
                 passLoops = passLoops.Select(l => l.Closed && l.Source != null ? CornerOvercut(l, r) : l).ToList();
             return passLoops;
         }
@@ -97,13 +103,13 @@ internal static class ProfileGenerator
 
         if (op.SideProfile.Value.Method != SideProfileMethod.None)
         {
-            SideProfileCut(ctx, op, tp, mb, cutter, levels, BuildLoops, PrepareOffsets, passes > 1 ? cutWidth - dia : 0, stepOver, mixed);
+            SideProfileCut(ctx, op, tp, mb, cutter, levels, BuildLoops, PrepareOffsets, passes > 1 ? cutWidth - dia : 0, stepOver, mixed, baseOffset);
             mb.Retract();
             ctx.Finish(tp);
             return;
         }
 
-        var passExtras = Enumerable.Range(0, passes).Select(pass => passes == 1 ? 0 : (cutWidth - dia) * (passes - 1 - pass) / (passes - 1)).ToList();
+        var passExtras = PassOffsets(cutWidth - dia, 0, stepOver);
         if (passes > 1) PrepareOffsets(passExtras);
         var loops = new List<Loop>();
         foreach (var extra in passExtras) loops.AddRange(BuildLoops(extra));
@@ -184,10 +190,20 @@ internal static class ProfileGenerator
         cutter.Cut(rev, z, prev, tabs.Select(t => new TabInterval(len - t.End, len - t.Start)).ToList(), linkFeed);
     }
 
+    /// <summary>Offsets from the far pass in full stepovers to the wall; the last step takes what is left (as the reference output).</summary>
+    private static List<double> PassOffsets(double far, double near, double stepOver)
+    {
+        var result = new List<double>();
+        for (var i = 0; far - i * stepOver > near + 1e-9; i++) result.Add(far - i * stepOver);
+        result.Add(near);
+        return result;
+    }
+
     /// <summary>
-    /// Several passes per level (cut width, side profile), in the given order per level: the far passes first, the wall
-    /// last. Whatever the cut ordering, one shape's passes of a level stay together. A next pass within the maximum
-    /// crossover distance is reached at the current height, as is the first pass of the next level; otherwise the tool retracts.
+    /// Several passes per level (cut width, side profile), in the given order per level: the wall comes last. As in the
+    /// reference output, one shape's passes of a level stay together whatever the cut ordering. The innermost pass starts
+    /// nearest the tool and the others next to it. A next pass within the maximum crossover distance is reached at the
+    /// current height, as is the first pass of the next level; otherwise the tool retracts.
     /// </summary>
     private static void CutPasses(GenContext ctx, ProfileOp op, Toolpath tp, MoveBuilder mb, LoopCutter cutter,
         List<double> levels, Dictionary<double, List<Loop>> perLevel, List<int> sourceIds, bool mixed)
@@ -196,24 +212,32 @@ internal static class ProfileGenerator
         var tabsSettings = op.HoldingTabs.Value;
         var maxCross = op.MaxCrossoverDistance.Value * dia;
         var stepFeed = op.StepoverFeedrate.Value == StepoverFeedrate.CutFeedrate ? ctx.CutFeed : ctx.PlungeFeed;
-        var tabs = new Dictionary<Loop, List<TabInterval>>();
 
-        // Every further pass of a shape starts next to the start of the pass before.
-        List<Loop> Chained(IEnumerable<Loop> passes)
+        List<Loop> PassesOf(double z, int id) => perLevel[z].Where(l => l.SourceId == id).ToList();
+
+        static Loop Innermost(List<Loop> passes) => passes.MinBy(l => Math.Abs(l.SignedArea()))!;
+
+        // The passes in cutting order, with their starts chained from the innermost one outwards.
+        List<Loop> Started(List<Loop> passes)
         {
-            var result = new List<Loop>();
-            foreach (var pass in passes)
-                result.Add(result.Count > 0 && pass.Closed ? LoopTools.StartAt(pass, LoopTools.NearestPoint(pass, result[^1].Start)) : pass);
-            return result;
+            if (!passes.All(l => l.Closed)) return passes;
+            var started = new Dictionary<Loop, Loop>();
+            Point2? previous = mb.Position?.XY;
+            foreach (var pass in passes.OrderBy(l => Math.Abs(l.SignedArea())))
+            {
+                started[pass] = previous is { } target ? LoopTools.StartAtNearest(pass, target) : pass;
+                previous = started[pass].Start;
+            }
+            return passes.Select(l => started[l]).ToList();
         }
 
-        var chained = new Dictionary<(double, int), List<Loop>>();
         void CutLevel(int li, int id, double prev)
         {
             var z = levels[li];
-            if (!chained.TryGetValue((z, id), out var passes)) passes = chained[(z, id)] = Chained(perLevel[z].Where(l => l.SourceId == id));
-            foreach (var loop in passes)
+            var passes = Started(PassesOf(z, id));
+            for (var i = 0; i < passes.Count; i++)
             {
+                var loop = passes[i];
                 double? link = null;
                 if (loop.Closed && mb.Position is { } p && Point2.Distance(p.XY, loop.Start) <= maxCross + 1e-9)
                 {
@@ -221,8 +245,10 @@ internal static class ProfileGenerator
                     else if (!mixed && li > 0 && Math.Abs(p.Z - prev) < 1e-9 && cutter.LeadIn.LeadMoveType != LeadMoveType.Tangent && !p.XY.AlmostEquals(loop.Start, 1e-7))
                         mb.Line(loop.Start.ToPoint3(p.Z), stepFeed);
                 }
-                if (!tabs.TryGetValue(loop, out var loopTabs)) loopTabs = tabs[loop] = ComputeTabs(op, loop, dia, tabsSettings, tp);
-                CutDirected(cutter, mb, loop, z, prev, loopTabs, mixed && li % 2 == 1, linkFeed: link);
+                // With several passes a spiral entry has no flat lap before the next one, except at the final depth.
+                var helix = passes.Count > 1 && i == 0 && li < levels.Count - 1 && cutter.ContinuesAsHelix(loop, z);
+                // Mixed milling changes direction only for a single pass per level.
+                CutDirected(cutter, mb, loop, z, prev, ComputeTabs(op, loop, dia, tabsSettings, tp), mixed && passes.Count == 1 && li % 2 == 1, helix, link);
             }
         }
 
@@ -231,14 +257,22 @@ internal static class ProfileGenerator
             var prev = ctx.StockSurface;
             for (var li = 0; li < levels.Count; li++)
             {
-                foreach (var id in sourceIds)
+                var z = levels[li];
+                var remaining = sourceIds.Where(id => PassesOf(z, id).Count > 0).ToList();
+                var first = true;
+                while (remaining.Count > 0)
                 {
+                    // Each level goes on with the shape nearest the tool.
+                    var id = mb.Position is { } at && remaining.Count > 1
+                        ? remaining.MinBy(s => Point2.Distance(at.XY, LoopTools.NearestPoint(Innermost(PassesOf(z, s)), at.XY)))
+                        : remaining[0];
+                    remaining.Remove(id);
                     // Never linked across to another shape.
-                    if (id != sourceIds[0]) mb.Retract();
+                    if (!first) mb.Retract();
+                    first = false;
                     CutLevel(li, id, prev);
                 }
-                if (sourceIds.Count > 1) mb.Retract();
-                prev = levels[li];
+                prev = z;
             }
             return;
         }
@@ -256,30 +290,32 @@ internal static class ProfileGenerator
 
     /// <summary>
     /// Extra offset (away from the part) of the profile wall at level <paramref name="z"/> for side profiles.
-    /// Slope: Value is the wall angle from vertical; positive values widen the offset with depth, so that a straight
-    /// tool can cut the wall (as the reference output). Convex radius: rounds over the top edge. Concave radius: a cove at the bottom. The sign of Value flips the effect.
+    /// Measured from the stock surface, as the reference output: the offset grows with depth, so that a straight tool
+    /// can cut the wall. Slope: Value is the wall angle from vertical. Convex radius: rounds over the top edge. Concave
+    /// radius: a cove below the top edge.
     /// </summary>
-    internal static double SideProfileExtra(SideProfile sp, double z, double top, double bottom)
+    internal static double SideProfileExtra(SideProfile sp, double z, double top, double bottom, double baseOffset)
     {
-        var sign = Math.Sign(sp.Value);
-        var r = Math.Abs(sp.Value);
+        var size = Math.Abs(sp.Value);
+        var h = top - z;
+        double extra, largest;
         switch (sp.Method)
         {
             case SideProfileMethod.Slope:
-                return (top - z) * Math.Tan(Angles.ToRadians(sp.Value));
+                var tan = Math.Tan(Angles.ToRadians(size));
+                (extra, largest) = (h * tan, (top - bottom) * tan);
+                break;
             case SideProfileMethod.ConvexRadius:
-            {
-                var h = top - z;
-                return h < r ? -sign * (r - Math.Sqrt(r * r - (r - h) * (r - h))) : 0;
-            }
+                (extra, largest) = (h < size ? Math.Sqrt(size * size - (size - h) * (size - h)) : size, size);
+                break;
             case SideProfileMethod.ConcaveRadius:
-            {
-                var u = z - bottom;
-                return u < r ? sign * (r - Math.Sqrt(r * r - (r - u) * (r - u))) : 0;
-            }
+                (extra, largest) = (h < size ? size - Math.Sqrt(size * size - h * h) : size, size);
+                break;
             default:
                 return 0;
         }
+        // A negative value mirrors the profile: the tool runs on the other side of the shape, widening towards the top.
+        return sp.Value >= 0 ? extra : largest - extra - 2 * baseOffset;
     }
 
     /// <summary>
@@ -288,28 +324,20 @@ internal static class ProfileGenerator
     /// </summary>
     private static void SideProfileCut(GenContext ctx, ProfileOp op, Toolpath tp, MoveBuilder mb, LoopCutter cutter,
         List<double> levels, Func<double, List<Loop>> buildLoops, Action<IEnumerable<double>> prepareOffsets,
-        double cutWidthExtra, double stepOver, bool mixed)
+        double cutWidthExtra, double stepOver, bool mixed, double baseOffset)
     {
         var sp = op.SideProfile.Value;
         var top = ctx.StockSurface;
         var bottom = ctx.TargetDepth;
-        var extras = levels.ToDictionary(z => z, z => SideProfileExtra(sp, z, top, bottom));
+        var extras = levels.ToDictionary(z => z, z => SideProfileExtra(sp, z, top, bottom, baseOffset));
         var maxExtra = extras.Values.DefaultIfEmpty(0).Max() + cutWidthExtra;
 
-        // Offsets cut at each level, far passes first.
-        List<double> OffsetsAt(double z)
-        {
-            var near = extras[z];
-            var far = sp.AdjustCutWidth ? maxExtra : near + cutWidthExtra;
-            var result = new List<double>();
-            if (far - near > 1e-9)
-            {
-                var n = (int)Math.Ceiling((far - near) / stepOver - 1e-9);
-                for (var i = 0; i < n; i++) result.Add(far - (far - near) * i / n);
-            }
-            result.Add(near);
-            return result;
-        }
+        // Offsets cut at each level, far passes first; a negative value mirrors the profile, so it goes on towards the inside.
+        var mirrored = sp.Value < 0;
+        var minExtra = extras.Values.DefaultIfEmpty(0).Min() - cutWidthExtra;
+        List<double> OffsetsAt(double z) => mirrored
+            ? PassOffsets(extras[z], sp.AdjustCutWidth ? minExtra : extras[z] - cutWidthExtra, stepOver)
+            : PassOffsets(sp.AdjustCutWidth ? maxExtra : extras[z] + cutWidthExtra, extras[z], stepOver);
 
         prepareOffsets(levels.SelectMany(OffsetsAt));
         var perLevel = levels.ToDictionary(z => z, z => OffsetsAt(z).SelectMany(buildLoops).ToList());
@@ -448,7 +476,11 @@ internal static class ProfileGenerator
             if (perimeter < s.SizeThreshold) return result;
             var count = s.TabDistance > 0 ? (int)Math.Round(perimeter / s.TabDistance) : s.MinimumTabs;
             count = Math.Clamp(count, s.MinimumTabs, Math.Max(s.MinimumTabs, s.MaximumTabs));
-            for (var i = 0; i < count; i++) centres.Add((i + 0.5) * len / count);
+            // Evenly along the shape itself, so that the tabs of all passes line up.
+            for (var i = 0; i < count; i++)
+                centres.Add(loop.Source != null
+                    ? LoopTools.ProjectDistance(loop.Points, true, LoopTools.PointAtFraction(loop.Source, (i + 0.5) / count))
+                    : (i + 0.5) * len / count);
             if (loop.Source != null)
                 foreach (var c in centres)
                     RecordTab(tp, HoldingTabTools.CreateTab(loop.SourceId, loop.Source, LoopTools.PointAtDistance(loop.Points, c)));

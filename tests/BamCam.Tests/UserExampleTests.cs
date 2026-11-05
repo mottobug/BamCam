@@ -14,6 +14,8 @@ public class UserExampleTests(ITestOutputHelper output)
 {
     private static readonly string Dir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test"));
 
+    private const string SideProfileDrawing = "Vergleich Seitenprofil";
+
     public static IEnumerable<object[]> Examples()
     {
         if (!Directory.Exists(Dir)) yield break;
@@ -21,6 +23,8 @@ public class UserExampleTests(ITestOutputHelper output)
         {
             // Turning examples are compared with CamBam's turning post in LatheTests.
             if (File.ReadAllText(cb).Contains("MOPLathe")) continue;
+            // Compared operation by operation, see below.
+            if (Path.GetFileNameWithoutExtension(cb) == SideProfileDrawing) continue;
             var nc = Directory.GetFiles(Dir, Path.GetFileNameWithoutExtension(cb) + ".*.nc").FirstOrDefault();
             if (nc != null) yield return [Path.GetFileName(cb), Path.GetFileName(nc)];
         }
@@ -73,6 +77,29 @@ public class UserExampleTests(ITestOutputHelper output)
         if (!File.Exists(Path.Combine(Dir, "Vergleich Schnittbreite.cb"))) return;
         var (mismatches, _, _) = Compare("Vergleich Schnittbreite.cb", "Vergleich Schnittbreite.Part1.nc");
         Assert.Equal(0, mismatches);
+    }
+
+    /// <summary>
+    /// Side profiles and combinations with a cut width, operation by operation. Not identical yet: G (equally near
+    /// start points), L, M, N (the end of a lap on a corner arc is segmented differently; in L its end point differs by
+    /// about 0.005 mm) and U (CamBam offsets an open shape with a cut width to its side).
+    /// </summary>
+    [Theory]
+    [InlineData('A'), InlineData('B'), InlineData('C'), InlineData('D'), InlineData('E'), InlineData('F'), InlineData('H')]
+    [InlineData('I'), InlineData('J'), InlineData('K'), InlineData('O'), InlineData('P'), InlineData('Q'), InlineData('R')]
+    [InlineData('S'), InlineData('T')]
+    public void Side_profile_gcode_is_identical_to_cambam(char operation)
+    {
+        var (cb, nc) = (Path.Combine(Dir, SideProfileDrawing + ".cb"), Path.Combine(Dir, SideProfileDrawing + ".Part1.nc"));
+        if (!File.Exists(cb)) return;
+        var doc = CbReader.Load(cb);
+        var paths = doc.Parts.SelectMany(p => p.Operations).ToDictionary(op => op, op => ToolpathGenerator.Generate(doc, op));
+        var ours = GCodePoster.Post(doc, paths, new PostProcessorDefinition()).Text.Replace("\r\n", "\n").Split('\n');
+
+        static string[] Section(IEnumerable<string> lines, char op) => lines
+            .SkipWhile(l => !l.StartsWith($"( {op} ")).TakeWhile((l, i) => i == 0 || !System.Text.RegularExpressions.Regex.IsMatch(l, @"^\( [A-Z] "))
+            .Where(l => l.Length > 0 && l is not ("M5" or "M30")).ToArray();
+        Assert.Equal(Section(File.ReadAllLines(nc), operation), Section(ours, operation));
     }
 
     /// <summary>
