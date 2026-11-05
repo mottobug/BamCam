@@ -128,6 +128,48 @@ public class CbFormatTests
         Assert.True(Has(CbWriter.ToString(CbReader.Load(file)), element, value));
     }
 
+    /// <summary>The same for nesting, saved by CamBam; it leaves out Grid Order for Right Up, its default.</summary>
+    [Theory]
+    [InlineData("NestMethod", "Grid")]
+    [InlineData("NestMethod", "IsoGrid")]
+    [InlineData("NestMethod", "PointList")]
+    [InlineData("GridOrder", "RightDown")]
+    [InlineData("GridOrder", "LeftUp")]
+    [InlineData("GridOrder", "LeftDown")]
+    [InlineData("GridOrder", "UpRight")]
+    [InlineData("GridOrder", "UpLeft")]
+    [InlineData("GridOrder", "DownRight")]
+    [InlineData("GridOrder", "DownLeft")]
+    public void Nesting_values_saved_by_cambam_are_written_back_unchanged(string element, string value)
+    {
+        var file = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test/Schreibweisen Nesting CamBam.cb"));
+        if (!File.Exists(file)) return;
+        Assert.Contains($"<{element}>{value}</{element}>", File.ReadAllText(file));
+        Assert.Contains($"<{element}>{value}</{element}>", CbWriter.ToString(CbReader.Load(file)));
+    }
+
+    [Theory]
+    [InlineData("Right Down", NestGridOrder.RightDown)]
+    [InlineData("Up Left", NestGridOrder.UpLeft)]
+    public void Older_grid_order_spellings_can_still_be_read(string older, NestGridOrder order)
+    {
+        var doc = CadDocument.CreateNew();
+        doc.ActivePart.Nesting.NestMethod = NestMethod.Grid;
+        doc.ActivePart.Nesting.GridOrder = order;
+        var xml = CbWriter.ToString(doc).Replace($"<GridOrder>{order}<", $"<GridOrder>{older}<");
+        Assert.Contains(older, xml);
+        Assert.Equal(order, CbReader.Parse(xml).ActivePart.Nesting.GridOrder);
+    }
+
+    [Fact]
+    public void Older_iso_grid_spelling_can_still_be_read()
+    {
+        var doc = CadDocument.CreateNew();
+        doc.ActivePart.Nesting.NestMethod = NestMethod.IsoGrid;
+        var xml = CbWriter.ToString(doc).Replace("<NestMethod>IsoGrid<", "<NestMethod>ISOGrid<");
+        Assert.Equal(NestMethod.IsoGrid, CbReader.Parse(xml).ActivePart.Nesting.NestMethod);
+    }
+
     [Theory]
     [InlineData(ArcCenterMode.Absolute, "<ArcCenterMode>Absolute</ArcCenterMode>")]
     [InlineData(ArcCenterMode.IncrementalFromP1, "<ArcCenterMode>IncrementalFromP1</ArcCenterMode>")]

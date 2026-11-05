@@ -108,7 +108,7 @@ public class CamDisplayTests
         items = NestingLayout.Grid(n, box).Select(i => i.Location).ToArray();
         Assert.Equal([new(0, 0), new(0, 70), new(70, 0), new(70, 70), new(140, 0), new(140, 70)], items);
 
-        n.NestMethod = NestMethod.ISOGrid;
+        n.NestMethod = NestMethod.IsoGrid;
         n.GridOrder = NestGridOrder.RightUp;
         items = NestingLayout.Grid(n, box).Select(i => i.Location).ToArray();
         Assert.Equal(new Point2(35, 70), items[3]);

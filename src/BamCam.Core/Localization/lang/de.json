@@ -584,7 +584,7 @@
   "First direction, then the direction of the next row or column.": "Erste Richtung, dann die Richtung zur nächsten Zeile bzw. Spalte.",
   "Grid Alternate": "Raster im Zickzack",
   "Zig-zag rows (or columns) instead of returning to the start of each row.": "Zeilen (bzw. Spalten) im Zickzack statt Rücksprung an den Anfang jeder Zeile.",
-  "ISOGrid": "ISO-Raster",
+  "Iso Grid": "ISO-Raster",
   "Manual": "Manuell",
   "Left Down": "Links, nach unten",
   "Left Up": "Links, nach oben",

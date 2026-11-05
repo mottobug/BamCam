@@ -401,7 +401,7 @@ this.Entities.Add(sungear)
 | `ToolProfile` | `Unspecified` | part-level default tool profile |
 | `MachiningOrigin` | `80,223`, `60,-60`, `248,80`, `278,80` | part G-code origin (C-BEAM only) |
 | `Nesting/BasePoint` | `30,30`, `0,0`, empty | |
-| `Nesting/NestMethod` | `None`, `Grid` | absent ⇒ None. Help: also Iso Grid, Manual, Point List (XML spellings UNVERIFIED, e.g. `IsoGrid`, `Manual`, `PointList`) |
+| `Nesting/NestMethod` | `None`, `Grid` | absent ⇒ None. Also `IsoGrid`, `PointList` (saved by CamBam 1.0); Manual spelling not checked |
 | `Nesting/Rows`, `Columns`, `Spacing` | `2`, `3`, `8` | only snap-together-box |
 | `NestingItem` (outer, collection) / `NestingItem` (inner) | 6 inner items | list of nest copies; inner has `Location` (2D offset) and `Transform m=` |
 

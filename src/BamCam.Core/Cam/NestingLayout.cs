@@ -48,7 +48,7 @@ public static class NestingLayout
         var sy = order is NestGridOrder.RightDown or NestGridOrder.LeftDown or NestGridOrder.DownRight or NestGridOrder.DownLeft ? -1 : 1;
         var outer = rowFirst ? rows : cols;
         var inner = rowFirst ? cols : rows;
-        var iso = n.NestMethod == NestMethod.ISOGrid;
+        var iso = n.NestMethod == NestMethod.IsoGrid;
 
         for (var o = 0; o < outer; o++)
         for (var k = 0; k < inner; k++)
@@ -69,7 +69,7 @@ public static class NestingLayout
     /// <summary>Regenerates <see cref="Part.NestingItems"/> for Grid / ISO Grid parts. Returns true if they changed.</summary>
     public static bool Update(CadDocument doc, Part part, IReadOnlyDictionary<MachineOp, Toolpath>? toolpaths)
     {
-        if (part.Nesting.NestMethod is not (NestMethod.Grid or NestMethod.ISOGrid)) return false;
+        if (part.Nesting.NestMethod is not (NestMethod.Grid or NestMethod.IsoGrid)) return false;
         var items = Grid(part.Nesting, PartExtents(doc, part, toolpaths));
         if (items.Count == 0) return false;
         var same = items.Count == part.NestingItems.Count && items.Zip(part.NestingItems)
