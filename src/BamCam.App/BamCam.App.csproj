@@ -45,4 +45,9 @@
     <ProjectReference Include="..\BamCam.IO\BamCam.IO.csproj" />
     <ProjectReference Include="..\BamCam.PluginApi\BamCam.PluginApi.csproj" />
   </ItemGroup>
+
+  <!-- SHA-256 of the plugins that come with this build (set by build/package.ps1): they run without asking. -->
+  <ItemGroup Condition="'$(BundledPluginHashes)' != ''">
+    <AssemblyMetadata Include="BundledPluginHashes" Value="$(BundledPluginHashes)" />
+  </ItemGroup>
 </Project>

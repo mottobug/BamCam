@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Port of the CamBam plugin "CentreLines" by EddyCurrent, with the author's permission.
+       Original source: https://cambamcnc.com/forum/index.php?topic=6740.0/index.php
+       docs/porting-cambam-plugins.md goes through it step by step. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Product>Centre Lines</Product>
+    <Company>EddyCurrent</Company>
+    <Copyright>Copyright 2017 EddyCurrent; BamCam port with the author's permission</Copyright>
+    <Version>3.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- BamCam provides these at run time: reference them without copying them to the output. -->
+    <ProjectReference Include="..\..\src\BamCam.PluginApi\BamCam.PluginApi.csproj" Private="false" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\..\src\BamCam.Core\BamCam.Core.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

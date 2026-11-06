@@ -239,7 +239,8 @@ Copy the build output (the plugin DLL, its `.deps.json` and its own dependencies
 This is the folder that **Open Plugin Folder** in **Tools ▸ Plugins** opens, and the place for your own plugins.
 
 BamCam also loads plugins from a `plugins` folder next to the program, which is meant for plugins bundled with
-BamCam. If the same plugin (same file name, product and company) is in several places, the one in your own folder is
+BamCam. Those run without asking, because the program contains their SHA-256; a changed file is asked about like any
+other. If the same plugin (same file name, product and company) is in several places, the one in your own folder is
 used and BamCam warns about the others, which are not loaded. **Tools ▸ Plugins** shows the full path of each plugin.
 
 At the next start BamCam asks once per new or changed plugin file whether it may be loaded, showing product,

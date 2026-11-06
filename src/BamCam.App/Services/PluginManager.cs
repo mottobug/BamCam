@@ -27,6 +27,8 @@ public sealed class PluginInfo
     public string? Error { get; set; }
     /// <summary>The file used instead of this one when the same plugin is installed twice.</summary>
     public string? DuplicateOf { get; set; }
+    /// <summary>Exactly the file that came with this BamCam: it runs without asking, unless switched off.</summary>
+    public bool Bundled { get; set; }
 }
 
 /// <summary>Approval of a plugin file, stored in the settings.</summary>
@@ -73,17 +75,30 @@ public sealed class PluginManager
     /// <summary>Folders searched for plugins: next to the program (bundled) and in the system folder.</summary>
     public static IEnumerable<string> Folders => [System.IO.Path.Combine(AppContext.BaseDirectory, "plugins"), UserFolder];
 
+    /// <summary>
+    /// SHA-256 of the plugins that came with this BamCam, compiled into the program by build/package.ps1. It is not a file
+    /// beside the plugins, because the program folder can be writable: a changed plugin is asked about like any other.
+    /// </summary>
+    public static IReadOnlySet<string> BundledHashes { get; } = typeof(PluginManager).Assembly
+        .GetCustomAttributes<AssemblyMetadataAttribute>()
+        .Where(a => a.Key == "BundledPluginHashes")
+        .SelectMany(a => (a.Value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>Lists plugin assemblies (without running them) and applies the stored approvals.</summary>
-    public void Discover(IEnumerable<string> folders, IReadOnlyList<PluginApproval> approvals)
+    /// <param name="bundled">Hashes of the plugins that need no approval; by default <see cref="BundledHashes"/>.</param>
+    public void Discover(IEnumerable<string> folders, IReadOnlyList<PluginApproval> approvals, IReadOnlySet<string>? bundled = null)
     {
+        bundled ??= BundledHashes;
         Plugins.Clear();
         foreach (var folder in folders.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
         foreach (var file in Directory.GetFiles(folder, "*.dll", SearchOption.AllDirectories).Order())
         {
             if (Inspect(file) is not { } info) continue;
+            info.Bundled = bundled.Contains(info.Hash);
             var approval = approvals.FirstOrDefault(a => string.Equals(a.File, info.Path, StringComparison.OrdinalIgnoreCase));
             // Approved files stay "Disabled" until they are loaded.
-            info.State = approval == null || approval.Hash != info.Hash ? PluginState.NotApproved : PluginState.Disabled;
+            info.State = !info.Bundled && (approval == null || approval.Hash != info.Hash) ? PluginState.NotApproved : PluginState.Disabled;
             Plugins.Add(info);
         }
         MarkDuplicates();
@@ -107,9 +122,16 @@ public sealed class PluginManager
         }
     }
 
-    /// <summary>True when the stored approval enables exactly this file.</summary>
-    public static bool IsEnabled(PluginInfo p, IReadOnlyList<PluginApproval> approvals) =>
-        p.State != PluginState.Duplicate && approvals.Any(a => string.Equals(a.File, p.Path, StringComparison.OrdinalIgnoreCase) && a.Hash == p.Hash && a.Enabled);
+    /// <summary>
+    /// True when the stored approval enables exactly this file. A plugin that came with BamCam is on unless the user
+    /// switched it off, also after an update changed the file.
+    /// </summary>
+    public static bool IsEnabled(PluginInfo p, IReadOnlyList<PluginApproval> approvals)
+    {
+        if (p.State == PluginState.Duplicate) return false;
+        var approval = approvals.FirstOrDefault(a => string.Equals(a.File, p.Path, StringComparison.OrdinalIgnoreCase));
+        return p.Bundled ? approval is not { Enabled: false } : approval is { Enabled: true } && approval.Hash == p.Hash;
+    }
 
     /// <summary>
     /// Plugin information from the file's metadata, or null when it is no plugin (does not reference the plugin API).

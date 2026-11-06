@@ -6,7 +6,9 @@ everything that talks to CamBam with the BamCam plugin interface described in [p
 For most drawing and machining plugins this is a matter of hours, not a rewrite.
 
 > BamCam is an independent implementation and does not contain CamBam code. Port your own plugins, or plugins
-> whose licence allows it.
+> whose licence or author allows it.
+
+[Section 7](#7-a-complete-example-centre-lines) goes through a real port step by step.
 
 ## 1. New project
 
@@ -74,6 +76,7 @@ There is no access to BamCam's window, menus or toolbars: a command is a menu en
 | Adding entities to the active layer | `ctx.AddEntities("Draw gear", entities)` – one undoable step, selects them |
 | Changing entities, then an undo point / refresh | `ctx.Change("Description", () => { /* change */ })` – undo point and refresh in one |
 | Entity classes (polyline, circle, arc, line, point list, region, text) | `PolylineEntity`, `CircleEntity`, `ArcEntity`, `LineEntity`, `PointListEntity`, `RegionEntity`, `TextEntity`, `SplineEntity`, `SurfaceEntity` (namespace `BamCam.Core.Model`) |
+| `PolyRectangle` | `RectEntity`: `LowerLeft`, `Width`, `Height`, `CornerRadius`; a rounded one has more than 4 outline points |
 | Single-precision points (`Point3F`-style) and vectors | `Point3` / `Point2` with `double` coordinates (`BamCam.Core.Geometry`) |
 | Polyline segments with bulge | `Path2` with `Vertex(point, bulge)`; `entity.ToPaths()` gives any entity's geometry in drawing coordinates |
 | Entity transformation matrix | `entity.Transform` (`Matrix4`); `ApplyTransform` bakes it in |
@@ -136,5 +139,115 @@ drawing (typed lengths, angles, diameters), fillet / chamfer, trim / extend, ali
 3. For operations: open a drawing saved with the CamBam version and check that the operation and its values load,
    then compare the G-code with CamBam's output.
 
-The working example is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin) (a drawing command and a
-facing operation).
+The working example with all kinds of extensions is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin)
+(drawing commands, a mouse tool, a facing operation, a file format and a macro).
+
+## 7. A complete example: Centre Lines
+
+*Centre Lines* by EddyCurrent ([original source](https://cambamcnc.com/forum/index.php?topic=6740.0/index.php)) draws a
+horizontal and a vertical centre line for the selected circle or rectangle. It was a CamBam plugin of about 150 lines.
+The port, made with the author's permission, is
+[`samples/BamCam.CentreLinesPlugin`](../samples/BamCam.CentreLinesPlugin), about 80 lines. It comes with BamCam.
+
+### Project
+
+| Before | After |
+|---|---|
+| .NET Framework 3.5, x86 | `net10.0`, as in [section 1](#1-new-project) |
+| References to `CamBam.CAD`, `CamBam.Geom` and `System.Windows.Forms` | `BamCam.PluginApi` and `BamCam.Core` |
+| Name and version in `AssemblyInfo.cs` | `Product`, `Company` and `Version` in the project file; users see them when they allow the plugin |
+
+### Entry point
+
+Before, a static method added a Windows Forms menu item, with the action in a click handler:
+
+```text
+public static void InitPlugin(CamBamUI ui)
+{
+    ToolStripMenuItem NewMenuItem = new ToolStripMenuItem();
+    NewMenuItem.Text = "Centre Lines";
+    NewMenuItem.Click += new EventHandler(plugin_clicked);
+    ui.Menus.mnuDraw.DropDownItems.Add(NewMenuItem);
+}
+```
+
+After, BamCam creates the menu item:
+
+```csharp
+public void Initialize(IPluginHost host)
+{
+    host.AddCommand(new PluginCommand
+    {
+        Header = host.Language == "de" ? "_Mittellinien" : "_Centre Lines",
+        Menu = "Draw",
+        Execute = context =>
+        {
+            Run(context, host.Language == "de");
+            return Task.CompletedTask;
+        },
+    });
+}
+```
+
+### The drawing and the selection
+
+Before, the plugin kept the active view and drawing in static fields, which are set once. After, each run gets the
+current ones from its context, so there is nothing to keep:
+
+| Before | After |
+|---|---|
+| `CamBamUI.MainUI.ActiveView` and its `CADFile` | `context.Document` |
+| `view.SelectedEntities` | `context.Selection` |
+| `ent is PolyRectangle`, `ent is Circle` | `RectEntity`, `CircleEntity` |
+| `MessageBox.Show(...)` | `context.Log(...)` |
+
+### The geometry
+
+The calculation stays the same. The point type changes, and its operators make the code shorter:
+
+```text
+left = new Point3F(middle.X - radius, middle.Y, 0);
+right = new Point3F(middle.X + radius, middle.Y, 0);
+horiz.Add(left);
+horiz.Add(right);
+```
+
+```csharp
+Line(middle - new Point2(radius, 0), middle + new Point2(radius, 0))
+```
+
+Two things need attention, because the stored values of an object are not always what you see:
+
+- **Transforms:** `Center` and `Diameter` are stored values. Apply `entity.Transform` to them, or use `entity.ToPaths()`,
+  which gives the geometry in drawing coordinates. A rectangle can also be rotated this way.
+- **Assumptions about the outline:** the original took the first 4 points of the rectangle's outline, which is right for
+  sharp corners. The port calculates the corners from `LowerLeft`, `Width` and `Height`, so rounded corners work too.
+
+### Adding the lines and undo
+
+Before, there were separate calls for the undo point, for adding each line and for refreshing the view:
+
+```text
+CamBamUI.MainUI.UndoBuffer.AddUndoPoint(TextTranslation.Translate("Undo Circle Centre Lines"));
+CamBamUI.MainUI.UndoBuffer.Add(myfile.ActiveLayer.Entities);
+myfile.Add(horiz);
+myfile.Add(vert);
+view.RefreshView();
+```
+
+After, one call does all of this, and also selects the new lines:
+
+```csharp
+context.AddEntities("Centre lines", lines);
+```
+
+### Texts
+
+The original used CamBam's translation function. BamCam tells the plugin the language with `host.Language`, and the
+plugin brings its own texts.
+
+### Test
+
+The calculation has no user interface, so it is easy to test without BamCam:
+[`CentreLinesPluginTests.cs`](../tests/BamCam.Tests/CentreLinesPluginTests.cs). Then build the plugin, copy the DLL and
+its `.deps.json` as in [section 6](#6-test-and-publish), select a circle and choose **Draw ▸ Centre Lines**.

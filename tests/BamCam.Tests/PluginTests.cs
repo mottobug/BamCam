@@ -79,6 +79,49 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     }
 
     [Fact]
+    public void A_bundled_plugin_runs_without_asking_until_it_is_switched_off_or_changed()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bamcam-plugins-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var copy = Path.Combine(dir, "BamCam.SamplePlugin.dll");
+            File.Copy(plugin.DllPath, copy);
+            var hash = PluginManager.Inspect(copy)!.Hash;
+            HashSet<string> bundled = [hash.ToLowerInvariant(), hash];
+            var manager = new PluginManager();
+
+            manager.Discover([dir], [], bundled);
+            var found = Assert.Single(manager.Plugins);
+            Assert.True(found.Bundled);
+            Assert.NotEqual(PluginState.NotApproved, found.State);
+            Assert.True(PluginManager.IsEnabled(found, []));
+
+            // Switched off in Tools > Plugins.
+            List<PluginApproval> off = [new() { File = found.Path, Hash = found.Hash, Enabled = false }];
+            manager.Discover([dir], off, bundled);
+            Assert.False(PluginManager.IsEnabled(manager.Plugins.Single(), off));
+            Assert.NotEqual(PluginState.NotApproved, manager.Plugins.Single().State);
+
+            // Without a matching hash it is a plugin like any other.
+            manager.Discover([dir], [], new HashSet<string>());
+            Assert.Equal(PluginState.NotApproved, manager.Plugins.Single().State);
+            Assert.False(PluginManager.IsEnabled(manager.Plugins.Single(), []));
+
+            // A changed file in the same place is asked about.
+            File.AppendAllText(copy, " ");
+            manager.Discover([dir], [], bundled);
+            Assert.False(manager.Plugins.Single().Bundled);
+            Assert.Equal(PluginState.NotApproved, manager.Plugins.Single().State);
+            Assert.False(PluginManager.IsEnabled(manager.Plugins.Single(), []));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void Plugins_with_other_file_names_are_no_duplicates()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bamcam-plugins-" + Guid.NewGuid().ToString("N"));

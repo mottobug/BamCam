@@ -41,9 +41,21 @@ $publishDir = Join-Path $OutDir "publish/$Rid"
 New-Item -ItemType Directory -Force $OutDir | Out-Null
 if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 
+# Plugins that come with BamCam: built first, because the program contains their hashes and runs exactly these files
+# without asking. Only their own files are shipped, BamCam provides the rest at run time.
+$centreLines = Join-Path $root "samples/BamCam.CentreLinesPlugin"
+$pluginBuild = Join-Path $OutDir "plugin-build/CentreLines"
+& dotnet build $centreLines -c $Configuration -o $pluginBuild -nologo
+if ($LASTEXITCODE -ne 0) { throw "building the Centre Lines plugin failed" }
+$pluginHash = (Get-FileHash (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.dll") -Algorithm SHA256).Hash
+
 Write-Host "==> Publishing $Rid ($Version)"
-& dotnet publish $project -c $Configuration -r $Rid --self-contained true -p:Version=$Version -o $publishDir -nologo
+& dotnet publish $project -c $Configuration -r $Rid --self-contained true -p:Version=$Version -p:BundledPluginHashes=$pluginHash -o $publishDir -nologo
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+
+$pluginTarget = Join-Path $publishDir "plugins/CentreLines"
+New-Item -ItemType Directory -Force $pluginTarget | Out-Null
+Copy-Item (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.dll"), (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.deps.json") $pluginTarget
 
 function Write-TextLf([string]$path, [string[]]$lines) {
     # LF line endings and no BOM: required for shell scripts, .desktop files and plists.

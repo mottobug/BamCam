@@ -969,6 +969,7 @@
   "No plugins installed. Plugins are .NET assemblies (.dll) placed in:\n{0}": "Keine Plugins installiert. Plugins sind .NET-Bibliotheken (.dll) im Ordner:\n{0}",
   "Open Plugin Folder": "Plugin-Ordner öffnen",
   "Duplicate Of": "Duplikat von",
+  "Bundled": "Mitgeliefert",
   "Not loaded: installed twice":"Nicht geladen: doppelt installiert",
   "Plugin {0} is installed twice. Using {1}, ignoring {2}.": "Das Plugin {0} ist doppelt installiert. {1} wird verwendet, {2} wird ignoriert.",
   "Your own plugins belong in {0} (Open Plugin Folder). Plugins in {1} are loaded too; that folder is meant for plugins bundled with BamCam.": "Eigene Plugins gehören nach {0} (Plugin-Ordner öffnen). Plugins in {1} werden ebenfalls geladen; dieser Ordner ist für mit BamCam mitgelieferte Plugins gedacht.",
