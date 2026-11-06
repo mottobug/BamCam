@@ -86,6 +86,27 @@ public sealed class DocumentSession
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
+    /// <summary>Several changes made one undo step (one run of a script).</summary>
+    public sealed class UndoGroup
+    {
+        internal int UndoDepth { get; set; } = -1;
+    }
+
+    /// <summary>
+    /// Like <see cref="Execute"/>, but joins the last step of the group as long as nothing else was done in between
+    /// (an edit or an undo by the user starts a new step). The state is recorded first, so that a change that fails
+    /// half way can be undone.
+    /// </summary>
+    public void Execute(UndoGroup group, Action action)
+    {
+        if (group.UndoDepth != _undo.Count) BeginEdit();
+        group.UndoDepth = _undo.Count;
+        action();
+        Document.NotifyChanged();
+        PruneSelection();
+        Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     /// <summary>Notifies listeners after an in-place edit (e.g. property grid) that has been recorded via <see cref="BeginEdit"/>.</summary>
     public void NotifyChanged()
     {

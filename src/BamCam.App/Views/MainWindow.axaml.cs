@@ -337,6 +337,16 @@ public partial class MainWindow : Window
                 await Task.Delay(300);
                 Log($"--align-menu: open={menu.IsOpen}, items={menu.Items.Count}");
             }
+            // --run-script <file>: runs a script of the Scripts menu as the menu does (without asking), then undoes it once.
+            if (options.TryGetValue("--run-script", out var scriptFile))
+            {
+                var before = _session.Document.AllEntities().Count();
+                var error = await RunScriptText(File.ReadAllText(scriptFile), Path.GetFileNameWithoutExtension(scriptFile));
+                var after = _session.Document.AllEntities().Count();
+                _session.Undo();
+                Log($"--run-script: error={error ?? "none"}, objects {before} -> {after}, after one undo {_session.Document.AllEntities().Count()}");
+                Log("--run-script: menu " + string.Join(" | ", _scriptMenu!.Items.OfType<MenuItem>().Select(i => i.Header)));
+            }
             // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
             Window? extra = null;
             if (options.TryGetValue("--window", out var which))
@@ -354,6 +364,7 @@ public partial class MainWindow : Window
                         new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
                         t => (null, Core.Model.ScriptEntity.Runner!(t).Error)),
+                    "scriptfile" => new ScriptEditorWindow("var a = 1 +;\nAdd(Circel(0, 0, 1));\nLog(Document.Name);\n", null, new ScriptFileActions((_, _) => Task.FromResult<string?>(null), _ => { })),
                     _ => null,
                 };
                 extra?.Show(this);
@@ -365,7 +376,8 @@ public partial class MainWindow : Window
                 if (extra is ScriptEditorWindow scriptEditor)
                 {
                     await Task.Delay(300);
-                    scriptEditor.Run();
+                    if (which == "scriptfile") await scriptEditor.Check();
+                    else scriptEditor.Run();
                 }
             }
             if (options.Count > 0)
@@ -668,7 +680,10 @@ public partial class MainWindow : Window
     private void OnDrop(object? sender, DragEventArgs e)
     {
         var files = e.DataTransfer.TryGetFiles();
-        if (files?.FirstOrDefault()?.TryGetLocalPath() is { } path) OpenPath(path);
+        if (files?.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
+        // A dropped script only joins the Scripts menu; it does not run.
+        if (Path.GetExtension(path).Equals(ScriptLibrary.Extension, StringComparison.OrdinalIgnoreCase)) _ = AddScriptFile(path);
+        else OpenPath(path);
     }
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)

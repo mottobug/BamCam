@@ -228,6 +228,10 @@ drawing (Edit ▸ Edit Script; helpers `Circle`, `Rect`, `Line`, `Arc`, `Polylin
 drawing runs only after the user allowed it; until then the outlines saved with the drawing are shown. CamBam's
 Python scripts do not run.
 
+**Scripts menu:** C# scripts as `.csx` files in the script folder, run from the menu, with access to the whole drawing
+and one undo step per run. The editor has New, Save, Check (lists all compile errors without running) and Run. A
+file runs only after the user saw its text and allowed it. See [docs/scripts.md](docs/scripts.md).
+
 **Not implemented yet:** additive 3D mode, CamBam bitmap objects (images are imported as surfaces or outlines
 instead). Such objects are kept unchanged when `.cb` files are loaded and saved.
 

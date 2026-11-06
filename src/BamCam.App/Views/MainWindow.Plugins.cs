@@ -97,17 +97,22 @@ public partial class MainWindow
     }
 
     /// <summary>What a plugin command may do: undoable changes, selection, messages and simple input dialogs.</summary>
-    private sealed class CommandContext(MainWindow window) : ICommandContext
+    /// <remarks>With a group (one run of a script) all changes are one undo step.</remarks>
+    private sealed class CommandContext(MainWindow window, DocumentSession.UndoGroup? group = null) : ICommandContext
     {
         public CadDocument Document => window._session.Document;
         public IReadOnlyList<Entity> Selection => window.Selected;
 
-        public void Change(string description, Action change) => window._session.Execute(description, change);
+        public void Change(string description, Action change)
+        {
+            if (group != null) window._session.Execute(group, change);
+            else window._session.Execute(description, change);
+        }
 
         public void AddEntities(string description, IEnumerable<Entity> entities)
         {
             var list = entities.ToList();
-            window._session.Execute(description, () =>
+            Change(description, () =>
             {
                 foreach (var e in list) window._session.Document.AddEntity(e);
             });
