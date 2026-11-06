@@ -21,6 +21,8 @@ public partial class MainWindow
     private async Task LoadPluginsAsync()
     {
         _plugins.Discover(PluginManager.Folders, _settings.Plugins);
+        foreach (var plugin in _plugins.Plugins.Where(p => p.State == PluginState.Duplicate))
+            Log(F("Warning: {0}", F("Plugin {0} is installed twice. Using {1}, ignoring {2}.", plugin.Name, plugin.DuplicateOf ?? "", plugin.Path)));
         var changed = false;
         foreach (var plugin in _plugins.Plugins.Where(p => p.State == PluginState.NotApproved).ToList())
         {

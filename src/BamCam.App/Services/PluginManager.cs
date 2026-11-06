@@ -12,7 +12,7 @@ using BamCam.Plugins;
 
 namespace BamCam.App.Services;
 
-public enum PluginState { NotApproved, Disabled, Loaded, Failed }
+public enum PluginState { NotApproved, Disabled, Loaded, Failed, Duplicate }
 
 /// <summary>A plugin assembly found in a plugin folder.</summary>
 public sealed class PluginInfo
@@ -25,6 +25,8 @@ public sealed class PluginInfo
     public required string Hash { get; init; }
     public PluginState State { get; set; } = PluginState.NotApproved;
     public string? Error { get; set; }
+    /// <summary>The file used instead of this one when the same plugin is installed twice.</summary>
+    public string? DuplicateOf { get; set; }
 }
 
 /// <summary>Approval of a plugin file, stored in the settings.</summary>
@@ -84,11 +86,30 @@ public sealed class PluginManager
             info.State = approval == null || approval.Hash != info.Hash ? PluginState.NotApproved : PluginState.Disabled;
             Plugins.Add(info);
         }
+        MarkDuplicates();
+    }
+
+    /// <summary>
+    /// The same plugin in several places would register everything twice. The last one found is used, so that the
+    /// user's own folder wins over the folder next to the program; the others are neither asked about nor loaded.
+    /// </summary>
+    private void MarkDuplicates()
+    {
+        var same = Plugins.GroupBy(p => (File: System.IO.Path.GetFileName(p.Path).ToUpperInvariant(), p.Name, p.Vendor));
+        foreach (var group in same)
+        {
+            var used = group.Last();
+            foreach (var other in group.Where(p => p != used))
+            {
+                other.State = PluginState.Duplicate;
+                other.DuplicateOf = used.Path;
+            }
+        }
     }
 
     /// <summary>True when the stored approval enables exactly this file.</summary>
     public static bool IsEnabled(PluginInfo p, IReadOnlyList<PluginApproval> approvals) =>
-        approvals.Any(a => string.Equals(a.File, p.Path, StringComparison.OrdinalIgnoreCase) && a.Hash == p.Hash && a.Enabled);
+        p.State != PluginState.Duplicate && approvals.Any(a => string.Equals(a.File, p.Path, StringComparison.OrdinalIgnoreCase) && a.Hash == p.Hash && a.Enabled);
 
     /// <summary>
     /// Plugin information from the file's metadata, or null when it is no plugin (does not reference the plugin API).

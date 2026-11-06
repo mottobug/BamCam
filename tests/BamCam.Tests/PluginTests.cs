@@ -39,6 +39,67 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     }
 
     [Fact]
+    public void The_same_plugin_in_two_folders_is_used_once_from_the_last_folder()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bamcam-plugins-" + Guid.NewGuid().ToString("N"));
+        var bundled = Path.Combine(dir, "bundled");
+        var user = Path.Combine(dir, "user");
+        Directory.CreateDirectory(bundled);
+        Directory.CreateDirectory(user);
+        try
+        {
+            var name = Path.GetFileName(plugin.DllPath);
+            File.Copy(plugin.DllPath, Path.Combine(bundled, name));
+            File.Copy(plugin.DllPath, Path.Combine(user, name));
+            var manager = new PluginManager();
+
+            // Only the file that is used is asked about.
+            manager.Discover([bundled, user], []);
+            Assert.Equal(2, manager.Plugins.Count);
+            var ignored = manager.Plugins[0];
+            var used = manager.Plugins[1];
+            Assert.Equal(PluginState.Duplicate, ignored.State);
+            Assert.Equal(used.Path, ignored.DuplicateOf);
+            Assert.StartsWith(user, used.Path);
+            Assert.Equal(PluginState.NotApproved, used.State);
+
+            // An older approval of the other copy does not load it.
+            List<PluginApproval> approvals =
+            [
+                new() { File = ignored.Path, Hash = ignored.Hash, Enabled = true },
+                new() { File = used.Path, Hash = used.Hash, Enabled = true },
+            ];
+            manager.Discover([bundled, user], approvals);
+            Assert.Equal([manager.Plugins[1]], manager.Plugins.Where(p => PluginManager.IsEnabled(p, approvals)));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
+    public void Plugins_with_other_file_names_are_no_duplicates()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "bamcam-plugins-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.Copy(plugin.DllPath, Path.Combine(dir, "One.dll"));
+            File.Copy(plugin.DllPath, Path.Combine(dir, "Two.dll"));
+            var manager = new PluginManager();
+
+            manager.Discover([dir], []);
+
+            Assert.All(manager.Plugins, p => Assert.Equal(PluginState.NotApproved, p.State));
+        }
+        finally
+        {
+            Directory.Delete(dir, true);
+        }
+    }
+
+    [Fact]
     public void An_approval_is_valid_for_exactly_this_file()
     {
         var dir = Path.Combine(Path.GetTempPath(), "bamcam-plugins-" + Guid.NewGuid().ToString("N"));

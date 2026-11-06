@@ -19,12 +19,13 @@ public sealed class PluginRow(PluginInfo info, bool enabled) : INotifyPropertyCh
     public string Name => Info.Name;
     public string Vendor => Info.Vendor;
     public string Version => Info.Version;
-    /// <summary>File name; the folder opens with "Open Plugin Folder".</summary>
-    public string File => System.IO.Path.GetFileName(Info.Path);
+    /// <summary>Full path: plugins can come from the folder next to the program or from the user's folder.</summary>
+    public string File => Info.Path;
 
     public string State => Info.State switch
     {
         PluginState.Loaded => T("Loaded"),
+        PluginState.Duplicate => T("Not loaded: installed twice"),
         PluginState.Failed => F("Error: {0}", Info.Error ?? ""),
         PluginState.NotApproved => T("Not approved"),
         _ => T("Not loaded"),
@@ -57,7 +58,7 @@ public sealed class PluginManagerWindow : Window
     {
         _approvals = approvals;
         Title = T("Plugins");
-        Width = 900;
+        Width = 1100;
         Height = 380;
         MinWidth = 420;
         MinHeight = 240;
@@ -76,7 +77,7 @@ public sealed class PluginManagerWindow : Window
         grid.Columns.Add(new DataGridTextColumn { Header = T("Name"), Binding = new Binding(nameof(PluginRow.Name)), IsReadOnly = true, Width = DataGridLength.Auto });
         grid.Columns.Add(new DataGridTextColumn { Header = T("Vendor"), Binding = new Binding(nameof(PluginRow.Vendor)), IsReadOnly = true, Width = DataGridLength.Auto });
         grid.Columns.Add(new DataGridTextColumn { Header = T("Version"), Binding = new Binding(nameof(PluginRow.Version)), IsReadOnly = true, Width = DataGridLength.Auto });
-        grid.Columns.Add(new DataGridTextColumn { Header = T("State"), Binding = new Binding(nameof(PluginRow.State)), IsReadOnly = true, Width = new DataGridLength(1.2, DataGridLengthUnitType.Star) });
+        grid.Columns.Add(new DataGridTextColumn { Header = T("State"), Binding = new Binding(nameof(PluginRow.State)), IsReadOnly = true, Width = new DataGridLength(280) });
         grid.Columns.Add(new DataGridTextColumn { Header = T("File"), Binding = new Binding(nameof(PluginRow.File)), IsReadOnly = true, Width = DataGridLength.Auto });
         foreach (var row in _rows) row.PropertyChanged += (_, _) => Apply(row);
 
@@ -87,7 +88,9 @@ public sealed class PluginManagerWindow : Window
         };
         var hint = new TextBlock
         {
-            Text = T("Changes take effect after restarting BamCam. Plugins run with the same rights as BamCam."),
+            Text = T("Changes take effect after restarting BamCam. Plugins run with the same rights as BamCam.") + "\n"
+                + F("Your own plugins belong in {0} (Open Plugin Folder). Plugins in {1} are loaded too; that folder is meant for plugins bundled with BamCam.",
+                    PluginManager.UserFolder, System.IO.Path.Combine(AppContext.BaseDirectory, "plugins")),
             TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(8, 0), FontSize = 11,
         };
 

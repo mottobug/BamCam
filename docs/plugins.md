@@ -221,6 +221,11 @@ Post processor templates can then use `{$acme.serial}` or `{$acme.serial(args)}`
 the operation being posted (null in header and footer) and the arguments. Built-in macros and the post processor's
 own macros take precedence: prefix the name with your vendor name.
 
+A macro is not a command you run: it is replaced when the G-code is written. To try `{$sample.opcount}` of the
+sample plugin, enter `(ops {$sample.opcount})` in **Custom File Header** of the machining options and produce the
+G-code: the file then contains the number of enabled operations. A post processor can also use the macro in its own
+templates, such as its Header.
+
 ## Installing
 
 Copy the build output (the plugin DLL, its `.deps.json` and its own dependencies) into a folder below
@@ -228,7 +233,11 @@ Copy the build output (the plugin DLL, its `.deps.json` and its own dependencies
 - Windows: `%APPDATA%\BamCam\plugins\`
 - Linux and macOS: `~/.config/BamCam/plugins/`
 
-Plugins can also be bundled in a `plugins` folder next to the BamCam program.
+This is the folder that **Open Plugin Folder** in **Tools ▸ Plugins** opens, and the place for your own plugins.
+
+BamCam also loads plugins from a `plugins` folder next to the program, which is meant for plugins bundled with
+BamCam. If the same plugin (same file name, product and company) is in several places, the one in your own folder is
+used and BamCam warns about the others, which are not loaded. **Tools ▸ Plugins** shows the full path of each plugin.
 
 At the next start BamCam asks once per new or changed plugin file whether it may be loaded, showing product,
 company and version. Plugins run with the same rights as BamCam; the approval is bound to the file's SHA-256,
