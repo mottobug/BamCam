@@ -10,15 +10,16 @@ No post-build command runs, so nothing is sent to a machine, and the output file
 
 ## Installing
 
-Copy `BamCam.GCodeViewerPlugin.dll` and `BamCam.GCodeViewerPlugin.deps.json` into a folder below the plugin folder
-(**Tools ▸ Plugins ▸ Open Plugin Folder**), restart BamCam and allow the plugin. The file is attached to each release
-as `BamCam.GCodeViewerPlugin-<version>.zip`.
-
-To build it yourself:
+This plugin is not part of the BamCam releases: it is only available as source code. Build it:
 
 ```bash
 dotnet build plugins/BamCam.GCodeViewerPlugin -c Release
 ```
+
+Then copy `BamCam.GCodeViewerPlugin.dll` and `BamCam.GCodeViewerPlugin.deps.json` from
+`plugins/BamCam.GCodeViewerPlugin/bin/Release/net10.0` into a folder below the plugin folder (**Tools ▸ Plugins ▸ Open
+Plugin Folder**), restart BamCam and allow the plugin. It needs a BamCam version that has `PostGCode()`, newer than
+0.8.2-beta.3.
 
 ## Other viewers
 
