@@ -78,6 +78,14 @@ jobs:
             dotnet pack $project -c Release -p:Version=${{ steps.version.outputs.version }} -o artifacts
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
+      - name: G-code viewer plugin
+        if: matrix.name == 'win-x64'
+        shell: pwsh
+        run: |
+          dotnet build plugins/BamCam.GCodeViewerPlugin -c Release -o artifacts/viewer-plugin
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          Compress-Archive -Path artifacts/viewer-plugin/BamCam.GCodeViewerPlugin.dll, artifacts/viewer-plugin/BamCam.GCodeViewerPlugin.deps.json `
+            -DestinationPath artifacts/BamCam.GCodeViewerPlugin-${{ steps.version.outputs.version }}.zip
       - uses: actions/upload-artifact@v7
         with:
           name: BamCam-${{ matrix.name }}

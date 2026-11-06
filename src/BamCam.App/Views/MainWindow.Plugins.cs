@@ -123,6 +123,7 @@ public partial class MainWindow
         public void Log(string message) => window.Log(message);
         public Task<double?> AskNumber(string title, string label, double defaultValue) => Dialogs.PromptNumber(window, title, label, defaultValue);
         public Task<string?> AskText(string title, string label, string defaultValue = "") => Dialogs.Prompt(window, title, label, defaultValue);
+        public Task<string?> PostGCode() => window.PostGCodeText();
         public void StartTool(PluginTool tool) => window.View.SetTool(new PluginToolAdapter(window, tool));
     }
 

@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\BamCam.App\BamCam.App.csproj" />
     <!-- Built before the tests, loaded at run time like a third-party plugin (not referenced). -->
     <ProjectReference Include="..\..\samples\BamCam.SamplePlugin\BamCam.SamplePlugin.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\plugins\BamCam.GCodeViewerPlugin\BamCam.GCodeViewerPlugin.csproj" />
   </ItemGroup>
 
 </Project>

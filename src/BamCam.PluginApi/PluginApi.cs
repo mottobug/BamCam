@@ -124,6 +124,13 @@ public interface ICommandContext
     Task<string?> AskText(string title, string label, string defaultValue = "");
 
     /// <summary>
+    /// The G-code of the whole drawing as text, with the post processor of the drawing: toolpaths are generated when
+    /// needed, warnings go to the message window. No file is written and no post-build command runs, so that nothing
+    /// is sent to a machine. Null when there is nothing to post (or in a host that does not offer this).
+    /// </summary>
+    Task<string?> PostGCode() => Task.FromResult<string?>(null);
+
+    /// <summary>
     /// Starts an interactive tool in the drawing (picking points with the mouse). The command returns at once; the
     /// tool runs until it calls <see cref="IToolContext.End"/> or the user presses Esc.
     /// </summary>

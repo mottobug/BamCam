@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Opens the G-code of the drawing in a G-code viewer in the browser. Copy BamCam.GCodeViewerPlugin.dll and its
+       .deps.json into a folder below the "plugins" folder of BamCam's system folder. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Product>BamCam G-Code Viewer</Product>
+    <Company>BamCam project</Company>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- BamCam provides these at run time: reference them without copying them to the output. -->
+    <ProjectReference Include="..\..\src\BamCam.PluginApi\BamCam.PluginApi.csproj" Private="false" ExcludeAssets="runtime" />
+    <ProjectReference Include="..\..\src\BamCam.Core\BamCam.Core.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>

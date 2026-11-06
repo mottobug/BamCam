@@ -625,12 +625,7 @@ public partial class MainWindow
             }
         }
 
-        var post = _system.Resolve(doc.Machining.PostProcessor);
-        // A file from another computer: G-code for the wrong machine must not go unnoticed.
-        if (!string.IsNullOrWhiteSpace(doc.Machining.PostProcessor) && !post.Name.Equals(doc.Machining.PostProcessor, StringComparison.OrdinalIgnoreCase))
-            Log(F("Post processor '{0}' of this drawing not found; using '{1}'.", doc.Machining.PostProcessor, post.Name));
-        var result = GCodePoster.Post(doc, _session.Toolpaths, post, scope);
-        foreach (var w in result.Warnings.Distinct()) Log(F("Post: {0}", w));
+        var (post, result) = PostDrawing(scope);
         try
         {
             File.WriteAllText(path!, result.Text);
@@ -643,6 +638,34 @@ public partial class MainWindow
             return;
         }
         await RunPostBuild(post, path!, doc.Name);
+    }
+
+    /// <summary>Posts with the post processor of the drawing; the warnings go to the message window.</summary>
+    private (PostProcessorDefinition Post, PostResult Result) PostDrawing(PostScope scope)
+    {
+        var doc = _session.Document;
+        var post = _system.Resolve(doc.Machining.PostProcessor);
+        // A file from another computer: G-code for the wrong machine must not go unnoticed.
+        if (!string.IsNullOrWhiteSpace(doc.Machining.PostProcessor) && !post.Name.Equals(doc.Machining.PostProcessor, StringComparison.OrdinalIgnoreCase))
+            Log(F("Post processor '{0}' of this drawing not found; using '{1}'.", doc.Machining.PostProcessor, post.Name));
+        var result = GCodePoster.Post(doc, _session.Toolpaths, post, scope);
+        foreach (var w in result.Warnings.Distinct()) Log(F("Post: {0}", w));
+        return (post, result);
+    }
+
+    /// <summary>G-code for a plugin: as Produce G-code, but without a file and without the post-build command.</summary>
+    private async Task<string?> PostGCodeText()
+    {
+        var doc = _session.Document;
+        var ops = OpsInScope(PostScope.All).ToList();
+        if (ops.Count == 0)
+        {
+            Log(T("Nothing to post: no enabled machining operations."));
+            return null;
+        }
+        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
+            await GenerateToolpathsAsync(PostScope.All);
+        return PostDrawing(PostScope.All).Result.Text;
     }
 
     /// <summary>
