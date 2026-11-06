@@ -143,6 +143,29 @@ public static class CamLibraries
         return null;
     }
 
+    /// <summary>
+    /// What a tool setting of the part (or, without a part, of the machining options) means for the operations that do
+    /// not choose their own tool. The fields of the part stay as typed, as in CamBam, so the message shows the result.
+    /// </summary>
+    public static string DescribeTool(Model.CadDocument doc, Part? part)
+    {
+        var owner = part?.Name ?? Localization.Tr.T("Machining");
+        var number = part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
+        var typed = part is { ToolDiameter: > 0 } ? part.ToolDiameter : doc.Machining.ToolDiameter;
+        var typedProfile = part is { ToolProfile: not ToolProfile.Unspecified } ? part.ToolProfile : doc.Machining.ToolProfile;
+        var tool = FindTool(doc, part, number);
+        if (number > 0 && tool == null && typed <= 0)
+            return Localization.Tr.F("{0}: tool {1} not found in the tool libraries.", owner, number);
+        var profile = tool is { ToolProfile: not ToolProfile.Unspecified } ? tool.ToolProfile : typedProfile;
+        var diameter = typed > 0 ? typed : tool?.Diameter ?? 0;
+        if (number > 0)
+            return Localization.Tr.F("{0}: operations without their own tool use tool {1}: diameter {2}, profile {3}.",
+                owner, number, diameter, Localization.Tr.T(profile.ToString()));
+        return diameter > 0
+            ? Localization.Tr.F("{0}: operations without their own tool use diameter {1}, profile {2}.", owner, diameter, Localization.Tr.T(profile.ToString()))
+            : Localization.Tr.F("{0}: no tool set for operations without their own tool.", owner);
+    }
+
     /// <summary>Name of BamCam's lathe tool library for the drawing units.</summary>
     public static string LatheLibraryName(Model.DrawingUnits units) =>
         units == Model.DrawingUnits.Inches ? "BamCam-Lathe-in" : "BamCam-Lathe-mm";

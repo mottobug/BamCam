@@ -250,28 +250,38 @@ public static class LibraryFiles
             foreach (var (name, el) in style.Values)
                 resolved[name] = el;
 
-        // Tool cascade, also without any style: a tool chosen on the operation, the part or in the machining options
-        // wins over the style; its diameter and profile come from the tool library unless typed in the operation.
-        var cascadeTool = op.ToolNumber is { State: ParamState.Value, Value: > 0 } ? op.ToolNumber.Value
+        // Tool cascade, also without any style, in the order of CamBam. It wins over the style.
+        // Diameter: a number on the operation -> a diameter typed in the part or machining options -> the library.
+        // Profile: the library -> the part or machining options. A number that is not found gives 0 and Unspecified.
+        var numberOnOp = op.ToolNumber is { State: ParamState.Value, Value: > 0 };
+        var number = numberOnOp ? op.ToolNumber.Value
             : part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
-        if (cascadeTool > 0)
+        var typedDiameter = part is { ToolDiameter: > 0 } ? part.ToolDiameter : doc.Machining.ToolDiameter;
+        var typedProfile = part is { ToolProfile: not ToolProfile.Unspecified } ? part.ToolProfile : doc.Machining.ToolProfile;
+        var tool = CamLibraries.FindTool(doc, part, number, op is TurningOp);
+        double? diameter = !numberOnOp && typedDiameter > 0 ? typedDiameter
+            : number > 0 ? tool?.Diameter ?? 0 : null;
+        ToolProfile? profile = tool is { ToolProfile: not ToolProfile.Unspecified } ? tool.ToolProfile
+            : typedProfile != ToolProfile.Unspecified ? typedProfile
+            : number > 0 && tool == null ? ToolProfile.Unspecified : null;
+
+        void Set<T>(CamParam<T> p, T value, string name)
         {
-            var tool = CamLibraries.FindTool(doc, part, cascadeTool, op is TurningOp);
-            void Set<T>(CamParam<T> p, T value, string name)
-            {
-                if (p.State != ParamState.Default || Equals(p.Value, value)) return;
-                p.Value = value;
-                p.RawXml = null;
-                changed.Add(name);
-            }
-            Set(op.ToolNumber, cascadeTool, "ToolNumber");
-            if (tool != null)
-            {
-                Set(op.ToolDiameter, tool.Diameter, "ToolDiameter");
-                if (tool.ToolProfile != ToolProfile.Unspecified) Set(op.ToolProfile, tool.ToolProfile, "ToolProfile");
-            }
-            foreach (var key in new[] { "ToolNumber", "ToolDiameter", "ToolProfile" }) resolved.Remove(key);
+            if (p.State != ParamState.Default || Equals(p.Value, value)) return;
+            p.Value = value;
+            p.RawXml = null;
+            changed.Add(name);
         }
+        // Values inherited before go away with their setting. Values of a style unknown here stay (see above).
+        var clearOld = op.ToolValuesInherited || (lib != null && op.ToolNumber is { State: ParamState.Default, Value: > 0 });
+        if (number > 0 || clearOld) Set(op.ToolNumber, number, "ToolNumber");
+        if (diameter != null || clearOld) Set(op.ToolDiameter, diameter ?? 0, "ToolDiameter");
+        if (profile != null || clearOld) Set(op.ToolProfile, profile ?? ToolProfile.Unspecified, "ToolProfile");
+        op.ToolValuesInherited = number > 0 || diameter != null || profile != null;
+
+        if (number > 0) resolved.Remove("ToolNumber");
+        if (diameter != null) resolved.Remove("ToolDiameter");
+        if (profile != null || number > 0) resolved.Remove("ToolProfile");
 
         foreach (var (name, param, _) in op.Parameters())
         {
@@ -289,6 +299,6 @@ public static class LibraryFiles
                 param.RawXml = null; // a preserved original text would no longer match the value
             }
         }
-        return changed;
+        return changed.Distinct().ToList();
     }
 }

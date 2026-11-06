@@ -1,0 +1,59 @@
+( Made using CamBam - http://www.cambam.co.uk )
+( Vergleich Werkzeug Machining 11/6/2026 6:39:50 PM )
+( Post processor: Default )
+( T1 : 1.0 )
+( T2 : 3.0 )
+( T3 : 3.0 )
+G21 G90 G64 G40
+G0 Z5.0
+( T3 : 3.0 )
+T3 M6
+( A Nur Machining Nr 3 )
+G17
+M3 S1000
+G0 X0.0 Y-1.5
+G0 Z0.2
+G1 F200.0 Z-2.0
+G1 F600.0 X40.0
+G3 X41.5 Y0.0 I0.0 J1.5
+G1 Y30.0
+G3 X40.0 Y31.5 I-1.5 J0.0
+G1 X0.0
+G3 X-1.5 Y30.0 I0.0 J-1.5
+G1 Y0.0
+G3 X0.0 Y-1.5 I1.5 J0.0
+( B Teil Nr 2 ueberschreibt )
+G0 Z5.0
+( T2 : 3.0 )
+T2 M6
+M3 S1000
+G0 X100.0
+G0 Z0.2
+G1 F200.0 Z-2.0
+G1 F600.0 X140.0
+G3 X141.5 Y0.0 I0.0 J1.5
+G1 Y30.0
+G3 X140.0 Y31.5 I-1.5 J0.0
+G1 X100.0
+G3 X98.5 Y30.0 I0.0 J-1.5
+G1 Y0.0
+G3 X100.0 Y-1.5 I1.5 J0.0
+( C Op Nr 1 ueberschreibt )
+G0 Z5.0
+( T1 : 1.0 )
+T1 M6
+M3 S1000
+G0 X200.0 Y-0.5
+G0 Z0.2
+G1 F200.0 Z-2.0
+G1 F600.0 X240.0
+G3 X240.5 Y0.0 I0.0 J0.5
+G1 Y30.0
+G3 X240.0 Y30.5 I-0.5 J0.0
+G1 X200.0
+G3 X199.5 Y30.0 I0.0 J-0.5
+G1 Y0.0
+G3 X200.0 Y-0.5 I0.5 J0.0
+G0 Z5.0
+M5
+M30

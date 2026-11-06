@@ -19,6 +19,7 @@ public static class ToolpathGenerator
     {
         var ctx = new GenContext(doc, op);
         var tp = new Toolpath();
+        if (!CheckTool(ctx, op, tp)) return tp;
         try
         {
             switch (op)
@@ -68,6 +69,30 @@ public static class ToolpathGenerator
         if (tp.Moves.Count == 0 && tp.Warnings.Count == 0)
             tp.Warnings.Add(Tr.F("{0}: no toolpath was generated (check the selected drawing objects).", op.Name));
         return tp;
+    }
+
+    /// <summary>
+    /// Warns about tool libraries and numbers that are not found and about a missing diameter. Returns false for an
+    /// operation that cannot be cut without a diameter (its stepover is a share of it).
+    /// </summary>
+    private static bool CheckTool(GenContext ctx, MachineOp op, Toolpath tp)
+    {
+        if (op is NcFileOp or VEngraveOp or DragKnifeOp || op.HiddenParameters.Contains(nameof(MachineOp.ToolDiameter))) return true;
+        foreach (var name in new[] { ctx.Part?.ToolLibrary, ctx.Doc.Machining.ToolLibrary }.Distinct())
+            if (!string.IsNullOrEmpty(name) && !CamLibraries.ToolLibraries.Any(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                tp.Warnings.Add(Tr.F("{0}: tool library '{1}' not found.", op.Name, name));
+        if (ctx.ToolDiameter > 0) return true;
+
+        var number = op.EffectiveToolNumber(ctx.Doc);
+        if (number > 0) tp.Warnings.Add(Tr.F("{0}: tool {1} not found in the tool libraries.", op.Name, number));
+        if (op is PocketOp or TrochoidalPocketOp or Profile3DOp or TurningOp or ProfileOp { CutWidth.Value: > 0 })
+        {
+            tp.Warnings.Add(Tr.F("{0}: no toolpath without a tool diameter. Set a tool number or a tool diameter.", op.Name));
+            return false;
+        }
+        if (op is ProfileOp)
+            tp.Warnings.Add(Tr.F("{0}: no tool diameter: the tool runs on the line. Set a tool number or a tool diameter.", op.Name));
+        return true;
     }
 
     private static readonly Dictionary<Type, Action<ToolpathContext, MachineOp, Toolpath>> Generators = [];

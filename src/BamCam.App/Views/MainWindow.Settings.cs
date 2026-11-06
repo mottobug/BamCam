@@ -193,7 +193,7 @@ public partial class MainWindow
             Log(F("Error opening {0}: {1}", file, ex.Message));
             materials = CuttingData.BuiltIn.ToList();
         }
-        var diameter = op?.EffectiveToolDiameter(doc) ?? (doc.Machining.ToolDiameter > 0 ? doc.Machining.ToolDiameter : 6);
+        var diameter = op?.EffectiveToolDiameter(doc) is > 0 and var known ? known : doc.Machining.ToolDiameter > 0 ? doc.Machining.ToolDiameter : 6;
         var part = op == null ? null : doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
         var tool = op == null ? null : CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc), op is TurningOp);
         var name = op == null ? null : string.IsNullOrEmpty(op.Name) ? op.DisplayType : op.Name;

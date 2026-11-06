@@ -101,10 +101,12 @@ public sealed class Part
     [Category("Tool"), DisplayName("Tool Number")]
     public int ToolNumber { get; set; }
 
-    [Category("Tool"), DisplayName("Tool Diameter")]
+    [Category("Tool"), DisplayName("Tool Diameter"),
+     Description("Stays empty when a tool number is set: the diameter then comes from the tool library. A value typed here wins over the library.")]
     public double ToolDiameter { get; set; }
 
-    [Category("Tool"), DisplayName("Tool Profile")]
+    [Category("Tool"), DisplayName("Tool Profile"),
+     Description("Stays empty when a tool number is set: the profile then comes from the tool library, which wins over a value typed here.")]
     public ToolProfile ToolProfile { get; set; } = ToolProfile.Unspecified;
 
     [Category("Stock")]
@@ -277,16 +279,27 @@ public abstract class MachineOp
     [Param(37, "Options")] public CamParam<OptionalPoint> StartPoint { get; set; } = new(OptionalPoint.None);
     [Param(38, "Options", XmlName = "Transform")] public CamParam<Matrix4> MOPTransform { get; set; } = new(Matrix4.Identity);
 
-    /// <summary>Tool diameter used for this op, resolving 0 from part / machining defaults.</summary>
+    /// <summary>
+    /// Set while the tool values in the Default state came from the part or the machining options, so that they go
+    /// away again with the setting they came from. Not saved.
+    /// </summary>
+    [Browsable(false)]
+    public bool ToolValuesInherited { get; set; }
+
+    /// <summary>
+    /// Tool diameter used for this op: its own value, the tool numbered on the op, a diameter typed in the part or the
+    /// machining options, the tool numbered there. 0 when there is none: the tool then runs on the line, with a warning.
+    /// </summary>
     public double EffectiveToolDiameter(CadDocument doc)
     {
         if (ToolDiameter.Value > 0) return ToolDiameter.Value;
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(this));
-        var number = EffectiveToolNumber(doc);
-        if (CamLibraries.FindTool(doc, part, number, this is TurningOp) is { Diameter: > 0 } tool) return tool.Diameter;
-        if (part is { ToolDiameter: > 0 }) return part.ToolDiameter;
-        if (doc.Machining.ToolDiameter > 0) return doc.Machining.ToolDiameter;
-        return doc.Units == DrawingUnits.Inches ? 0.125 : 3;
+        if (ToolNumber is not { State: ParamState.Value, Value: > 0 })
+        {
+            if (part is { ToolDiameter: > 0 }) return part.ToolDiameter;
+            if (doc.Machining.ToolDiameter > 0) return doc.Machining.ToolDiameter;
+        }
+        return CamLibraries.FindTool(doc, part, EffectiveToolNumber(doc), this is TurningOp)?.Diameter ?? 0;
     }
 
     /// <summary>Tool number cascade: MOP (non-zero) → Part → Machining.</summary>

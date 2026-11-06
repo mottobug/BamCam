@@ -73,6 +73,9 @@ public partial class MainWindow : Window
             else if (Properties.SelectedObject is Core.Cam.ToolDefinition tool) OnToolEdited(tool);
             else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
             else OnPropertyEdited();
+            if (key is nameof(Core.Cam.Part.ToolNumber) or nameof(Core.Cam.Part.ToolLibrary) or nameof(Core.Cam.Part.ToolDiameter) or nameof(Core.Cam.Part.ToolProfile)
+                && Properties.SelectedObject is Core.Cam.Part or Core.Cam.MachiningOptions)
+                Log(Core.Cam.CamLibraries.DescribeTool(_session.Document, Properties.SelectedObject as Core.Cam.Part));
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
 
