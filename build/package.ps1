@@ -43,7 +43,7 @@ if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 
 # Plugins that come with BamCam: built first, because the program contains their hashes and runs exactly these files
 # without asking. Only their own files are shipped, BamCam provides the rest at run time.
-$centreLines = Join-Path $root "samples/BamCam.CentreLinesPlugin"
+$centreLines = Join-Path $root "plugins/BamCam.CentreLinesPlugin"
 $pluginBuild = Join-Path $OutDir "plugin-build/CentreLines"
 & dotnet build $centreLines -c $Configuration -o $pluginBuild -nologo
 if ($LASTEXITCODE -ne 0) { throw "building the Centre Lines plugin failed" }

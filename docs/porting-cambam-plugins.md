@@ -147,7 +147,7 @@ The working example with all kinds of extensions is [`samples/BamCam.SamplePlugi
 *Centre Lines* by EddyCurrent ([original source](https://cambamcnc.com/forum/index.php?topic=6740.0/index.php)) draws a
 horizontal and a vertical centre line for the selected circle or rectangle. It was a CamBam plugin of about 150 lines.
 The port, made with the author's permission, is
-[`samples/BamCam.CentreLinesPlugin`](../samples/BamCam.CentreLinesPlugin), about 80 lines. It comes with BamCam.
+[`plugins/BamCam.CentreLinesPlugin`](../plugins/BamCam.CentreLinesPlugin), about 80 lines. It comes with BamCam.
 
 ### Project
 

@@ -7,9 +7,9 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/BamCam.SamplePlugin/BamCam.SamplePlugin.csproj" />
-    <Project Path="samples/BamCam.CentreLinesPlugin/BamCam.CentreLinesPlugin.csproj" />
   </Folder>
   <Folder Name="/plugins/">
+    <Project Path="plugins/BamCam.CentreLinesPlugin/BamCam.CentreLinesPlugin.csproj" />
     <Project Path="plugins/BamCam.GCodeViewerPlugin/BamCam.GCodeViewerPlugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
