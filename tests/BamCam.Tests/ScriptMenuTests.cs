@@ -1,4 +1,5 @@
 using BamCam.App.Services;
+using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 using BamCam.IO.Cb;
@@ -321,6 +322,93 @@ public class ScriptMenuTests
         Assert.True(blocks.Count >= 2);
         foreach (System.Text.RegularExpressions.Match block in blocks)
             Assert.Empty(ScriptRunner.CheckMenuScript(block.Groups[1].Value));
+    }
+
+    private static string ReferenceText()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "docs", "script-reference.md"))) dir = dir.Parent;
+        return File.ReadAllText(Path.Combine(dir!.FullName, "docs", "script-reference.md")).Replace("\r\n", "\n");
+    }
+
+    [Fact]
+    public async Task Examples_of_the_script_reference_run()
+    {
+        var blocks = System.Text.RegularExpressions.Regex.Matches(ReferenceText(), "```cs\n(.*?)```", System.Text.RegularExpressions.RegexOptions.Singleline);
+        Assert.True(blocks.Count >= 7);
+        foreach (System.Text.RegularExpressions.Match block in blocks)
+        {
+            var code = block.Groups[1].Value;
+            var doc = CadDocument.CreateNew();
+            var circle = doc.AddEntity(new CircleEntity { Center = new Point3(5, 5, 0), Diameter = 10 });
+            var profile = new ProfileOp { Name = "profile" };
+            profile.PrimitiveIds.Add(circle.Id);
+            doc.ActivePart.Operations.Add(profile);
+            var commands = new FakeCommands(doc);
+            commands.Selected.Add(circle);
+
+            var (result, _) = await Run(code, commands);
+
+            Assert.True(result.Error == null, $"{result.Error}\n{code}");
+        }
+    }
+
+    [Fact]
+    public async Task Examples_of_the_script_reference_do_what_they_say()
+    {
+        var blocks = System.Text.RegularExpressions.Regex.Matches(ReferenceText(), "```cs\n(.*?)```", System.Text.RegularExpressions.RegexOptions.Singleline)
+            .Select(m => m.Groups[1].Value).ToList();
+        var doc = CadDocument.CreateNew();
+        var circle = doc.AddEntity(new CircleEntity { Center = new Point3(5, 5, 0), Diameter = 10 });
+        var commands = new FakeCommands(doc);
+        commands.Selected.Add(circle);
+
+        await Run(blocks.Single(b => b.Contains("Drill circles")), commands);
+        var drill = Assert.IsType<DrillOp>(Assert.Single(doc.ActivePart.Operations));
+        Assert.Equal([circle.Id], drill.PrimitiveIds);
+        Assert.Equal(-5, drill.TargetDepth.Value);
+
+        await Run(blocks.Single(b => b.Contains("Holes")), commands);
+        Assert.Equal(5, doc.Layers.Single(l => l.Name.StartsWith("Holes", StringComparison.Ordinal)).EntityCount);
+
+        var before = doc.AllEntities().Count();
+        await Run(blocks.Single(b => b.Contains("CadOps.Offset")), commands);
+        Assert.Equal(before + 1, doc.AllEntities().Count());
+
+        // Moved by 10 in X, then rotated by 45 degrees around the origin: a * b applies a first.
+        await Run(blocks.Single(b => b.Contains("Move selection")), commands);
+        var expected = new Point2(15, 5).Rotate(Math.PI / 4, Point2.Zero);
+        Assert.True(circle.Bounds().Center.XY.AlmostEquals(expected, 1e-6), circle.Bounds().Center.ToString());
+    }
+
+    [Fact]
+    public void Everything_named_in_the_script_reference_exists()
+    {
+        var assemblies = new[] { typeof(CadDocument).Assembly, typeof(CommandScriptContext).Assembly };
+        var types = assemblies.SelectMany(a => a.GetExportedTypes()).ToLookup(t => t.Name);
+        var missing = new List<string>();
+        var checkedTypes = 0;
+        Type? current = null;
+        foreach (var line in ReferenceText().Split('\n'))
+        {
+            var heading = System.Text.RegularExpressions.Regex.Match(line, @"^### `(\w+)`");
+            if (heading.Success)
+            {
+                var name = heading.Groups[1].Value;
+                current = types[name].FirstOrDefault() ?? types[name + "`1"].FirstOrDefault();
+                if (current == null) missing.Add(name);
+                else checkedTypes++;
+                continue;
+            }
+            if (line.StartsWith("#", StringComparison.Ordinal)) current = null;
+            if (current == null || !line.StartsWith("| `", StringComparison.Ordinal)) continue;
+            var cell = line.Split('|')[1];
+            foreach (System.Text.RegularExpressions.Match member in System.Text.RegularExpressions.Regex.Matches(cell, @"`(\w+)"))
+                if (current.GetMember(member.Groups[1].Value, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.FlattenHierarchy).Length == 0)
+                    missing.Add($"{current.Name}.{member.Groups[1].Value}");
+        }
+        Assert.True(checkedTypes > 30, $"{checkedTypes} types");
+        Assert.True(missing.Count == 0, string.Join(", ", missing));
     }
 
     [Fact]

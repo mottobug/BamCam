@@ -30,7 +30,7 @@ public static class ScriptRunner
 
     private static readonly ScriptOptions MenuOptions = ObjectOptions
         .AddReferences(typeof(CommandScriptContext).Assembly)
-        .AddImports("BamCam.Core.Cam");
+        .AddImports("BamCam.Core.Cam", "BamCam.Core.Cad");
 
     private static readonly ConcurrentDictionary<string, (Script<object>? Script, string? Error)> CompiledObjects = new();
     private static readonly ConcurrentDictionary<string, (Script<object>? Script, string? Error)> CompiledMenuScripts = new();

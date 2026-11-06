@@ -50,7 +50,7 @@ BamCam needs a system supported by .NET 10; on Windows that is Windows 10 versio
 ## Documentation
 
 - [User guide](docs/user-guide.md): from the first start to G-code, all drawing and machining functions, shortcuts.
-- [Script objects](docs/scripts.md), [writing plugins](docs/plugins.md), [porting CamBam plugins](docs/porting-cambam-plugins.md).
+- [Scripts](docs/scripts.md), [script reference](docs/script-reference.md), [writing plugins](docs/plugins.md), [porting CamBam plugins](docs/porting-cambam-plugins.md).
 
 ## Build and run
 

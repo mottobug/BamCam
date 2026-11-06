@@ -118,8 +118,10 @@ Everything of script objects works: top-level C#, the helpers `Circle`, `Rect`, 
 | `await AskText("title", "label", "default")` | asks for a text; null when cancelled |
 | `Cancel` | a `CancellationToken` set when the user stops the script |
 
-`BamCam.Core.Cam` is imported as well, for parts and operations. All changes of one run are one undo step, unless you
-do something else in the drawing in between.
+`BamCam.Core.Cam` and `BamCam.Core.Cad` are imported as well, for parts, operations and drawing commands. All changes
+of one run are one undo step, unless you do something else in the drawing in between.
+
+The [script reference](script-reference.md) describes the classes of the drawing, the geometry and the operations.
 
 Rectangle around the selected objects, with a margin:
 
