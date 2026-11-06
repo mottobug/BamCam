@@ -390,6 +390,8 @@ public sealed partial class GCodePoster
             var dir = _job?.Op.SpindleDirection.Value ?? SpindleDirection.CW;
             text = dir switch { SpindleDirection.CCW => _post.SpindleCCW, SpindleDirection.Off => _post.SpindleOff, _ => _post.SpindleCW };
         }
+        // A post can have macros in these texts ("M3 {$s}"); then a new speed is a new state too.
+        text = Expand(text);
         if (args == null && text == _spindleState) return "";
         _spindleState = text;
         return text;
