@@ -99,5 +99,12 @@ public static class ScriptLibrary
                     Log($"  {op.Name}: {op.DisplayType}, {(op.Enabled ? "enabled" : "disabled")}");
             }
             """),
+        ("Squircle", Resource("Squircle.csx")),
     ];
+
+    private static string Resource(string name)
+    {
+        using var reader = new StreamReader(typeof(ScriptLibrary).Assembly.GetManifestResourceStream(name)!);
+        return reader.ReadToEnd();
+    }
 }

@@ -21,6 +21,8 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets\**" />
+    <!-- Example of the Scripts menu that is long enough to live in a file of its own. -->
+    <EmbeddedResource Include="..\..\scripts\Squircle.csx" LogicalName="Squircle.csx" />
   </ItemGroup>
   <ItemGroup>
     <!-- The license travels with every package (zip, installer, .app, tar.gz). -->

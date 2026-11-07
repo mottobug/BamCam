@@ -147,6 +147,22 @@ Change("Disable operations", () =>
 });
 ```
 
+## Script or plugin?
+
+The same shape can come from either. [`scripts/Squircle.csx`](../scripts/Squircle.csx) (**Scripts ▸ Examples ▸ Squircle**)
+and the plugin [`plugins/BamCam.SquirclePlugin`](../plugins/BamCam.SquirclePlugin) (**Draw ▸ Squircle**) use the same
+formulas and draw the same points, so they show the difference:
+
+| | Script | Plugin |
+|---|---|---|
+| To make it | a text file, no build | a compiled project |
+| To use it | Scripts menu; asks for the values | any menu, its own tools and operations |
+| Result | a plain polyline; to change it, run the script again | its own object, whose values stay in the properties and are saved with the drawing |
+| Approval | asks when the text is new or changed | asks when the file is new or changed; those that come with BamCam do not ask |
+
+The example comes with a new script folder. If your folder already exists, get the file from the repository and use
+**Scripts ▸ Add Script File**.
+
 ## Long scripts
 
 Menu scripts have no time limit and run in the background, so BamCam stays usable; avoid changing the drawing yourself

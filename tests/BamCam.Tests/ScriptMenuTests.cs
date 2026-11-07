@@ -14,6 +14,9 @@ public class ScriptMenuTests
     {
         private readonly Queue<double> _answers = new(answers);
 
+        /// <summary>Answers to AskText; a null answer is a cancelled dialog. When empty, the default value.</summary>
+        public Queue<string?> TextAnswers { get; } = new();
+
         public CadDocument Document { get; } = document;
         public List<Entity> Selected { get; } = [];
         public List<string> Messages { get; } = [];
@@ -39,7 +42,7 @@ public class ScriptMenuTests
 
         public void Log(string message) => Messages.Add(message);
         public Task<double?> AskNumber(string title, string label, double defaultValue) => Task.FromResult<double?>(_answers.Count > 0 ? _answers.Dequeue() : defaultValue);
-        public Task<string?> AskText(string title, string label, string defaultValue = "") => Task.FromResult<string?>(defaultValue);
+        public Task<string?> AskText(string title, string label, string defaultValue = "") => Task.FromResult(TextAnswers.Count > 0 ? TextAnswers.Dequeue() : defaultValue);
         public void StartTool(PluginTool tool) { }
     }
 
@@ -310,6 +313,107 @@ public class ScriptMenuTests
         var (result, _) = await Run(text, commands);
 
         Assert.Null(result.Error);
+    }
+
+    // ---------------------------------------------------------------- Squircle as a script and as a plugin
+
+    private static string SquircleScript => ScriptLibrary.Examples.Single(e => e.Name == "Squircle").Text;
+
+    /// <summary>Runs the script: the texts and numbers are the answers to its dialogs, in order.</summary>
+    private static async Task<(IReadOnlyList<Path2> Paths, FakeCommands Commands)> RunSquircle(string?[] texts, params double[] numbers)
+    {
+        var commands = new FakeCommands(CadDocument.CreateNew(), numbers);
+        foreach (var text in texts) commands.TextAnswers.Enqueue(text);
+        var (result, context) = await Run(SquircleScript, commands);
+        Assert.Null(result.Error);
+        return ([.. context.Paths], commands);
+    }
+
+    private static void AssertSameOutline(Squircle.SquircleEntity plugin, IReadOnlyList<Path2> script)
+    {
+        var expected = Assert.Single(plugin.ToPaths());
+        var actual = Assert.Single(script);
+        Assert.True(actual.Closed);
+        Assert.Equal(expected.Count, actual.Count);
+        for (var i = 0; i < expected.Count; i++)
+            Assert.True(expected.Vertices[i].XY.AlmostEquals(actual.Vertices[i].XY, 1e-9), $"point {i}: {expected.Vertices[i].XY} and {actual.Vertices[i].XY}");
+    }
+
+    [Fact]
+    public async Task Squircle_script_with_its_defaults_draws_what_the_plugin_inserts()
+    {
+        var (paths, _) = await RunSquircle([]);
+
+        AssertSameOutline(new Squircle.SquircleEntity(), paths);
+    }
+
+    [Theory]
+    [InlineData(2, 30, 20, 5, -3, 0.5)]
+    [InlineData(1.5, 10, 10, 0, 0, 2)]
+    [InlineData(0.5, 40, 80, 1, 1, 1)]
+    public async Task Squircle_script_makes_the_simple_shapes_of_the_plugin(double n1, double rx, double ry, double x, double y, double angle)
+    {
+        var (paths, _) = await RunSquircle(["simple", I($"{rx} {ry} {x} {y}"), "Angle"], n1, angle);
+
+        AssertSameOutline(new Squircle.SquircleEntity { N1 = n1, RadX = rx, RadY = ry, OrigX = x, OrigY = y, Angle = angle }, paths);
+    }
+
+    [Theory]
+    [InlineData(4, 4, 4, 2, 1, 1.2)]
+    [InlineData(3, 1, 1, 1, 1, 1)]
+    [InlineData(5, 2, 7, 7, 1, 1)]
+    [InlineData(8, 0.5, 1, 3, 2, 0.5)]
+    public async Task Squircle_script_makes_the_complex_shapes_of_the_plugin(double m, double n1, double n2, double n3, double a, double b)
+    {
+        var (paths, _) = await RunSquircle(["Complex", I($"{m} {n1} {n2} {n3} {a} {b}"), "60 40 2 3", "EdgeLength"], 1.5);
+
+        AssertSameOutline(new Squircle.SquircleEntity
+        {
+            ShapeType = Squircle.SquircleShape.Complex, M = m, N1 = n1, N2 = n2, N3 = n3, A = a, B = b,
+            RadX = 60, RadY = 40, OrigX = 2, OrigY = 3, Accuracy = Squircle.SquircleAccuracy.EdgeLength, EdgeLength = 1.5,
+        }, paths);
+    }
+
+    private static string I(FormattableString text) => FormattableString.Invariant(text);
+
+    [Fact]
+    public async Task Squircle_script_limits_the_points_like_the_plugin_and_says_so()
+    {
+        var (paths, commands) = await RunSquircle(["Simple", "50 50 0 0", "Angle"], 4, 0.001);
+
+        AssertSameOutline(new Squircle.SquircleEntity { Angle = 0.001 }, paths);
+        Assert.Equal(Squircle.SquircleEntity.MostPoints, paths[0].Count);
+        Assert.Contains(commands.Messages, m => m.Contains("limited to 20000"));
+    }
+
+    [Theory]
+    [InlineData(new[] { "Round" }, "unknown shape type")]
+    [InlineData(new[] { "Simple", "50 50 0" }, "expected numbers")]
+    [InlineData(new[] { "Simple", "50 x 0 0" }, "expected numbers")]
+    [InlineData(new[] { "Simple", "50 50 0 0", "Fine" }, "unknown accuracy")]
+    public async Task Squircle_script_says_what_is_wrong_and_draws_nothing(string[] texts, string message)
+    {
+        var (paths, commands) = await RunSquircle(texts);
+
+        Assert.Empty(paths);
+        Assert.Contains(commands.Messages, m => m.Contains(message));
+    }
+
+    [Fact]
+    public async Task Squircle_script_stops_when_a_dialog_is_cancelled()
+    {
+        var (paths, commands) = await RunSquircle(["Simple", null]);
+
+        Assert.Empty(paths);
+        Assert.Empty(commands.Messages);
+    }
+
+    [Fact]
+    public async Task Squircle_script_takes_a_comma_as_decimal_point()
+    {
+        var (paths, _) = await RunSquircle(["Simple", "12,5 50 0 0"]);
+
+        AssertSameOutline(new Squircle.SquircleEntity { RadX = 12.5 }, paths);
     }
 
     [Fact]
