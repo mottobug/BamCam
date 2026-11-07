@@ -139,6 +139,7 @@ public sealed partial class PropertyGrid : DockPanel
             if (prop.GetCustomAttribute<BrowsableAttribute>() is { Browsable: false }) continue;
             if (prop.Name is "EqualityContract") continue;
             if (target is MachineOp op && op.HiddenParameters.Contains(prop.Name)) continue;
+            if (target is Core.Model.ParametricEntity parametric && parametric.HiddenParameters.Contains(prop.Name)) continue;
             if (PropertyFilter != null && !PropertyFilter(prop)) continue;
 
             var categoryKey = CategoryOf(prop);

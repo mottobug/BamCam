@@ -84,10 +84,12 @@ see [scripts.md](scripts.md).
 **Centre lines** (Draw ▸ Centre Lines): a horizontal and a vertical centre line for the selected circle or rectangle.
 This is a plugin that comes with BamCam; Tools ▸ Plugins switches it off.
 
-**Squircle** (Draw ▸ Squircle): a shape between circle, rounded rectangle and diamond, whose size and power you change
-in the properties. Power 2 gives a circle or ellipse, more gives a rounded rectangle, 1 to 2 a rounded diamond, and below
-1 a concave diamond. Also a plugin that comes with BamCam. The idea comes from Geoff, author of the Squircle plugin for
-CamBam.
+**Squircle** (Draw ▸ Squircle): a shape whose values you change in the properties. *Simple* goes from circle over rounded
+rectangle to diamond with the exponent n1: 2 gives a circle or ellipse, more a rounded rectangle, 1 to 2 a rounded
+diamond, and below 1 a concave diamond. *Complex* gives a wide variety of shapes from m, n1, n2, n3, a and b. The
+accuracy is set by the angle or the length of the segments. Also a plugin that comes with BamCam. The idea, formulas and
+parameters come from GeoffreyGRoy, author of the
+[Squircle Pro plugin](http://www.atelier-des-fougeres.fr/Cambam/Aide/Plugins/SquirclePlugin.html) for CamBam.
 
 **Scripts menu:** your own C# scripts as `.csx` files, run with a click. They can read and change the whole drawing.
 New, edit, check and run them in the script editor, or copy files into the script folder. Before a file runs for the

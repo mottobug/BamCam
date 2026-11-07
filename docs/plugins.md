@@ -214,6 +214,9 @@ host.AddExporter(format, (doc, path) => { /* write */ });
 Importers appear in File ▸ Open (the drawing replaces the open one; saving asks for a .cb file name), exporters in
 File ▸ Export. The built-in formats (.cb, .dxf, .stl) keep their own readers.
 
+A parametric object can show parameters depending on its values by overriding `HiddenParameters`, as
+[`plugins/BamCam.SquirclePlugin`](../plugins/BamCam.SquirclePlugin) does for its two kinds of shape.
+
 A generator with long loops should check `ctx.Cancel` (a `CancellationToken`, set when the user cancels generating
 toolpaths). If it does not, BamCam continues without its result, but the calculation keeps running until it ends.
 

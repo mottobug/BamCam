@@ -22,6 +22,15 @@ public abstract class ParametricEntity : Entity
     /// <summary>Name in the drawing tree.</summary>
     public override string TypeName => ParametricType;
 
+    /// <summary>
+    /// Parameters that mean nothing with the current values, by property name: not shown in the properties, but still
+    /// saved. An object can change this with its values, for example with a choice between two kinds of shape.
+    /// </summary>
+    [Browsable(false)]
+    public virtual IReadOnlySet<string> HiddenParameters => NoHiddenParameters;
+
+    private static readonly HashSet<string> NoHiddenParameters = [];
+
     /// <summary>The outlines in the object's own coordinates, or null when they cannot be computed now.</summary>
     protected abstract IEnumerable<Path2>? Generate();
 
