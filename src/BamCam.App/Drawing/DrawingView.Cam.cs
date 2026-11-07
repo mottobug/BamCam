@@ -187,7 +187,7 @@ public sealed partial class DrawingView
             var geo = new StreamGeometry();
             using (var ctx = geo.Open())
             {
-                foreach (var path in entities.SelectMany(e => e.ToPaths()))
+                foreach (var path in entities.Where(e => e is not SurfaceEntity { IsLarge: true }).SelectMany(e => e.ToPaths()))
                 {
                     if (path.Count < 2) continue;
                     var pts = path.Transformed(m).Flatten(tol);

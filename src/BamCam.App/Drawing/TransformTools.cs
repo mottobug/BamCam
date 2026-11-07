@@ -83,10 +83,16 @@ public abstract class SelectionTransformTool : ViewTool
         if (Picks.Count == 0) return;
         var m = Build(Picks, Cursor, _mods);
         foreach (var t in Targets)
-        foreach (var p in t.ToPaths())
-            DrawPath(dc, view, p.Transformed(m), PreviewPen);
+        {
+            // A large mesh follows the cursor as its outer box: every triangle would take seconds per mouse move.
+            var paths = t is SurfaceEntity { IsLarge: true } ? [BoxOutline(t.Bounds())] : t.ToPaths();
+            foreach (var p in paths) DrawPath(dc, view, p.Transformed(m), PreviewPen);
+        }
         dc.DrawLine(PreviewPen, view.ToScreen(Picks[0]), view.ToScreen(Cursor));
     }
+
+    private static Path2 BoxOutline(BoundingBox b) => Path2.FromPoints(
+        [new(b.Min.X, b.Min.Y), new(b.Max.X, b.Min.Y), new(b.Max.X, b.Max.Y), new(b.Min.X, b.Max.Y)], closed: true, b.Max.Z);
 }
 
 public sealed class MoveTool : SelectionTransformTool

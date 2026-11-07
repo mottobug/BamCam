@@ -49,7 +49,8 @@ public static class ObjectSnap
             cursor.X >= box.Min.X - radius && cursor.X <= box.Max.X + radius &&
             cursor.Y >= box.Min.Y - radius && cursor.Y <= box.Max.Y + radius;
 
-        var near = entities.Where(e => Near(e.Bounds())).ToList();
+        // Meshes have no snap points, and their edges would be read at every mouse move.
+        var near = entities.Where(e => e is not SurfaceEntity && Near(e.Bounds())).ToList();
         foreach (var e in near)
         foreach (var sp in Points(e, kinds))
             Consider(sp.Point, sp.Kind);

@@ -438,7 +438,9 @@ public sealed partial class DrawingView : Control, IToolHost
             if (!layer.Visible || layer.Locked) continue;
             foreach (var ent in layer.Entities)
             {
-                var d = ScreenDistance(ent, screen);
+                var d = ent is SurfaceEntity { IsLarge: true } surface
+                    ? _surfaceRasters.GetOrCreateValue(surface).DistanceTo(surface, _view, Bounds.Size, RenderScaling, screen, pixelTolerance)
+                    : ScreenDistance(ent, screen);
                 if (d <= pixelTolerance) hits.Add((ent, d));
             }
         }
@@ -488,8 +490,11 @@ public sealed partial class DrawingView : Control, IToolHost
             if (!layer.Visible || layer.Locked) continue;
             foreach (var ent in layer.Entities)
             {
-                var pts = ent.ToPaths().SelectMany(p => p.Flatten(tol)).Select(p => _view.ToScreen(p)).ToList();
-                if (pts.Count == 0) continue;
+                // A mesh is read point by point: it can have a million triangles.
+                var pts = ent is SurfaceEntity surface
+                    ? surface.WorldVertices().Select(p => _view.ToScreen(p))
+                    : ent.ToPaths().SelectMany(p => p.Flatten(tol)).Select(p => _view.ToScreen(p)).ToList();
+                if (!pts.Any()) continue;
                 var inside = crossing ? pts.Any(rect.Contains) : pts.All(rect.Contains);
                 if (inside) result.Add(ent);
             }
@@ -671,6 +676,10 @@ public sealed partial class DrawingView : Control, IToolHost
         }
     }
 
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SurfaceEntity, SurfaceRaster> _surfaceRasters = [];
+
+    private double RenderScaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+
     private void RenderEntities(DrawingContext dc)
     {
         var session = _session!;
@@ -699,6 +708,11 @@ public sealed partial class DrawingView : Control, IToolHost
         if (ent is PointListEntity pl)
         {
             foreach (var p in pl.WorldPoints()) DrawCross(dc, _view.ToScreen(p), pen, 4);
+            return;
+        }
+        if (ent is SurfaceEntity { IsLarge: true } surface && pen.Brush is ISolidColorBrush brush)
+        {
+            _surfaceRasters.GetOrCreateValue(surface).Draw(dc, surface, _view, Bounds.Size, RenderScaling, brush.Color);
             return;
         }
         var geo = new StreamGeometry();

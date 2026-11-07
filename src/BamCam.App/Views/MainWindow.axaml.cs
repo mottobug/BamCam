@@ -25,10 +25,12 @@ public partial class MainWindow : Window
         TextEntity.OutlineProvider = TextOutlines.Build;
         LoadSettings();
 
+        var meshes = new CbMeshStore();
         _session = new DocumentSession(NewDocument())
         {
-            Snapshot = CbWriter.ToString,
-            Restore = CbReader.Parse,
+            Snapshot = doc => CbWriter.ToSnapshot(doc, meshes),
+            Restore = text => CbReader.FromSnapshot(text, meshes),
+            HistoryCleared = meshes.Clear,
         };
         View.Session = _session;
 
@@ -346,6 +348,21 @@ public partial class MainWindow : Window
                 _session.Undo();
                 Log($"--run-script: error={error ?? "none"}, objects {before} -> {after}, after one undo {_session.Document.AllEntities().Count()}");
                 Log("--run-script: menu " + string.Join(" | ", _scriptMenu!.Items.OfType<MenuItem>().Select(i => i.Header)));
+            }
+            // --render-benchmark <count>: repaints with a changed view, as when panning; logs the time per repaint.
+            if (options.TryGetValue("--render-benchmark", out var repaints))
+            {
+                var size = new Avalonia.PixelSize((int)View.Bounds.Width, (int)View.Bounds.Height);
+                using var target = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
+                var times = new List<long>();
+                for (var i = 0; i < int.Parse(repaints, CultureInfo.InvariantCulture); i++)
+                {
+                    View.View.Pan += new Avalonia.Point(1, 0);
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    target.Render(View);
+                    times.Add(watch.ElapsedMilliseconds);
+                }
+                Log($"--render-benchmark: {string.Join(", ", times)} ms");
             }
             // --window plugins|speeds: also opens that window and saves it as <name>-<window>.png.
             Window? extra = null;

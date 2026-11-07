@@ -23,6 +23,9 @@ public sealed class DocumentSession
     public Func<CadDocument, string>? Snapshot { get; init; }
     public Func<string, CadDocument>? Restore { get; init; }
 
+    /// <summary>Called when the undo history is empty again, so that data kept for it can go.</summary>
+    public Action? HistoryCleared { get; init; }
+
     public Dictionary<MachineOp, Toolpath> Toolpaths { get; } = [];
 
     /// <summary>Selected objects in the order they were selected.</summary>
@@ -61,6 +64,7 @@ public sealed class DocumentSession
         Document = document;
         _undo.Clear();
         _redo.Clear();
+        HistoryCleared?.Invoke();
         ClearSelectionSilently();
         Toolpaths.Clear();
         Inspected = null;

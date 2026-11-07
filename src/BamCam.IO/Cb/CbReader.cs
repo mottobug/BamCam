@@ -22,6 +22,25 @@ public static class CbReader
 
     public static CadDocument Parse(string xml) => Read(XDocument.Parse(xml, LoadOptions.PreserveWhitespace));
 
+    /// <summary>Attribute of a surface in an undo snapshot: its mesh is in the <see cref="CbMeshStore"/>.</summary>
+    internal const string MeshReference = "meshRef";
+
+    [ThreadStatic] private static CbMeshStore? _meshes;
+
+    /// <summary>Reads an undo step written by <see cref="CbWriter.ToSnapshot"/>.</summary>
+    public static CadDocument FromSnapshot(string xml, CbMeshStore meshes)
+    {
+        _meshes = meshes;
+        try
+        {
+            return Parse(xml);
+        }
+        finally
+        {
+            _meshes = null;
+        }
+    }
+
     public static CadDocument Read(XDocument xdoc)
     {
         var root = xdoc.Root ?? throw new InvalidDataException(Tr.T("Empty document"));
@@ -222,6 +241,7 @@ public static class CbReader
             case "surface":
             {
                 var s = new SurfaceEntity();
+                if (_meshes is { } store && (int?)el.Attribute(MeshReference) is { } mesh) store.Restore(s, mesh);
                 foreach (var v in el.Element("verts")?.Elements("v") ?? []) s.Vertices.Add(CbFormat.ParsePoint3(v.Value));
                 foreach (var f in el.Element("faces")?.Elements("f") ?? [])
                 {

@@ -237,6 +237,9 @@ Base class of all drawing objects.
 |---|---|
 | `Vertices`, `Faces` | triangle mesh: points, and three point indices per triangle |
 
+Undo steps share these lists. To change a mesh, add a new `SurfaceEntity` instead of editing the lists of an existing
+one. Moving, rotating or scaling with `ApplyTransform` is fine, as it does not touch them.
+
 ### `ScriptEntity`
 
 | Member | Meaning |

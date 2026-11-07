@@ -568,12 +568,28 @@ public sealed class SurfaceEntity : Entity
 {
     public override string TypeName => "Surface";
 
+    /// <summary>From this number of triangles a mesh is too large to be handled as one line per edge in the view.</summary>
+    public const int LargeTriangleCount = 20000;
+
     [Browsable(false)]
-    public List<Point3> Vertices { get; } = [];
+    public List<Point3> Vertices { get; private set; } = [];
 
     /// <summary>Triangle vertex indices, three per face.</summary>
     [Browsable(false)]
-    public List<int> Faces { get; } = [];
+    public List<int> Faces { get; private set; } = [];
+
+    [Browsable(false)]
+    public bool IsLarge => Faces.Count / 3 >= LargeTriangleCount;
+
+    /// <summary>
+    /// Uses the lists of another mesh instead of copies: undo steps share one mesh. Replace a mesh with a new object
+    /// rather than changing these lists afterwards, or the undo steps change with it.
+    /// </summary>
+    public void ShareMesh(List<Point3> vertices, List<int> faces)
+    {
+        Vertices = vertices;
+        Faces = faces;
+    }
 
     public IEnumerable<Point3> WorldVertices() => Transform.IsIdentity ? Vertices : Vertices.Select(Transform.Transform);
 

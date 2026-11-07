@@ -54,6 +54,22 @@ public static class CbWriter
         return Encoding.UTF8.GetString(ms.ToArray());
     }
 
+    [ThreadStatic] private static CbMeshStore? _meshes;
+
+    /// <summary>The drawing as text for an undo step: meshes stay in <paramref name="meshes"/>. Not a file for others.</summary>
+    public static string ToSnapshot(CadDocument doc, CbMeshStore meshes)
+    {
+        _meshes = meshes;
+        try
+        {
+            return ToString(doc);
+        }
+        finally
+        {
+            _meshes = null;
+        }
+    }
+
     public static XDocument ToXml(CadDocument doc)
     {
         var root = new XElement("CADFile",
@@ -250,6 +266,12 @@ public static class CbWriter
                     new XElement("weights", sp.ControlPoints.Select((_, i) => new XElement("w", CbFormat.Double(sp.Weights.Count > 0 ? sp.Weights[i] : 1)))),
                     new XElement("ctrl", sp.ControlPoints.Select(p => new XElement("p", CbFormat.Pt3OmitZ(p)))),
                     new XElement("fit", sp.FitPoints.Select(p => new XElement("p", CbFormat.Pt3OmitZ(p)))));
+                AddCommon(el, e);
+                return [el];
+            }
+            case SurfaceEntity s when _meshes is { } store:
+            {
+                var el = new XElement("surface", new XAttribute("id", s.Id), new XAttribute(CbReader.MeshReference, store.Add(s)), Mat(s.Transform));
                 AddCommon(el, e);
                 return [el];
             }
