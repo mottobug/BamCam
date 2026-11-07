@@ -45,7 +45,8 @@ if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 # without asking. Only their own files are shipped, BamCam provides the rest at run time.
 $bundledPlugins = @(
     @{ Folder = "CentreLines"; Name = "BamCam.CentreLinesPlugin" },
-    @{ Folder = "Squircle"; Name = "BamCam.SquirclePlugin" }
+    @{ Folder = "Squircle"; Name = "BamCam.SquirclePlugin" },
+    @{ Folder = "InvoluteGear"; Name = "BamCam.GearPlugin" }
 )
 $pluginHashes = @()
 foreach ($plugin in $bundledPlugins) {

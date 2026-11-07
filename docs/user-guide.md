@@ -99,6 +99,15 @@ parameters come from GeoffreyGRoy, author of the
 example script **Scripts ▸ Examples ▸ Squircle** draws the same shapes, as a plain polyline; see
 [Script or plugin?](scripts.md#script-or-plugin).
 
+**Involute Gear** (Draw ▸ Involute Gear): a spur gear with involute flanks whose values you change in the properties: teeth,
+module, pressure angle, profile shift, backlash and bore, and under *Tooth Form* the height of the tooth and the rounding at
+its root. The outline is what a rack cutter leaves, including the undercut of gears with few teeth, which a note mentions
+with the profile shift that avoids it. Two gears run together at the sum of their pitch radii when they have the same module
+and pressure angle and their profile shifts add up to 0. *Dimensions* shows the diameters and the *Largest Tool Diameter*: a
+larger end mill leaves material in the gaps or at the root, and profiles and pockets do not warn about that by themselves.
+Keep in mind that a milled gear is only as accurate as the machine, and check it before relying on it. Also a plugin that
+comes with BamCam.
+
 **Scripts menu:** your own C# scripts as `.csx` files, run with a click. They can read and change the whole drawing.
 New, edit, check and run them in the script editor, or copy files into the script folder. Before a file runs for the
 first time BamCam shows its text; see [scripts.md](scripts.md#scripts-of-the-scripts-menu).

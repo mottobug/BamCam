@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\plugins\BamCam.GCodeViewerPlugin\BamCam.GCodeViewerPlugin.csproj" />
     <ProjectReference Include="..\..\plugins\BamCam.CentreLinesPlugin\BamCam.CentreLinesPlugin.csproj" />
     <ProjectReference Include="..\..\plugins\BamCam.SquirclePlugin\BamCam.SquirclePlugin.csproj" />
+    <ProjectReference Include="..\..\plugins\BamCam.GearPlugin\BamCam.GearPlugin.csproj" />
   </ItemGroup>
 
 </Project>
