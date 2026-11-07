@@ -433,14 +433,19 @@ public sealed partial class DrawingView : Control, IToolHost
     {
         var hits = new List<(Entity E, double D)>();
         if (_session == null) return [];
+        var (shaded, shadedOwners) = Settings.ShadeSurfaces ? ShadedSurfaces() : ([], []);
         foreach (var layer in _session.Document.Layers)
         {
             if (!layer.Visible || layer.Locked) continue;
             foreach (var ent in layer.Entities)
             {
-                var d = ent is SurfaceEntity { IsLarge: true } surface
-                    ? _surfaceRasters.GetOrCreateValue(surface).DistanceTo(surface, _view, Bounds.Size, RenderScaling, screen, pixelTolerance)
-                    : ScreenDistance(ent, screen);
+                double d;
+                if (ent is SurfaceEntity shadedSurface && Settings.ShadeSurfaces)
+                    d = _surfaceShader.DistanceTo(shaded, shadedOwners.IndexOf(shadedSurface), _view, Bounds.Size, RenderScaling, screen, pixelTolerance);
+                else if (ent is SurfaceEntity { IsLarge: true } surface)
+                    d = _surfaceRasters.GetOrCreateValue(surface).DistanceTo(surface, _view, Bounds.Size, RenderScaling, screen, pixelTolerance);
+                else
+                    d = ScreenDistance(ent, screen);
                 if (d <= pixelTolerance) hits.Add((ent, d));
             }
         }
@@ -544,6 +549,7 @@ public sealed partial class DrawingView : Control, IToolHost
             if (Settings.ShowGrid) RenderGrid(dc, size);
             if (Settings.ShowAxis) RenderAxes(dc, size);
             if (Settings.ShowStock) RenderStock(dc);
+            if (Settings.ShadeSurfaces) RenderShadedSurfaces(dc);
             if (Settings.ShowToolpaths) RenderToolpaths(dc, cutWidthsPass: true);
             RenderEntities(dc);
             if (Settings.ShowToolpaths)
@@ -690,6 +696,46 @@ public sealed partial class DrawingView : Control, IToolHost
 
     private double RenderScaling =>TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
+    private readonly SurfaceShader _surfaceShader = new();
+
+    /// <summary>The colour of a layer's objects at this moment: dimmed while something else is selected.</summary>
+    private Color LayerColour(Layer layer, bool anySelected)
+    {
+        var c = layer.Color;
+        var alpha = (byte)Math.Clamp(layer.Alpha * 255, 0, 255);
+        if (anySelected && Settings.SelectFade) alpha = (byte)(alpha * 0.6);
+        return Color.FromArgb(alpha, c.R, c.G, c.B);
+    }
+
+    /// <summary>The meshes of the visible layers with their colours, and which object each one is.</summary>
+    private (List<ShadedMesh> Meshes, List<SurfaceEntity> Owners) ShadedSurfaces()
+    {
+        var session = _session!;
+        var highlightIds = session.Inspected is MachineOp op ? op.PrimitiveIds.ToHashSet() : null;
+        var anySelected = session.Selection.Count > 0;
+        var meshes = new List<ShadedMesh>();
+        var owners = new List<SurfaceEntity>();
+        foreach (var layer in session.Document.Layers)
+        {
+            if (!layer.Visible) continue;
+            var colour = LayerColour(layer, anySelected);
+            foreach (var surface in layer.Entities.OfType<SurfaceEntity>())
+            {
+                var selected = session.IsSelected(surface) || (highlightIds?.Contains(surface.Id) ?? false);
+                meshes.Add(new ShadedMesh(surface.Vertices, surface.Faces, surface.Transform, selected ? Settings.SelectColor : colour));
+                owners.Add(surface);
+            }
+        }
+        return (meshes, owners);
+    }
+
+    /// <summary>All meshes as one picture, under everything else that is drawn from the drawing.</summary>
+    private void RenderShadedSurfaces(DrawingContext dc)
+    {
+        var (meshes, _) = ShadedSurfaces();
+        if (meshes.Count > 0) _surfaceShader.Draw(dc, meshes, _view, Bounds.Size, RenderScaling);
+    }
+
     private void RenderEntities(DrawingContext dc)
     {
         var session = _session!;
@@ -701,10 +747,7 @@ public sealed partial class DrawingView : Control, IToolHost
         foreach (var layer in session.Document.Layers)
         {
             if (!layer.Visible) continue;
-            var c = layer.Color;
-            var alpha = (byte)Math.Clamp(layer.Alpha * 255, 0, 255);
-            if (anySelected && Settings.SelectFade) alpha = (byte)(alpha * 0.6);
-            var pen = new Pen(new SolidColorBrush(Color.FromArgb(alpha, c.R, c.G, c.B)), Math.Max(layer.PenWidth, 1));
+            var pen = new Pen(new SolidColorBrush(LayerColour(layer, anySelected)), Math.Max(layer.PenWidth, 1));
             foreach (var ent in layer.Entities)
             {
                 var selected = session.IsSelected(ent) || (highlightIds?.Contains(ent.Id) ?? false);
@@ -720,6 +763,7 @@ public sealed partial class DrawingView : Control, IToolHost
             foreach (var p in pl.WorldPoints()) DrawCross(dc, _view.ToScreen(p), pen, 4);
             return;
         }
+        if (ent is SurfaceEntity && Settings.ShadeSurfaces) return; // already there, from RenderShadedSurfaces
         if (ent is SurfaceEntity { IsLarge: true } surface && pen.Brush is ISolidColorBrush brush)
         {
             _surfaceRasters.GetOrCreateValue(surface).Draw(dc, surface, _view, Bounds.Size, RenderScaling, brush.Color);
@@ -921,6 +965,8 @@ public sealed class ViewSettings
     public bool ShowRapids { get; set; } = true;
     public bool ShowStock { get; set; } = true;
     public bool ShowDirectionArrows { get; set; } = true;
+    /// <summary>Meshes as shaded surfaces instead of wireframes.</summary>
+    public bool ShadeSurfaces { get; set; } = true;
     public bool ToolpathVisibilitySelectedOnly { get; set; }
     public bool SnapToGrid { get; set; } = true;
     public bool SnapToObjects { get; set; }

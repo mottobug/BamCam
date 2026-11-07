@@ -204,6 +204,7 @@ The help has no single menu reference. The structure below is reconstructed from
 | Show Nests | – | Toggle display of nesting copies. |
 | Show Rapids | – | Toggle the dashed rapid-move lines. |
 | Show Direction Arrows | – | Toggle the direction arrows on toolpaths. |
+| Shade Surfaces | – | Meshes as shaded surfaces (default) or as wireframes. |
 | Show Grid | – | Toggle (also on the toolbar). |
 | Show Axis | – | Toggle the XYZ axis lines (also on the toolbar). |
 | Anti-alias | – | Toggle line anti-aliasing. |

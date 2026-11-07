@@ -47,6 +47,8 @@ public sealed class AppSettings
     [Category("Display"), DisplayName("Show Axis")] public bool ShowAxis { get; set; } = true;
     [Category("Display"), DisplayName("Show Toolpaths")] public bool ShowToolpaths { get; set; } = true;
     [Category("Display"), DisplayName("Show Direction Arrows")] public bool ShowDirectionArrows { get; set; } = true;
+    [Category("Display"), DisplayName("Shade Surfaces"), Description("Show meshes as shaded surfaces instead of wireframes.")]
+    public bool ShadeSurfaces { get; set; } = true;
     [Category("Display"), DisplayName("Show Nests")] public bool ShowNests { get; set; } = true;
     [Category("Display"), DisplayName("Select Fade"), Description("Fade unselected objects while something is selected.")]
     public bool SelectFade { get; set; } = true;
@@ -252,6 +254,7 @@ public sealed class AppSettings
         v.ShowAxis = ShowAxis;
         v.ShowToolpaths = ShowToolpaths;
         v.ShowDirectionArrows = ShowDirectionArrows;
+        v.ShadeSurfaces = ShadeSurfaces;
         v.ShowNests = ShowNests;
         v.SelectFade = SelectFade;
         v.TabDragToolpathRefresh = TabDragToolpathRefresh;
@@ -286,6 +289,7 @@ public sealed class AppSettings
         ShowAxis = v.ShowAxis;
         ShowToolpaths = v.ShowToolpaths;
         ShowDirectionArrows = v.ShowDirectionArrows;
+        ShadeSurfaces = v.ShadeSurfaces;
         ShowNests = v.ShowNests;
         SnapToGrid = v.SnapToGrid;
         SnapToPoints = v.SnapToObjects;

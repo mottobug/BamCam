@@ -265,6 +265,7 @@ public partial class MainWindow
             Check("Show _Rapids", () => s.ShowRapids, v => { s.ShowRapids = v; _session.Document.ShowRapids = v; }),
             Check("Show _Stock", () => s.ShowStock, v => { s.ShowStock = v; _session.Document.ShowStock = v; }),
             Check("Show Direction Arrows", () => s.ShowDirectionArrows, v => s.ShowDirectionArrows = v),
+            Check("Shade S_urfaces", () => s.ShadeSurfaces, v => s.ShadeSurfaces = v),
             Check("Show _Grid", () => s.ShowGrid, v => s.ShowGrid = v),
             Check("Show _Axis", () => s.ShowAxis, v => s.ShowAxis = v),
             Check("Show _Nests", () => s.ShowNests, v => s.ShowNests = v),

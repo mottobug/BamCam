@@ -345,6 +345,13 @@ public partial class MainWindow : Window
                 await Task.Delay(300);
                 Log($"--align-menu: open={menu.IsOpen}, items={menu.Items.Count}");
             }
+            // --view XY|XZ|YZ|ISO: looks from this direction, with the whole drawing in the picture.
+            if (options.TryGetValue("--view", out var standardView))
+            {
+                View.SetStandardView(standardView);
+                View.ZoomToFit();
+                await Task.Delay(300);
+            }
             // --run-script <file>: runs a script of the Scripts menu as the menu does (without asking), then undoes it once.
             if (options.TryGetValue("--run-script", out var scriptFile))
             {
