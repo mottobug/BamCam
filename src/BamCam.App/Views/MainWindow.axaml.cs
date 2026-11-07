@@ -227,6 +227,8 @@ public partial class MainWindow : Window
         Opened += async (_, _) =>
         {
             await Task.Delay(1200);
+            if (options.TryGetValue("--cancel-after", out var cancelAfter))
+                _diagnosticCancelAfter = TimeSpan.FromMilliseconds(double.Parse(cancelAfter, CultureInfo.InvariantCulture));
             if (generate)
             {
                 View.Settings.ToolpathVisibilitySelectedOnly = false;

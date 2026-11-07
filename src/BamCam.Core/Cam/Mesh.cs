@@ -20,34 +20,71 @@ public enum CutterShape { Flat, Ball, Bull }
 /// </summary>
 public sealed class Mesh
 {
+    /// <summary>Most cells of the grid, to limit its memory.</summary>
+    private const long MaxCells = 4_000_000;
+
     private readonly List<Triangle> _tris;
-    private readonly List<int>[,] _grid;
+    // The triangles of cell c are _items[_starts[c] .. _starts[c + 1]].
+    private readonly int[] _starts;
+    private readonly int[] _items;
     private readonly double _cell;
     private readonly double _x0, _y0;
     private readonly int _nx, _ny;
-    private readonly int[] _stamp;
-    private int _query;
 
+    /// <summary>Marks the triangles a query has already looked at. One per thread: queries may run in parallel.</summary>
+    private sealed class QueryState(int triangles)
+    {
+        public readonly int[] Stamp = new int[triangles];
+        public int Query;
+    }
+
+    private readonly ThreadLocal<QueryState> _state;
+
+    /// <param name="cellSize">Largest grid cell. A dense mesh gets smaller cells, so that a query looks at few triangles.</param>
     public Mesh(IEnumerable<Triangle> triangles, double cellSize)
     {
         _tris = triangles.Where(t => t.Normal.Length > 0.5).ToList();
         Bounds = BoundingBox.FromPoints(_tris.SelectMany(t => new[] { t.A, t.B, t.C }));
-        _cell = Math.Max(cellSize, 1e-3);
+        var triangleCount = _tris.Count;
+        _state = new ThreadLocal<QueryState>(() => new QueryState(triangleCount));
+        _cell = CellSize(cellSize);
         _x0 = Bounds.IsEmpty ? 0 : Bounds.Min.X;
         _y0 = Bounds.IsEmpty ? 0 : Bounds.Min.Y;
         _nx = Bounds.IsEmpty ? 1 : Math.Max(1, (int)Math.Ceiling(Bounds.Width / _cell) + 1);
         _ny = Bounds.IsEmpty ? 1 : Math.Max(1, (int)Math.Ceiling(Bounds.Height / _cell) + 1);
-        _grid = new List<int>[_nx, _ny];
-        _stamp = new int[_tris.Count];
-        for (var i = 0; i < _tris.Count; i++)
+
+        // Two passes: how many triangles per cell, then the triangles themselves in one array.
+        _starts = new int[_nx * _ny + 1];
+        void Cells(Triangle t, Action<int> action)
         {
-            var t = _tris[i];
             var (ix0, iy0) = CellOf(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)), Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y)));
             var (ix1, iy1) = CellOf(Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)), Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y)));
             for (var x = ix0; x <= ix1; x++)
             for (var y = iy0; y <= iy1; y++)
-                (_grid[x, y] ??= []).Add(i);
+                action(x * _ny + y);
         }
+        foreach (var t in _tris) Cells(t, c => _starts[c + 1]++);
+        for (var c = 0; c < _nx * _ny; c++) _starts[c + 1] += _starts[c];
+        _items = new int[_starts[^1]];
+        var next = new int[_nx * _ny];
+        for (var i = 0; i < _tris.Count; i++)
+        {
+            var index = i;
+            Cells(_tris[i], c => _items[_starts[c] + next[c]++] = index);
+        }
+    }
+
+    private double CellSize(double largest)
+    {
+        var cell = Math.Max(largest, 1e-3);
+        if (Bounds.IsEmpty || _tris.Count == 0) return cell;
+        // About the size of a triangle, and not so small that a query has to walk many empty cells.
+        var average = _tris.Average(t => Math.Max(
+            Math.Max(t.A.X, Math.Max(t.B.X, t.C.X)) - Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)),
+            Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y)) - Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y))));
+        cell = Math.Clamp(average, cell / 8, cell);
+        var limit = Math.Sqrt(Math.Max(Bounds.Width, 1e-3) * Math.Max(Bounds.Height, 1e-3) / MaxCells);
+        return Math.Max(cell, limit);
     }
 
     public IReadOnlyList<Triangle> Triangles => _tris;
@@ -58,7 +95,7 @@ public sealed class Mesh
 
     /// <summary>
     /// Lowest tool-tip Z for a cutter of <paramref name="radius"/> centred at (x, y), or null when the
-    /// cutter does not touch the mesh there.
+    /// cutter does not touch the mesh there. Safe to call from several threads at once.
     /// </summary>
     public double? DropCutter(double x, double y, double radius, CutterShape shape, double cornerRadius = 0)
     {
@@ -72,28 +109,41 @@ public sealed class Mesh
         var (ix0, iy0) = CellOf(x - radius, y - radius);
         var (ix1, iy1) = CellOf(x + radius, y + radius);
         if (x + radius < Bounds.Min.X || x - radius > Bounds.Max.X || y + radius < Bounds.Min.Y || y - radius > Bounds.Max.Y) return null;
-        _query++;
+        var state = _state.Value!;
+        var query = ++state.Query;
+        var stamp = state.Stamp;
         double best = double.NegativeInfinity;
         var p = new Point2(x, y);
         for (var gx = ix0; gx <= ix1; gx++)
         for (var gy = iy0; gy <= iy1; gy++)
         {
-            var list = _grid[gx, gy];
-            if (list == null) continue;
-            foreach (var i in list)
+            var cell = gx * _ny + gy;
+            for (var k = _starts[cell]; k < _starts[cell + 1]; k++)
             {
-                if (_stamp[i] == _query) continue;
-                _stamp[i] = _query;
+                var i = _items[k];
+                if (stamp[i] == query) continue;
+                stamp[i] = query;
+                var t = _tris[i];
+                if (OutOfReach(t, x, y, radius)) continue;
                 var z = shape switch
                 {
-                    CutterShape.Ball => BallTriangle(p, radius, _tris[i]),
-                    CutterShape.Bull => BullTriangle(p, radius, cornerRadius, _tris[i]),
-                    _ => FlatTriangle(p, radius, _tris[i]),
+                    CutterShape.Ball => BallTriangle(p, radius, t),
+                    CutterShape.Bull => BullTriangle(p, radius, cornerRadius, t),
+                    _ => FlatTriangle(p, radius, t),
                 };
                 if (z > best) best = z;
             }
         }
         return double.IsNegativeInfinity(best) ? null : best;
+    }
+
+    /// <summary>The triangle lies beside the cutter: every contact would need a point of it within the radius.</summary>
+    private static bool OutOfReach(in Triangle t, double x, double y, double radius)
+    {
+        var dx = Math.Max(Math.Max(Math.Min(t.A.X, Math.Min(t.B.X, t.C.X)) - x, x - Math.Max(t.A.X, Math.Max(t.B.X, t.C.X))), 0);
+        var dy = Math.Max(Math.Max(Math.Min(t.A.Y, Math.Min(t.B.Y, t.C.Y)) - y, y - Math.Max(t.A.Y, Math.Max(t.B.Y, t.C.Y))), 0);
+        var reach = radius + 1e-6;
+        return dx * dx + dy * dy > reach * reach;
     }
 
     // ---- flat end mill -------------------------------------------------------------------
@@ -102,8 +152,9 @@ public sealed class Mesh
     {
         var best = double.NegativeInfinity;
         // Vertices.
-        foreach (var v in new[] { t.A, t.B, t.C })
-            if (Point2.Distance(v.XY, p) <= r) best = Math.Max(best, v.Z);
+        if (Point2.Distance(t.A.XY, p) <= r) best = Math.Max(best, t.A.Z);
+        if (Point2.Distance(t.B.XY, p) <= r) best = Math.Max(best, t.B.Z);
+        if (Point2.Distance(t.C.XY, p) <= r) best = Math.Max(best, t.C.Z);
         // Edges: highest point of the edge inside the cutter disc.
         best = Math.Max(best, FlatEdge(p, r, t.A, t.B));
         best = Math.Max(best, FlatEdge(p, r, t.B, t.C));
@@ -143,12 +194,9 @@ public sealed class Mesh
     private static double BallTriangle(Point2 p, double r, Triangle t)
     {
         // Returns tool tip Z (= ball centre Z - r).
-        var best = double.NegativeInfinity;
-        foreach (var v in new[] { t.A, t.B, t.C })
-        {
-            var d2 = (v.XY - p).LengthSquared;
-            if (d2 <= r * r) best = Math.Max(best, v.Z + Math.Sqrt(r * r - d2) - r);
-        }
+        var best = BallVertex(p, r, t.A);
+        best = Math.Max(best, BallVertex(p, r, t.B));
+        best = Math.Max(best, BallVertex(p, r, t.C));
         best = Math.Max(best, BallEdge(p, r, t.A, t.B));
         best = Math.Max(best, BallEdge(p, r, t.B, t.C));
         best = Math.Max(best, BallEdge(p, r, t.C, t.A));
@@ -160,6 +208,12 @@ public sealed class Mesh
             if (InsideXY(q, t)) best = Math.Max(best, PlaneZ(t, n, q) + r * n.Z - r);
         }
         return best;
+    }
+
+    private static double BallVertex(Point2 p, double r, Point3 v)
+    {
+        var d2 = (v.XY - p).LengthSquared;
+        return d2 <= r * r ? v.Z + Math.Sqrt(r * r - d2) - r : double.NegativeInfinity;
     }
 
     private static double BallEdge(Point2 p, double r, Point3 a, Point3 b)
@@ -191,17 +245,9 @@ public sealed class Mesh
     private static double BullTriangle(Point2 p, double r, double rc, Triangle t)
     {
         var flat = r - rc;
-        var best = double.NegativeInfinity;
-        foreach (var v in new[] { t.A, t.B, t.C })
-        {
-            var d = Point2.Distance(v.XY, p);
-            if (d <= flat) best = Math.Max(best, v.Z);
-            else if (d <= r)
-            {
-                var e = d - flat;
-                best = Math.Max(best, v.Z + Math.Sqrt(rc * rc - e * e) - rc);
-            }
-        }
+        var best = BullVertex(p, r, flat, rc, t.A);
+        best = Math.Max(best, BullVertex(p, r, flat, rc, t.B));
+        best = Math.Max(best, BullVertex(p, r, flat, rc, t.C));
         best = Math.Max(best, BullEdge(p, flat, rc, t.A, t.B));
         best = Math.Max(best, BullEdge(p, flat, rc, t.B, t.C));
         best = Math.Max(best, BullEdge(p, flat, rc, t.C, t.A));
@@ -216,6 +262,15 @@ public sealed class Mesh
             if (InsideXY(contact, t)) best = Math.Max(best, PlaneZ(t, n, contact) + rc * n.Z - rc);
         }
         return best;
+    }
+
+    private static double BullVertex(Point2 p, double r, double flat, double rc, Point3 v)
+    {
+        var d = Point2.Distance(v.XY, p);
+        if (d <= flat) return v.Z;
+        if (d > r) return double.NegativeInfinity;
+        var e = d - flat;
+        return v.Z + Math.Sqrt(rc * rc - e * e) - rc;
     }
 
     private static double BullEdge(Point2 p, double flat, double rc, Point3 a, Point3 b)

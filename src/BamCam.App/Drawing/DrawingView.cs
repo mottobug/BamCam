@@ -678,7 +678,9 @@ public sealed partial class DrawingView : Control, IToolHost
 
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SurfaceEntity, SurfaceRaster> _surfaceRasters = [];
 
-    private double RenderScaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<Toolpath, ToolpathRaster> _toolpathRasters = [];
+
+    private double RenderScaling =>TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
 
     private void RenderEntities(DrawingContext dc)
     {
@@ -809,15 +811,24 @@ public sealed partial class DrawingView : Control, IToolHost
                 continue;
             }
 
-            foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
+            if (tp.Moves.Count >= ToolpathRaster.LargeMoveCount)
             {
-                if (kind == MoveKind.Rapid)
+                static Color Faded(Color c, byte alpha) => Color.FromArgb(alpha, c.R, c.G, c.B);
+                _toolpathRasters.GetOrCreateValue(tp).Draw(dc, tp, _view, Bounds.Size, RenderScaling, FlattenTolerance,
+                    Faded(Settings.ToolpathColor, a), Faded(Settings.ToolpathArcColor, a), Faded(Settings.RapidColor, a), Settings.ShowRapids, w);
+            }
+            else
+            {
+                foreach (var (from, to, kind) in tp.DisplaySegments(FlattenTolerance))
                 {
-                    if (Settings.ShowRapids) dc.DrawLine(rapidPen, _view.ToScreen(from), _view.ToScreen(to));
-                }
-                else
-                {
-                    dc.DrawLine(kind == MoveKind.Feed ? cutPen : arcPen, _view.ToScreen(from), _view.ToScreen(to));
+                    if (kind == MoveKind.Rapid)
+                    {
+                        if (Settings.ShowRapids) dc.DrawLine(rapidPen, _view.ToScreen(from), _view.ToScreen(to));
+                    }
+                    else
+                    {
+                        dc.DrawLine(kind == MoveKind.Feed ? cutPen : arcPen, _view.ToScreen(from), _view.ToScreen(to));
+                    }
                 }
             }
             if (Settings.ShowDirectionArrows) DrawStartArrow(dc, tp, cutPen);

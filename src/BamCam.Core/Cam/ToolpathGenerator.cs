@@ -15,9 +15,10 @@ public static class ToolpathGenerator
     /// </summary>
     public const double ChordTolerance = 1e-4;
 
-    public static Toolpath Generate(CadDocument doc, MachineOp op)
+    /// <param name="cancel">Stops long calculations early: the result is then incomplete and is to be dropped.</param>
+    public static Toolpath Generate(CadDocument doc, MachineOp op, CancellationToken cancel = default)
     {
-        var ctx = new GenContext(doc, op);
+        var ctx = new GenContext(doc, op) { Cancel = cancel };
         var tp = new Toolpath();
         if (!CheckTool(ctx, op, tp)) return tp;
         try
@@ -55,6 +56,10 @@ public static class ToolpathGenerator
                     else tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType)));
                     break;
             }
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+        {
+            return tp;
         }
         catch (Exception ex)
         {
@@ -141,6 +146,8 @@ public sealed class ToolpathContext
     public double ToolRadius => _ctx.ToolRadius;
     /// <summary>Z where machining starts (Auto = top of the stock).</summary>
     public double StockSurface => _ctx.StockSurface;
+    /// <summary>Set when the user cancels: a generator with long loops should end when this fires.</summary>
+    public CancellationToken Cancel => _ctx.Cancel;
     /// <summary>Final depth for operations derived from <see cref="DepthOp"/> (Auto = bottom of the stock).</summary>
     public double TargetDepth => _ctx.TargetDepth;
     /// <summary>Safe Z for rapid moves.</summary>
@@ -187,6 +194,7 @@ internal sealed class GenContext
 
     public CadDocument Doc { get; }
     public MachineOp Op { get; }
+    public CancellationToken Cancel { get; init; }
     public Part? Part { get; }
     public Stock Stock { get; }
     public double ToolDiameter { get; }

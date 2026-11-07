@@ -1,6 +1,7 @@
 using BamCam.App.Drawing;
 using BamCam.App.Services;
 using BamCam.Core.Cad;
+using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 using BamCam.IO.Cb;
@@ -108,8 +109,225 @@ public class LargeSurfaceTests
     [Fact]
     public void Colour_is_premultiplied()
     {
-        Assert.Equal(unchecked((int)0xFF102030), SurfaceRaster.Pixel(Avalonia.Media.Color.FromArgb(255, 0x10, 0x20, 0x30)));
-        Assert.Equal(unchecked((int)0x80804020), SurfaceRaster.Pixel(Avalonia.Media.Color.FromArgb(128, 255, 128, 64)));
+        Assert.Equal(unchecked((int)0xFF102030), PixelLayer.Pixel(Avalonia.Media.Color.FromArgb(255, 0x10, 0x20, 0x30)));
+        Assert.Equal(unchecked((int)0x80804020), PixelLayer.Pixel(Avalonia.Media.Color.FromArgb(128, 255, 128, 64)));
+    }
+
+    // ---------------------------------------------------------------- large toolpaths
+
+    [Fact]
+    public void Toolpath_kinds_get_their_colours_and_rapids_can_be_hidden()
+    {
+        // Rows 5, 10 and 15 of a 30 x 30 bitmap (y up, pan 20).
+        Point3[] from = [new(2, 15, 0), new(2, 10, 0), new(2, 5, 0)];
+        Point3[] to = [new(12, 15, 0), new(12, 10, 0), new(12, 5, 0)];
+        MoveKind[] kinds = [MoveKind.Rapid, MoveKind.Feed, MoveKind.ArcCW];
+        var pixels = new int[900];
+
+        ToolpathRaster.Rasterize(from, to, kinds, TopView(panY: 20), 1, 30, 30, cutColour: 1, arcColour: 2, rapidColour: 3, showRapids: true, pixels);
+        Assert.Equal(3, pixels[5 * 30 + 6]);
+        Assert.Equal(1, pixels[10 * 30 + 6]);
+        Assert.Equal(2, pixels[15 * 30 + 6]);
+
+        ToolpathRaster.Rasterize(from, to, kinds, TopView(panY: 20), 1, 30, 30, 1, 2, 3, showRapids: false, pixels);
+        Assert.Equal(0, pixels[5 * 30 + 6]);
+        Assert.Equal(1, pixels[10 * 30 + 6]);
+    }
+
+    [Theory]
+    [InlineData(1, 1, 1)]
+    [InlineData(1, 1.5, 2)]
+    [InlineData(1.5, 1, 2)]
+    [InlineData(2, 2, 4)]
+    [InlineData(0.2, 1, 1)]
+    public void Line_width_follows_the_setting_and_the_display(double width, double scaling, int expected)
+    {
+        Assert.Equal(expected, ToolpathRaster.Thickness(width, scaling));
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(3)]
+    public void Wide_lines_cover_rows_or_columns_across_their_direction(int thickness)
+    {
+        var pixels = new int[900];
+        // One line along X and one along Y.
+        ToolpathRaster.Rasterize([new(2, 10.5, 0), new(20.5, 2, 0)], [new(12, 10.5, 0), new(20.5, 18, 0)], [MoveKind.Feed, MoveKind.Feed],
+            TopView(panY: 20), 1, 30, 30, 1, 2, 3, false, pixels, thickness);
+
+        var rows = Enumerable.Range(0, 30).Count(y => pixels[y * 30 + 6] != 0);
+        var columns = Enumerable.Range(0, 30).Count(x => pixels[10 * 30 + x] != 0 && x > 15);
+        Assert.Equal(thickness, rows);
+        Assert.Equal(thickness, columns);
+    }
+
+    [Fact]
+    public void Cutting_moves_are_drawn_over_rapids()
+    {
+        Point3[] line = [new(2, 10, 0)];
+        Point3[] end = [new(12, 10, 0)];
+        var pixels = new int[900];
+
+        ToolpathRaster.Rasterize([line[0], line[0]], [end[0], end[0]], [MoveKind.Feed, MoveKind.Rapid], TopView(panY: 20), 1, 30, 30, 1, 2, 3, true, pixels);
+
+        Assert.Equal(1, pixels[10 * 30 + 6]);
+    }
+
+    // ---------------------------------------------------------------- drop cutter
+
+    /// <summary>A bumpy surface of many small triangles.</summary>
+    private static List<Triangle> Bumps(int n, double size)
+    {
+        double Z(int x, int y) => 3 * Math.Sin(x * 0.3) * Math.Cos(y * 0.2);
+        Point3 P(int x, int y) => new(x * size, y * size, Z(x, y));
+        var result = new List<Triangle>();
+        for (var y = 0; y < n; y++)
+        for (var x = 0; x < n; x++)
+        {
+            result.Add(new(P(x, y), P(x + 1, y), P(x + 1, y + 1)));
+            result.Add(new(P(x, y), P(x + 1, y + 1), P(x, y + 1)));
+        }
+        return result;
+    }
+
+    [Theory]
+    [InlineData(CutterShape.Ball, 0.0)]
+    [InlineData(CutterShape.Flat, 0.0)]
+    [InlineData(CutterShape.Bull, 1.0)]
+    public void The_grid_size_does_not_change_the_result(CutterShape shape, double corner)
+    {
+        var triangles = Bumps(40, 0.25);
+        var fine = new Mesh(triangles, 1);    // cells of the triangles' size
+        var coarse = new Mesh(triangles, 100); // a single large cell would be checked against all of them
+
+        for (var i = 0; i < 400; i++)
+        {
+            double x = -1 + 12 * (i % 20) / 20.0, y = -1 + 12 * (i / 20) / 20.0;
+            Assert.Equal(coarse.DropCutter(x, y, 3, shape, corner), fine.DropCutter(x, y, 3, shape, corner));
+        }
+    }
+
+    [Fact]
+    public void Queries_from_several_threads_give_the_same_results()
+    {
+        var mesh = new Mesh(Bumps(60, 0.25), 3);
+        var points = Enumerable.Range(0, 2000).Select(i => (X: 15.0 * (i % 50) / 50, Y: 15.0 * (i / 50) / 40)).ToList();
+        var serial = points.Select(p => mesh.DropCutter(p.X, p.Y, 3, CutterShape.Ball)).ToList();
+
+        var parallel = new double?[points.Count];
+        Parallel.For(0, points.Count, i => parallel[i] = mesh.DropCutter(points[i].X, points[i].Y, 3, CutterShape.Ball));
+
+        Assert.Equal(serial, parallel);
+    }
+
+    private static (CadDocument Doc, Profile3DOp Op) Scanlines(Profile3DMethod method = Profile3DMethod.Horizontal)
+    {
+        var doc = CadDocument.CreateNew();
+        var mesh = new SurfaceEntity();
+        foreach (var t in Bumps(30, 1))
+        {
+            mesh.Faces.AddRange([mesh.Vertices.Count, mesh.Vertices.Count + 1, mesh.Vertices.Count + 2]);
+            mesh.Vertices.AddRange([t.A, t.B, t.C]);
+        }
+        doc.AddEntity(mesh);
+        var op = new Profile3DOp { Name = "3d" };
+        op.PrimitiveIds.Add(mesh.Id);
+        op.ToolDiameter.Set(6);
+        op.ToolProfile.Set(ToolProfile.BallNose);
+        op.StockSurface.Set(4);
+        op.TargetDepth.Set(-4);
+        op.DepthIncrement.Set(4);
+        op.Profile3DMethod.Set(method);
+        doc.ActivePart.Operations.Add(op);
+        return (doc, op);
+    }
+
+    [Theory]
+    [InlineData(Profile3DMethod.Horizontal)]
+    [InlineData(Profile3DMethod.Vertical)]
+    public void Scanlines_are_the_same_at_every_run_and_rows_change_direction(Profile3DMethod method)
+    {
+        var (doc, op) = Scanlines(method);
+
+        var first = ToolpathGenerator.Generate(doc, op);
+        var second = ToolpathGenerator.Generate(doc, op);
+
+        Assert.Empty(first.Warnings);
+        Assert.True(first.Moves.Count > 50, $"{first.Moves.Count} moves");
+        Assert.Equal(first.Moves.Select(m => m.To), second.Moves.Select(m => m.To));
+    }
+
+    // ---------------------------------------------------------------- outline of many triangles
+
+    private static List<Path2> TrianglePaths(int n, double size) =>
+        Bumps(n, size).Select(t => Polygons.EnsureOrientation(Path2.FromPoints([t.A.XY, t.B.XY, t.C.XY], true), ccw: true)).ToList();
+
+    [Fact]
+    public void Large_union_gives_the_outline_of_the_plain_union()
+    {
+        var paths = TrianglePaths(110, 0.5); // 24200 triangles, over the limit
+        Assert.True(paths.Count >= Polygons.LargeUnionCount);
+
+        var plain = Polygons.Union(paths);
+        var tiled = Polygons.UnionLarge(paths);
+
+        Assert.Equal(plain.Count, tiled.Count);
+        Assert.Equal(plain.Sum(p => p.SignedArea()), tiled.Sum(p => p.SignedArea()), 3);
+        Assert.Equal(55 * 55, tiled.Sum(p => p.SignedArea()), 3);
+    }
+
+    [Fact]
+    public void Separate_islands_and_holes_stay_in_a_large_union()
+    {
+        // A grid of small squares with a gap in the middle row and column: four islands.
+        var paths = new List<Path2>();
+        for (var y = 0; y < 150; y++)
+        for (var x = 0; x < 150; x++)
+        {
+            if (x == 75 || y == 75) continue;
+            paths.Add(Path2.FromPoints([new(x, y), new(x + 1, y), new(x + 1, y + 1), new(x, y + 1)], true));
+        }
+
+        var tiled = Polygons.UnionLarge(paths);
+
+        Assert.Equal(4, tiled.Count);
+        Assert.Equal(149 * 149, tiled.Sum(p => p.SignedArea()), 3);
+    }
+
+    [Fact]
+    public void Below_the_limit_a_large_union_is_the_plain_union()
+    {
+        var paths = TrianglePaths(10, 1);
+        var plain = Polygons.Union(paths);
+        var large = Polygons.UnionLarge(paths);
+
+        Assert.Equal(plain.Select(p => p.Vertices), large.Select(p => p.Vertices));
+    }
+
+    [Fact]
+    public void A_cancelled_large_union_stops()
+    {
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+        Assert.ThrowsAny<OperationCanceledException>(() => Polygons.UnionLarge(TrianglePaths(110, 0.5), cancel.Token));
+    }
+
+    // ---------------------------------------------------------------- cancelling
+
+    [Theory]
+    [InlineData(Profile3DMethod.Horizontal)]
+    [InlineData(Profile3DMethod.WaterlineRough)]
+    [InlineData(Profile3DMethod.WaterlineFinish)]
+    public void A_cancelled_3D_profile_ends_without_a_toolpath_or_a_failure(Profile3DMethod method)
+    {
+        var (doc, op) = Scanlines(method);
+        using var cancel = new CancellationTokenSource();
+        cancel.Cancel();
+
+        var tp = ToolpathGenerator.Generate(doc, op, cancel.Token);
+
+        Assert.Empty(tp.Moves);
+        Assert.DoesNotContain(tp.Warnings, w => w.Contains("failed"));
     }
 
     // ---------------------------------------------------------------- object snap

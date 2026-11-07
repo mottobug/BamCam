@@ -489,22 +489,36 @@ public partial class MainWindow
 
     /// <summary>
     /// Generates toolpaths on a worker thread, one operation at a time, so the window keeps repainting.
-    /// Editing is disabled meanwhile because generators read the live document.
+    /// Editing is disabled meanwhile because generators read the live document. From a moment on, a small window
+    /// offers to cancel. Returns false when it was cancelled or another generation is running: the toolpaths are then
+    /// not all there.
     /// </summary>
-    private async Task GenerateToolpathsAsync(PostScope? scope = null)
+    private async Task<bool> GenerateToolpathsAsync(PostScope? scope = null)
     {
-        if (_generating) return;
+        if (_generating) return false;
         scope ??= PostScope.All;
         _generating = true;
         var content = (Control)Content!;
         content.IsEnabled = false;
         Cursor = new Cursor(StandardCursorType.Wait);
+        using var cancel = new CancellationTokenSource();
+        if (_diagnosticCancelAfter is { } delay) cancel.CancelAfter(delay);
+        var running = GenerateCore(scope, cancel.Token);
+        GenerateProgressWindow? progress = null;
         try
         {
-            await GenerateCore(scope);
+            if (await Task.WhenAny(running, Task.Delay(1000)) != running)
+            {
+                progress = new GenerateProgressWindow(cancel.Cancel) { Message = StatusText.Text ?? "" };
+                _generateProgress = progress;
+                progress.Show(this);
+            }
+            return await running;
         }
         finally
         {
+            _generateProgress = null;
+            progress?.Finish();
             _generating = false;
             content.IsEnabled = true;
             Cursor = Cursor.Default;
@@ -512,19 +526,40 @@ public partial class MainWindow
         }
     }
 
-    private async Task GenerateCore(PostScope scope)
+    private GenerateProgressWindow? _generateProgress;
+
+    /// <summary>--cancel-after: cancels generating toolpaths after this time, as the button of the window does.</summary>
+    private TimeSpan? _diagnosticCancelAfter;
+
+    /// <summary>Returns false when cancelled. Operations finished before that keep their new toolpaths.</summary>
+    private async Task<bool> GenerateCore(PostScope scope, CancellationToken cancel)
     {
         var sw = Stopwatch.StartNew();
         var count = 0;
         var ops = OpsInScope(scope).ToList();
+        var cancelled = new TaskCompletionSource();
+        using var registration = cancel.Register(() => cancelled.TrySetResult());
         foreach (var (_, op) in ops)
         {
-            SetStatus(F("Generating toolpaths: {0} ({1}/{2})…", op.Name, count + 1, ops.Count));
+            var status = F("Generating toolpaths: {0} ({1}/{2})…", op.Name, count + 1, ops.Count);
+            SetStatus(status);
+            if (_generateProgress != null) _generateProgress.Message = status;
             var doc = _session.Document;
             // Like CamBam, Default values are taken from the CAM style when toolpaths are generated
             // (the values cached in the drawing may come from another style library version).
             BamCam.IO.Cb.LibraryFiles.ApplyStyle(doc, op);
-            var tp = await Task.Run(() => ToolpathGenerator.Generate(doc, op));
+            var run = Task.Run(() => ToolpathGenerator.Generate(doc, op, cancel));
+            // Not every calculation looks at the token: the window comes back at once, and the rest of it is dropped.
+            await Task.WhenAny(run, cancelled.Task);
+            if (cancel.IsCancellationRequested)
+            {
+                _ = run.ContinueWith(t => t.Exception, TaskScheduler.Default);
+                Log(F("Toolpath generation cancelled. {0} operation(s) finished, {1} keeps its previous toolpath.", count, op.Name));
+                UpdateNesting(_session.Document.Parts.Where(p => scope.Part == null || p == scope.Part));
+                View.Invalidate();
+                return false;
+            }
+            var tp = await run;
             _session.SetToolpath(op, tp);
             foreach (var w in tp.Warnings) Log(F("Warning: {0}", w));
             var len = 0.0;
@@ -542,6 +577,7 @@ public partial class MainWindow
         else Log(F("Toolpaths generated in {0} ms.", sw.ElapsedMilliseconds));
         UpdateNesting(_session.Document.Parts.Where(p => scope.Part == null || p == scope.Part));
         View.Invalidate();
+        return true;
     }
 
     /// <summary>Re-lays out Grid / ISO Grid nest copies (spacing is measured between toolpaths).</summary>
@@ -590,10 +626,10 @@ public partial class MainWindow
         var doc = _session.Document;
         var ops = OpsInScope(scope).ToList();
         if (ops.Count == 0) { Log(T("Nothing to post: no enabled machining operations.")); return; }
-        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
-            await GenerateToolpathsAsync(scope);
+        if ((ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
+            && !await GenerateToolpathsAsync(scope)) return;
 
-        var outFile = scope.Operation != null ? "" : scope.Part?.OutFile ?? doc.Machining.OutFile;
+        var outFile =scope.Operation != null ? "" : scope.Part?.OutFile ?? doc.Machining.OutFile;
         string? path = string.IsNullOrWhiteSpace(outFile) ? null : ExpandOutFile(outFile);
         var showDialog = path == null || !Path.IsPathRooted(path) || _settings.OutFilePrompt == OutFilePrompt.Always;
         if (!showDialog && _settings.OutFilePrompt == OutFilePrompt.IfExists && File.Exists(path))
@@ -663,8 +699,8 @@ public partial class MainWindow
             Log(T("Nothing to post: no enabled machining operations."));
             return null;
         }
-        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
-            await GenerateToolpathsAsync(PostScope.All);
+        if ((ops.Any(o => !_session.Toolpaths.ContainsKey(o.Op)) || doc.Machining.RebuildToolpathBeforePost == RebuildToolpath.Always)
+            && !await GenerateToolpathsAsync(PostScope.All)) return null;
         return PostDrawing(PostScope.All).Result.Text;
     }
 
@@ -772,7 +808,7 @@ public partial class MainWindow
             Log(T("There are no milling operations to simulate."));
             return;
         }
-        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync(scope);
+        if (ops.Any(o => !_session.Toolpaths.ContainsKey(o)) && !await GenerateToolpathsAsync(scope)) return;
         if (_simulationWindow is { } open)
         {
             open.ShowOperations(ops);
@@ -798,7 +834,7 @@ public partial class MainWindow
     private async void FollowSelectionInSimulation()
     {
         if (_simulationWindow is not { } window || SimulationScope() is not { } s || s.Ops.Count == 0) return;
-        if (s.Ops.Any(o => !_session.Toolpaths.ContainsKey(o))) await GenerateToolpathsAsync(s.Scope);
+        if (s.Ops.Any(o => !_session.Toolpaths.ContainsKey(o)) && !await GenerateToolpathsAsync(s.Scope)) return;
         if (_simulationWindow == window) window.ShowOperations(s.Ops);
     }
 }

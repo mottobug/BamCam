@@ -27,7 +27,9 @@ internal static class Profile3DGenerator
 
         var dia = ctx.ToolDiameter;
         var mesh = new Mesh(triangles, Math.Max(dia, 1));
+        ctx.Cancel.ThrowIfCancellationRequested();
         var boundary = Boundary(ctx, op, mesh);
+        ctx.Cancel.ThrowIfCancellationRequested();
         if (boundary.Count == 0)
         {
             ctx.Warnings.Add(Tr.F("{0}: the machining boundary is empty.", op.Name));
@@ -103,7 +105,7 @@ internal static class Profile3DGenerator
             {
                 var tris = CollectTriangles(ctx, op, op.BoundaryShapes).ToList();
                 if (tris.Count > 0) tris = TransformForSide(op, tris);
-                var shapes = new List<Path2>(Silhouette(tris));
+                var shapes = new List<Path2>(Silhouette(tris, ctx.Cancel));
                 foreach (var id in op.BoundaryShapes)
                     if (ctx.Doc.FindEntity(id) is { } e and not SurfaceEntity)
                         shapes.AddRange(e.ToPaths().Where(p => p.Closed));
@@ -111,7 +113,7 @@ internal static class Profile3DGenerator
                 break;
             }
             default:
-                region = Silhouette(mesh.Triangles);
+                region = Silhouette(mesh.Triangles, ctx.Cancel);
                 break;
         }
         if (Math.Abs(op.BoundaryMargin.Value) > 1e-9) region = Polygons.Offset(region, op.BoundaryMargin.Value);
@@ -124,10 +126,10 @@ internal static class Profile3DGenerator
     }
 
     // Projected triangles are oriented CCW so overlapping up- and down-facing faces don't cancel in the union.
-    private static List<Path2> Silhouette(IEnumerable<Triangle> tris) =>
-        Polygons.Union(tris.Select(t => Path2.FromPoints([t.A.XY, t.B.XY, t.C.XY], true))
+    private static List<Path2> Silhouette(IEnumerable<Triangle> tris, CancellationToken cancel) =>
+        Polygons.UnionLarge(tris.Select(t => Path2.FromPoints([t.A.XY, t.B.XY, t.C.XY], true))
             .Where(p => Math.Abs(p.SignedArea()) > 1e-10)
-            .Select(p => Polygons.EnsureOrientation(p, ccw: true)));
+            .Select(p => Polygons.EnsureOrientation(p, ccw: true)), cancel);
 
     /// <summary>
     /// Cutter for the drop cutter. A bull nose without a corner radius is computed as a ball nose (as CamBam does;
@@ -176,11 +178,12 @@ internal static class Profile3DGenerator
 
         var maxSlope = op.ScanlineGradientThreshold.Value is > 0 and < 90 ? Math.Tan(Angles.ToRadians(op.ScanlineGradientThreshold.Value)) : double.PositiveInfinity;
 
-        // Sample every row once: list of segments of (point, surface z).
-        var rowSegments = new List<List<List<Point3>>>();
-        var forward = uAscending;
-        foreach (var v in rows)
+        // Sample every row once: list of segments of (point, surface z). A row depends on nothing else, so they run in parallel.
+        var rowSegments = new List<List<Point3>>[rows.Count];
+        Parallel.For(0, rows.Count, new ParallelOptions { CancellationToken = ctx.Cancel }, row =>
         {
+            var v = rows[row];
+            var forward = uAscending ^ (row % 2 == 1);
             var segments = new List<List<Point3>>();
             List<Point3>? current = null;
             var n = Math.Max(1, (int)Math.Ceiling((u1 - u0) / res));
@@ -207,9 +210,8 @@ internal static class Profile3DGenerator
                 }
                 current.Add(p.ToPoint3(z));
             }
-            rowSegments.Add(segments.Where(s => s.Count > 1).ToList());
-            forward = !forward;
-        }
+            rowSegments[row] = segments.Where(s => s.Count > 1).ToList();
+        });
 
         var levels = op.RoughingFinishing.Value == RoughingFinishing.Roughing && op.DepthIncrement.Value > 1e-9
             ? ctx.Levels(op)
@@ -279,7 +281,7 @@ internal static class Profile3DGenerator
 
     /// <summary>Area blocked for the tool centre at <paramref name="z"/>: model above z grown by radius + clearance.</summary>
     private static List<Path2> Blocked(Mesh mesh, double z, double grow) =>
-        Polygons.Offset(Polygons.Union(mesh.SliceAbove(z)), grow);
+        Polygons.Offset(Polygons.UnionLarge(mesh.SliceAbove(z)), grow);
 
     private static List<Path2> TaperedBoundary(GenContext ctx, Profile3DOp op, List<Path2> boundary, double z)
     {
@@ -301,6 +303,7 @@ internal static class Profile3DGenerator
         var prev = ctx.StockSurface;
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
+            ctx.Cancel.ThrowIfCancellationRequested();
             var free = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), Blocked(mesh, z, grow));
             foreach (var shape in Polygons.BuildShapes(free))
             {
@@ -330,6 +333,7 @@ internal static class Profile3DGenerator
         var prev = ctx.StockSurface;
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
+            ctx.Cancel.ThrowIfCancellationRequested();
             var bound = TaperedBoundary(ctx, op, boundary, z);
             // Contours around the model (outer walls: CCW for conventional with a CW spindle).
             foreach (var path in Blocked(mesh, z, grow))

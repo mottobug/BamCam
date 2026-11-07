@@ -171,6 +171,39 @@ public static class Polygons
     public static List<Path2> Union(IEnumerable<Path2> a, IEnumerable<Path2>? b = null) =>
         Boolean(ClipType.Union, a, b ?? []);
 
+    /// <summary>From this number of paths, <see cref="UnionLarge"/> splits the work into tiles.</summary>
+    public const int LargeUnionCount = 20000;
+
+    /// <summary>
+    /// Union of very many small paths, such as the triangles of a mesh: much faster than <see cref="Union"/>, which takes
+    /// minutes for a million of them, because each tile is merged on its own and only the few remaining outlines go into
+    /// the last step. Tile borders can leave slivers without an area, which are removed.
+    /// </summary>
+    /// <param name="cancel">Stops between tiles.</param>
+    public static List<Path2> UnionLarge(IEnumerable<Path2> paths, CancellationToken cancel = default)
+    {
+        var list = paths as IReadOnlyList<Path2> ?? paths.ToList();
+        if (list.Count < LargeUnionCount) return Union(list);
+
+        var box = list.Aggregate(BoundingBox.Empty, (b, p) => b.Include(p.Vertices[0].Point));
+        var tilesPerSide = Math.Clamp((int)Math.Ceiling(Math.Sqrt(list.Count / 5000.0)), 4, 64);
+        int Index(double value, double min, double size) =>
+            size <= 0 ? 0 : Math.Min((int)((value - min) / size * tilesPerSide), tilesPerSide - 1);
+        var tiles = list.GroupBy(p =>
+        {
+            var c = p.Vertices[0].XY;
+            return Index(c.X, box.Min.X, box.Width) * tilesPerSide + Index(c.Y, box.Min.Y, box.Height);
+        }).OrderBy(g => g.Key).Select(g => g.ToList()).ToList();
+
+        var merged = new List<Path2>[tiles.Count];
+        Parallel.For(0, tiles.Count, new ParallelOptions { CancellationToken = cancel }, i => merged[i] = Union(tiles[i]));
+        cancel.ThrowIfCancellationRequested();
+        return Union(merged.SelectMany(p => p)).Where(p => Math.Abs(p.SignedArea()) > SliverArea).ToList();
+    }
+
+    /// <summary>Area below which a loop from <see cref="UnionLarge"/> counts as a sliver of a tile border.</summary>
+    private const double SliverArea = 1e-6;
+
     public static List<Path2> Difference(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Difference, a, b);
     public static List<Path2> Intersection(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Intersection, a, b);
     public static List<Path2> Xor(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Xor, a, b);
