@@ -11,6 +11,7 @@
   <Folder Name="/plugins/">
     <Project Path="plugins/BamCam.CentreLinesPlugin/BamCam.CentreLinesPlugin.csproj" />
     <Project Path="plugins/BamCam.GCodeViewerPlugin/BamCam.GCodeViewerPlugin.csproj" />
+    <Project Path="plugins/BamCam.SquirclePlugin/BamCam.SquirclePlugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BamCam.Tests/BamCam.Tests.csproj" />

@@ -43,19 +43,28 @@ if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 
 # Plugins that come with BamCam: built first, because the program contains their hashes and runs exactly these files
 # without asking. Only their own files are shipped, BamCam provides the rest at run time.
-$centreLines = Join-Path $root "plugins/BamCam.CentreLinesPlugin"
-$pluginBuild = Join-Path $OutDir "plugin-build/CentreLines"
-& dotnet build $centreLines -c $Configuration -o $pluginBuild -nologo
-if ($LASTEXITCODE -ne 0) { throw "building the Centre Lines plugin failed" }
-$pluginHash = (Get-FileHash (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.dll") -Algorithm SHA256).Hash
+$bundledPlugins = @(
+    @{ Folder = "CentreLines"; Name = "BamCam.CentreLinesPlugin" },
+    @{ Folder = "Squircle"; Name = "BamCam.SquirclePlugin" }
+)
+$pluginHashes = @()
+foreach ($plugin in $bundledPlugins) {
+    $plugin.Build = Join-Path $OutDir "plugin-build/$($plugin.Folder)"
+    & dotnet build (Join-Path $root "plugins/$($plugin.Name)") -c $Configuration -o $plugin.Build -nologo
+    if ($LASTEXITCODE -ne 0) { throw "building $($plugin.Name) failed" }
+    $pluginHashes += (Get-FileHash (Join-Path $plugin.Build "$($plugin.Name).dll") -Algorithm SHA256).Hash
+}
 
 Write-Host "==> Publishing $Rid ($Version)"
-& dotnet publish $project -c $Configuration -r $Rid --self-contained true -p:Version=$Version -p:BundledPluginHashes=$pluginHash -o $publishDir -nologo
+# %2C is a comma for MSBuild: a plain one would separate properties on the command line.
+& dotnet publish $project -c $Configuration -r $Rid --self-contained true -p:Version=$Version "-p:BundledPluginHashes=$($pluginHashes -join '%2C')" -o $publishDir -nologo
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
 
-$pluginTarget = Join-Path $publishDir "plugins/CentreLines"
-New-Item -ItemType Directory -Force $pluginTarget | Out-Null
-Copy-Item (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.dll"), (Join-Path $pluginBuild "BamCam.CentreLinesPlugin.deps.json") $pluginTarget
+foreach ($plugin in $bundledPlugins) {
+    $pluginTarget = Join-Path $publishDir "plugins/$($plugin.Folder)"
+    New-Item -ItemType Directory -Force $pluginTarget | Out-Null
+    Copy-Item (Join-Path $plugin.Build "$($plugin.Name).dll"), (Join-Path $plugin.Build "$($plugin.Name).deps.json") $pluginTarget
+}
 
 function Write-TextLf([string]$path, [string[]]$lines) {
     # LF line endings and no BOM: required for shell scripts, .desktop files and plists.
