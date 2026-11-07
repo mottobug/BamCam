@@ -312,6 +312,98 @@ public class LargeSurfaceTests
         Assert.ThrowsAny<OperationCanceledException>(() => Polygons.UnionLarge(TrianglePaths(110, 0.5), cancel.Token));
     }
 
+    // ---------------------------------------------------------------- outlines of waterline levels
+
+    /// <summary>A dome of many triangles, with a dimple on top that leaves a hole in the outline of the upper levels.</summary>
+    private static Mesh Dome(int n)
+    {
+        double Z(int x, int y)
+        {
+            double dx = x - n / 2.0, dy = y - n / 2.0, r = Math.Sqrt(dx * dx + dy * dy) / n;
+            return 10 * Math.Max(1 - 2 * r, 0) - 8 * Math.Exp(-r * r * 300);
+        }
+        Point3 P(int x, int y) => new(x, y, Z(x, y));
+        var triangles = new List<Triangle>();
+        for (var y = 0; y < n; y++)
+        for (var x = 0; x < n; x++)
+        {
+            triangles.Add(new(P(x, y), P(x + 1, y), P(x + 1, y + 1)));
+            triangles.Add(new(P(x, y), P(x + 1, y + 1), P(x, y + 1)));
+        }
+        return new Mesh(triangles, 3);
+    }
+
+    private static double Area(IEnumerable<Path2> paths) => paths.Sum(p => p.SignedArea());
+
+    [Fact]
+    public void An_outline_built_from_level_to_level_equals_one_built_at_once()
+    {
+        var mesh = Dome(120);
+        Assert.True(mesh.Triangles.Count >= Polygons.LargeUnionCount);
+
+        var outline = Polygons.UnionLarge(mesh.SliceAbove(9));
+        var upper = 9.0;
+        var holes = 0;
+        for (var z = 8.0; z >= -1; z -= 1)
+        {
+            outline = Polygons.UnionAdd(outline, mesh.SliceAbove(z, upper));
+            upper = z;
+
+            var whole = Polygons.UnionLarge(mesh.SliceAbove(z));
+            Assert.Equal(Area(whole), Area(outline), 3);
+            Assert.True(Polygons.Xor(whole, outline).Sum(p => Math.Abs(p.SignedArea())) < 1e-3, $"z = {z}");
+            holes = Math.Max(holes, outline.Count(p => p.SignedArea() < 0));
+        }
+        Assert.True(holes > 0, "the test needs a level with a hole in the outline");
+    }
+
+    [Fact]
+    public void Adding_nothing_to_an_outline_leaves_it()
+    {
+        var outline = Polygons.Union([Path2.FromPoints([new(0, 0), new(10, 0), new(10, 10), new(0, 10)], true)]);
+
+        Assert.Equal(100, Area(Polygons.UnionAdd(outline, [])), 6);
+    }
+
+    [Fact]
+    public void A_slice_between_two_levels_leaves_out_what_is_above_the_upper_one()
+    {
+        var mesh = new Mesh([new(new(0, 0, 5), new(1, 0, 5), new(0, 1, 5)), new(new(0, 0, 1), new(1, 0, 1), new(0, 1, 1)), new(new(0, 0, 0), new(1, 0, 6), new(0, 1, 6))], 1);
+
+        Assert.Equal(3, mesh.SliceAbove(1).Count());
+        Assert.Equal(2, mesh.SliceAbove(1, 5).Count()); // the one at 5 was there already, the crossing one is new
+    }
+
+    [Theory]
+    [InlineData(Profile3DMethod.WaterlineRough)]
+    [InlineData(Profile3DMethod.WaterlineFinish)]
+    public void A_waterline_of_a_large_mesh_gives_a_toolpath_at_each_level(Profile3DMethod method)
+    {
+        var doc = CadDocument.CreateNew();
+        var surface = new SurfaceEntity();
+        foreach (var t in Dome(110).Triangles)
+        {
+            surface.Faces.AddRange([surface.Vertices.Count, surface.Vertices.Count + 1, surface.Vertices.Count + 2]);
+            surface.Vertices.AddRange([t.A, t.B, t.C]);
+        }
+        Assert.True(surface.IsLarge);
+        doc.AddEntity(surface);
+        var op = new Profile3DOp { Name = "w" };
+        op.PrimitiveIds.Add(surface.Id);
+        op.ToolDiameter.Set(6);
+        op.StockSurface.Set(10);
+        op.TargetDepth.Set(2);
+        op.DepthIncrement.Set(2);
+        op.Profile3DMethod.Set(method);
+        op.BoundaryMethod.Set(BoundaryMethod.BoundingBox);
+
+        var path = ToolpathGenerator.Generate(doc, op);
+
+        Assert.Empty(path.Warnings);
+        var heights = path.Moves.Where(m => m.Kind != MoveKind.Rapid).Select(m => Math.Round(m.To.Z, 6)).Distinct().ToList();
+        foreach (var level in new[] { 6.0, 4, 2 }) Assert.Contains(level, heights); // the top of the dome is below 8
+    }
+
     // ---------------------------------------------------------------- cancelling
 
     [Theory]

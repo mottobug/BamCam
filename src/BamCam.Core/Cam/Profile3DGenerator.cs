@@ -279,9 +279,25 @@ internal static class Profile3DGenerator
         return levels.Where(z => z >= ctx.TargetDepth - 1e-9).ToList();
     }
 
-    /// <summary>Area blocked for the tool centre at <paramref name="z"/>: model above z grown by radius + clearance.</summary>
-    private static List<Path2> Blocked(Mesh mesh, double z, double grow) =>
-        Polygons.Offset(Polygons.UnionLarge(mesh.SliceAbove(z)), grow);
+    /// <summary>
+    /// The outline of the model above each level. From level to level the area only grows, so a large mesh adds what lies
+    /// between two levels to the previous outline, instead of uniting up to a million triangles again for each level.
+    /// </summary>
+    private sealed class Silhouettes(Mesh mesh, CancellationToken cancel)
+    {
+        private List<Path2>? _outline;
+        private double _z;
+
+        public List<Path2> Above(double z)
+        {
+            if (mesh.Triangles.Count < Polygons.LargeUnionCount) return Polygons.UnionLarge(mesh.SliceAbove(z), cancel);
+            _outline = _outline != null && z <= _z
+                ? Polygons.UnionAdd(_outline, mesh.SliceAbove(z, _z), cancel)
+                : Polygons.UnionLarge(mesh.SliceAbove(z), cancel);
+            _z = z;
+            return _outline;
+        }
+    }
 
     private static List<Path2> TaperedBoundary(GenContext ctx, Profile3DOp op, List<Path2> boundary, double z)
     {
@@ -301,10 +317,12 @@ internal static class Profile3DGenerator
         var stepFeed = op.StepoverFeedrate.Value == StepoverFeedrate.CutFeedrate ? ctx.CutFeed : ctx.PlungeFeed;
 
         var prev = ctx.StockSurface;
+        var silhouettes = new Silhouettes(mesh, ctx.Cancel);
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();
-            var free = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), Blocked(mesh, z, grow));
+            var blocked = Polygons.Offset(silhouettes.Above(z), grow); // area blocked for the tool centre
+            var free = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), blocked);
             foreach (var shape in Polygons.BuildShapes(free))
             {
                 // Mesh outlines are faceted anyway: a coarse arc tolerance keeps point counts manageable.
@@ -331,12 +349,13 @@ internal static class Profile3DGenerator
         var climb = op.MillingDirection.Value == MillingDirection.Climb;
         var cutter = new LoopCutter(ctx, mb) { LeadIn = op.LeadInMove.Value };
         var prev = ctx.StockSurface;
+        var silhouettes = new Silhouettes(mesh, ctx.Cancel);
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();
             var bound = TaperedBoundary(ctx, op, boundary, z);
             // Contours around the model (outer walls: CCW for conventional with a CW spindle).
-            foreach (var path in Blocked(mesh, z, grow))
+            foreach (var path in Polygons.Offset(silhouettes.Above(z), grow))
             {
                 var pts = LoopTools.Clean(path.Flatten());
                 if (pts.Count < 3) continue;

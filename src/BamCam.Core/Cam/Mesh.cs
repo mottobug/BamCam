@@ -322,11 +322,17 @@ public sealed class Mesh
     }
 
     /// <summary>XY polygons of the parts of each triangle at or above <paramref name="z"/> (for waterlines).</summary>
-    public IEnumerable<Path2> SliceAbove(double z)
+    public IEnumerable<Path2> SliceAbove(double z) => SliceAbove(z, double.PositiveInfinity);
+
+    /// <summary>
+    /// As <see cref="SliceAbove(double)"/>, without the triangles that lie entirely at or above <paramref name="upper"/>:
+    /// what a slice at z adds to a slice at <paramref name="upper"/>.
+    /// </summary>
+    public IEnumerable<Path2> SliceAbove(double z, double upper)
     {
         foreach (var t in _tris)
         {
-            if (t.MaxZ < z) continue;
+            if (t.MaxZ < z || t.MinZ >= upper) continue;
             var pts = ClipAbove([t.A, t.B, t.C], z);
             if (pts.Count < 3) continue;
             var path = Path2.FromPoints(pts.Select(p => p.XY), true);

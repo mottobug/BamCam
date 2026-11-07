@@ -201,6 +201,17 @@ public static class Polygons
         return Union(merged.SelectMany(p => p)).Where(p => Math.Abs(p.SignedArea()) > SliverArea).ToList();
     }
 
+    /// <summary>
+    /// An existing union with more paths added: much faster than uniting everything again when the union has few points
+    /// and few paths are added. Clockwise holes of the union stay holes unless something covers them.
+    /// </summary>
+    public static List<Path2> UnionAdd(IReadOnlyList<Path2> union, IEnumerable<Path2> added, CancellationToken cancel = default)
+    {
+        var merged = UnionLarge(added, cancel);
+        if (merged.Count == 0) return [.. union];
+        return Union(union.Concat(merged)).Where(p => Math.Abs(p.SignedArea()) > SliverArea).ToList();
+    }
+
     /// <summary>Area below which a loop from <see cref="UnionLarge"/> counts as a sliver of a tile border.</summary>
     private const double SliverArea = 1e-6;
 
