@@ -235,6 +235,7 @@ public partial class MainWindow
 
     private object[] TransformMenuItems() =>
     [
+        Item("_Numeric...", ShowNumericTransform),
         Item("_Move", () => View.SetTool(new MoveTool()), "Ctrl+M"),
         Item("_Rotate", () => View.SetTool(new RotateTool()), "Ctrl+R"),
         Item("Resi_ze...", Resize, "Ctrl+E"),

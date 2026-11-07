@@ -555,6 +555,11 @@ public sealed partial class DrawingView : Control, IToolHost
             RenderTabs(dc);
             _tool.RenderOverlay(dc, _view);
             RenderSnapMarker(dc);
+            if (TransformPreview is { } preview)
+            {
+                var previewPen = new Pen(Brushes.Orange, 1, DashStyle.Dash);
+                foreach (var (from, to) in preview) dc.DrawLine(previewPen, _view.ToScreen(from), _view.ToScreen(to));
+            }
             (_tool as DrawTool)?.RenderCursorLabel(dc, _view);
         }
     }
@@ -675,6 +680,9 @@ public sealed partial class DrawingView : Control, IToolHost
             dc.FillRectangle(new SolidColorBrush(Color.FromArgb(28, c.R, c.G, c.B)), r);
         }
     }
+
+    /// <summary>Lines of the numeric transform's preview, in drawing coordinates, or null.</summary>
+    public IReadOnlyList<(Point3 From, Point3 To)>? TransformPreview { get; set; }
 
     private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SurfaceEntity, SurfaceRaster> _surfaceRasters = [];
 

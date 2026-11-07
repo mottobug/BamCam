@@ -37,7 +37,11 @@ public partial class MainWindow : Window
         _session.Message += (_, m) => Log(m);
         _session.Changed += (_, _) => OnDocumentChanged();
         _session.DocumentReplaced += (_, _) => OnDocumentReplaced();
-        _session.SelectionChanged += (_, _) => SyncTreeSelection();
+        _session.SelectionChanged += (_, _) =>
+        {
+            SyncTreeSelection();
+            _numericTransform?.SelectionChanged();
+        };
         _session.InspectedChanged += (_, _) =>
         {
             // While the objects of an operation are re-selected the operation stays in the property grid.
@@ -383,6 +387,7 @@ public partial class MainWindow : Window
                         new ImageImportDialog(T("Trace Outlines"), _traceOptions, Services.ImageImport.LoadGray(image), Path.GetFileName(image)),
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
                         t => (null, Core.Model.ScriptEntity.Runner!(t).Error)),
+                    "transform" => CreateNumericTransformWindow(),
                     "scriptfile" => new ScriptEditorWindow("var a = 1 +;\nAdd(Circel(0, 0, 1));\nLog(Document.Name);\n", null, new ScriptFileActions((_, _) => Task.FromResult<string?>(null), _ => { })),
                     _ => null,
                 };
@@ -391,6 +396,22 @@ public partial class MainWindow : Window
                 {
                     await Task.Delay(6000); // simulation runs on a worker thread
                     await simulation.ExerciseAsync();
+                }
+                // --transform sx,sy,sz,rx,ry,rz,mx,my,mz: enters these values for all objects and applies them, as a user would.
+                if (extra is NumericTransformWindow numeric && options.TryGetValue("--transform", out var transformValues))
+                {
+                    _session.Select(_session.Document.AllEntities().ToList());
+                    numeric.SelectionChanged();
+                    numeric.SetValues(transformValues.Split(',').Select(v => double.Parse(v, CultureInfo.InvariantCulture)).ToArray());
+                    await Task.Delay(200);
+                    var before = Core.Cad.CadOps.Bounds(Selected);
+                    numeric.Apply();
+                    var box = Core.Cad.CadOps.Bounds(_session.Document.AllEntities());
+                    Log($"--transform: X {before.Min.X:0.###}..{before.Max.X:0.###} Y {before.Min.Y:0.###}..{before.Max.Y:0.###} Z {before.Min.Z:0.###}..{before.Max.Z:0.###} -> X {box.Min.X:0.###}..{box.Max.X:0.###} Y {box.Min.Y:0.###}..{box.Max.Y:0.###} Z {box.Min.Z:0.###}..{box.Max.Z:0.###}");
+                    _session.Undo();
+                    var undone = Core.Cad.CadOps.Bounds(_session.Document.AllEntities());
+                    Log($"--transform: after undo Z {undone.Min.Z:0.###}..{undone.Max.Z:0.###}");
+                    View.ZoomToFit();
                 }
                 if (extra is ScriptEditorWindow scriptEditor)
                 {
