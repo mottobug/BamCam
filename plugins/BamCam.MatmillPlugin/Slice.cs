@@ -1,0 +1,416 @@
+// Ported from matmill (https://github.com/jkmnt/matmill), slice.cs, MIT License, Copyright (c) 2016 jkmnt.
+// See LICENSE-matmill.txt.
+#nullable disable
+
+using BamCam.Core.Geometry;
+
+// FYI: TED stands for Tool Engagement Depth (or Distance).
+
+namespace Matmill;
+
+internal enum Slice_placement
+{
+    NORMAL,
+    TOO_FAR,
+    INSIDE_ANOTHER,
+}
+
+internal sealed class Slice
+{
+    private readonly Circle2F _ball;
+    private readonly List<Arc2F> _segments = [];
+    private readonly Slice _parent;
+    private readonly Slice_placement _placement;
+    private double _entry_ted;
+    private double _mid_ted;
+    private double _max_ted;
+
+    public List<Point2> Guide;
+
+    public Circle2F Ball => _ball;
+    public List<Arc2F> Segments => _segments;
+    public Point2 Center => _ball.Center;
+    public Point2 End => _segments[^1].P2;
+    public Point2 Start => _segments[0].P1;
+    public RotationDirection Dir => _segments[0].Direction;
+    public Slice Parent => _parent;
+    public Slice_placement Placement => _placement;
+    public double Max_ted => _max_ted;
+    public double Radius => _ball.Radius;
+
+    private static double angle_between_vectors(Vector2d v0, Vector2d v1, RotationDirection dir)
+    {
+        var angle = v0.Ccw_angle_to(v1);
+        return dir == RotationDirection.CCW ? angle : 2.0 * Math.PI - angle;
+    }
+
+    private double calc_ted(Point2 tool_center, double tool_r)
+    {
+        var parent_wall = new Circle2F(_parent.Center, _parent.Radius + tool_r);
+
+        // find the points tool touching parent wall
+        var cut_circle = new Circle2F(tool_center, tool_r);
+        var insects = cut_circle.CircleIntersect(parent_wall);
+
+        if (insects.p1.IsUndefined() || insects.p2.IsUndefined())
+        {
+            Logger.err("no wall intersections #0");
+            return 0;
+        }
+
+        // we're interested in tool head point, so choose more advanced point in mill direction
+
+        var v1 = new Vector2d(_parent.Center, insects.p1);
+        var v_parent_to_tool_center = new Vector2d(_parent.Center, tool_center);
+        var cut_head = v_parent_to_tool_center.Det(v1) * (int)Dir > 0 ? insects.p1 : insects.p2;
+
+        // project headpoint to the center find TED
+        var v_me_to_tool_center = new Vector2d(Center, tool_center);
+        var v_me_to_cut_head = new Vector2d(Center, cut_head);
+
+        var ted = Radius + tool_r - v_me_to_cut_head * v_me_to_tool_center.Unit();
+        return ted > 0 ? ted : 0;
+    }
+
+    private void calc_teds(double tool_r)
+    {
+        // expand both slices to form walls
+        var parent_wall = new Circle2F(_parent.Center, _parent.Radius + tool_r);
+        var this_wall = new Circle2F(Center, Radius + tool_r);
+
+        // find the point of cut start (intersection of walls)
+        var wall_insects = parent_wall.CircleIntersect(this_wall);
+
+        if (wall_insects.p1.IsUndefined() || wall_insects.p2.IsUndefined())
+        {
+            Logger.err("no wall intersections #1");
+            return;
+        }
+
+        var v_move = new Vector2d(_parent.Center, Center);
+        var v1 = new Vector2d(_parent.Center, wall_insects.p1);
+        var cut_tail = v_move.Det(v1) * (int)Dir < 0 ? wall_insects.p1 : wall_insects.p2;
+        var v_tail = new Vector2d(Center, cut_tail);
+
+        var entry_tool_center = Center + (v_tail.Unit() * Radius).Point;
+        _entry_ted = calc_ted(entry_tool_center, tool_r);
+
+        var mid_tool_center = Center + (v_move.Unit() * Radius).Point;
+        _mid_ted = calc_ted(mid_tool_center, tool_r);
+    }
+
+    public void Get_extrema(ref Point2 min, ref Point2 max)
+    {
+        // special processing for the very first slice, treat it as ball
+        if (_parent == null)
+        {
+            Get_ball_extrema(ref min, ref max);
+            return;
+        }
+
+        var arc = _segments.Count == 1
+            ? _segments[0]
+            : new Arc2F(_segments[0].Center, _segments[0].P1, _segments[^1].P2, _segments[0].Direction);
+
+        arc.GetExtrema(ref min, ref max);
+    }
+
+    public void Get_ball_extrema(ref Point2 min, ref Point2 max)
+    {
+        min = new Point2(Center.X - Radius, Center.Y - Radius);
+        max = new Point2(Center.X + Radius, Center.Y + Radius);
+    }
+
+    public void Refine(List<Slice> colliding_slices, double end_clearance, double tool_r)
+    {
+        var clearance = end_clearance;
+
+        // check if arc is small. refining is worthless in this case
+        // criterion for smallness: there should be at least 4 segments with chord = clearance, plus
+        // one segment to space ends far enough. A pentagon with a 5 segments with edge length = clearance
+        // will define the min radius of circumscribed circle. clearance = 2 * R * sin (Pi / 5),
+        // R = clearance / 2 / sin (Pi / 5)
+
+        if (_segments.Count != 1)
+            throw new Exception("attempt to refine slice with n segments != 1");
+
+        var arc = _segments[0];
+
+        var r_min = clearance / 2 / Math.Sin(Math.PI / 5.0);
+        if (arc.Radius <= r_min)
+            return;
+
+        if (colliding_slices.Contains(this))
+            throw new Exception("attempt to collide slice with itself");
+
+        // now apply the colliding slices. to keep things simple and robust, we apply just one slice - the one who trims
+        // us most (removed length of arc is greatest).
+
+        // end clearance adjustment:
+        // to guarantee the tool will never hit the unmilled area while rapiding between segments,
+        // arc will always have original ends, trimming will happen in the middle only.
+        // to prevent the tool from milling extra small end segments and minimize numeric errors at small tangents,
+        // original ends would always stick at least for a clearance (chordal) length.
+        // i.e. if the point of intersection of arc and colliding circle is closer than clearance to the end,
+        // it is moved to clearance distance.
+
+        // there is a two cases of intersecting circles: with single intersection and with a double intersection.
+        // double intersections splits arc to three pieces (length of the middle part is the measure),
+        // single intesections splits arc in two (the part inside the circle is removed, its length is the measure).
+        // in both cases the intersection points are subject to "end clearance adjustment".
+        // single intersections are transformed to the double intersections, second point being one of the end clearances.
+
+        var c1_insects = arc.CircleIntersect(new Circle2F(arc.P1, clearance));
+        var c2_insects = arc.CircleIntersect(new Circle2F(arc.P2, clearance));
+        var c1 = c1_insects.p1.IsUndefined() ? c1_insects.p2 : c1_insects.p1;
+        var c2 = c2_insects.p1.IsUndefined() ? c2_insects.p2 : c2_insects.p1;
+
+        var max_secant = new Line2F();
+        double max_sweep = 0;
+
+        foreach (var s in colliding_slices)
+        {
+            if (s == _parent)
+                continue;  // no reason to process it
+            var secant = arc.CircleIntersect(s.Ball);
+
+            if (secant.p1.IsUndefined() && secant.p2.IsUndefined())
+                continue;
+
+            if (secant.p1.IsUndefined() || secant.p2.IsUndefined())
+            {
+                // single intersection
+                var splitpt = secant.p1.IsUndefined() ? secant.p2 : secant.p1;
+                if (arc.P1.DistanceTo(s.Center) < arc.P2.DistanceTo(s.Center))
+                {
+                    if (splitpt.DistanceTo(arc.P1) < clearance)
+                        continue;  // nothing to remove
+                    else if (splitpt.DistanceTo(arc.P2) < clearance)
+                        secant = new Line2F(c1, c2);
+                    else
+                        secant = new Line2F(c1, splitpt);
+                }
+                else
+                {
+                    // remove second segment
+                    if (splitpt.DistanceTo(arc.P2) < clearance)
+                        continue;
+                    else if (splitpt.DistanceTo(arc.P1) < clearance)
+                        secant = new Line2F(c1, c2);
+                    else
+                        secant = new Line2F(splitpt, c2);
+                }
+            }
+            else
+            {
+                // double intersection
+                if (secant.p1.DistanceTo(arc.P1) < clearance)
+                    secant.p1 = c1;
+                else if (secant.p1.DistanceTo(arc.P2) < clearance)
+                    secant.p1 = c2;
+
+                if (secant.p2.DistanceTo(arc.P1) < clearance)
+                    secant.p2 = c1;
+                else if (secant.p2.DistanceTo(arc.P2) < clearance)
+                    secant.p2 = c2;
+            }
+
+            if (secant.p1.IsUndefined() || secant.p2.IsUndefined())
+                continue; // an end clearance that the arc does not reach
+            if (secant.p1.DistanceTo(secant.p2) < clearance * 2) // segment is too short, ignore it
+                continue;
+
+            // sort insects by sweep (already sorted for single, may be unsorted for the double)
+            var v_p1 = new Vector2d(arc.Center, arc.P1);
+            var v_ins1 = new Vector2d(arc.Center, secant.p1);
+            var v_ins2 = new Vector2d(arc.Center, secant.p2);
+
+            var sweep = angle_between_vectors(v_ins1, v_ins2, arc.Direction);
+
+            if (angle_between_vectors(v_p1, v_ins1, arc.Direction) > angle_between_vectors(v_p1, v_ins2, arc.Direction))
+            {
+                secant = new Line2F(secant.p2, secant.p1);
+                sweep = 2.0 * Math.PI - sweep;
+            }
+
+            if (sweep > max_sweep)
+            {
+                // ok, a last check - removed arc midpoint should be inside the colliding circle
+                var check_arc = new Arc2F(arc.Center, secant.p1, secant.p2, arc.Direction);
+                if (check_arc.Midpoint.DistanceTo(s.Center) < s.Radius)
+                {
+                    max_sweep = sweep;
+                    max_secant = secant;
+                }
+            }
+        }
+
+        if (max_sweep == 0)
+            return;
+
+        var head = new Arc2F(arc.Center, arc.P1, max_secant.p1, arc.Direction);
+        var tail = new Arc2F(arc.Center, max_secant.p2, arc.P2, arc.Direction);
+
+        _segments.Clear();
+        _segments.Add(head);
+        _segments.Add(tail);
+
+        // recalculate max TED accounting for the new endpoints.
+        // this TED is 'virtual' and averaged with previous max_ted to make arcs look more pretty
+
+        // if ends of removed segment are at the same side of direction vector,
+        // midpoint is still present, _max_ted is valid and is maximum for sure
+        var v_move = new Vector2d(_parent.Center, Center);
+        var v_removed_p1 = new Vector2d(_parent.Center, max_secant.p1);
+        var v_removed_p2 = new Vector2d(_parent.Center, max_secant.p2);
+
+        if (v_move.Det(v_removed_p1) * v_move.Det(v_removed_p2) > 0) return;
+
+        var ted_head_end = calc_ted(max_secant.p1, tool_r);
+        var ted_tail_start = calc_ted(max_secant.p2, tool_r);
+
+        var ted = Math.Max(ted_head_end, ted_tail_start);
+
+        if (ted <= 0)
+        {
+            Logger.err("max TED vanished after refining the slice !");
+            return;
+        }
+
+        ted = (ted + _mid_ted) / 2;
+        _max_ted = Math.Max(ted, _entry_ted);
+    }
+
+    public void Append_leadin_and_leadout(double leadin_angle, double leadout_angle)
+    {
+        var dir = Dir;
+        var start = Start;
+        var end = End;
+        var center = Center;
+
+        var v1 = new Vector2d(center, start).Rotated(-(int)dir * leadin_angle);
+        var v2 = new Vector2d(center, end).Rotated((int)dir * leadout_angle);
+
+        if (_segments.Count == 1)   // common case
+        {
+            _segments[0] = new Arc2F(center, center + v1.Point, center + v2.Point, dir);
+        }
+        else
+        {
+            _segments[0] = new Arc2F(center, center + v1.Point, _segments[0].P2, dir);
+            _segments[^1] = new Arc2F(center, _segments[^1].P1, center + v2.Point, dir);
+        }
+    }
+
+    private void create_arc_circle(Point2 p1, RotationDirection dir)
+    {
+        var seg_sweep = dir == RotationDirection.CW ? -2 * Math.PI / 3 : 2 * Math.PI / 3;
+
+        var v1 = new Vector2d(Center, p1);
+        var v2 = v1.Rotated(seg_sweep);
+        var v3 = v1.Rotated(2 * seg_sweep);
+
+        var p2 = Center + v2.Point;
+        var p3 = Center + v3.Point;
+
+        _segments.Clear();
+
+        _segments.Add(new Arc2F(Center, p1, p2, dir));
+        _segments.Add(new Arc2F(Center, p2, p3, dir));
+        _segments.Add(new Arc2F(Center, p3, p1, dir));
+    }
+
+    public void Change_startpoint(Point2 p1)
+    {
+        if (_parent != null)
+            throw new Exception("startpoint may be changed for the root slice only");
+        if (Math.Abs((p1.DistanceTo(Center) - Radius) / Radius) > 0.001)
+            throw new Exception("new startpoint is outside the initial circle");
+
+        create_arc_circle(p1, Dir);
+    }
+
+    public Slice(Slice parent, Point2 center, double radius, RotationDirection dir, double tool_r, Point2 magnet)
+    {
+        _parent = parent;
+        _ball = new Circle2F(center, radius);
+
+        var dist = Point2.Distance(center, parent.Center);
+        var delta_r = Radius - parent.Radius;
+        var coarse_ted = dist + delta_r;
+
+        // 1) one ball is inside other, no intersections
+        // 2) balls are spaced too far and do not intersect, TED is 0, distance is positive
+        // 3) balls are intersect, TED is valid
+        if (dist <= Math.Abs(delta_r))
+        {
+            _placement = Slice_placement.INSIDE_ANOTHER;
+            return;
+        }
+
+        if (dist >= Radius + parent.Radius)
+        {
+            _placement = Slice_placement.TOO_FAR;
+            return;
+        }
+        // TED can't be more >= tool diameter, this check prevents fails during the calculation of real angle-based TED
+        if (coarse_ted > tool_r * 1.999)
+        {
+            _placement = Slice_placement.TOO_FAR;
+            return;
+        }
+
+        var insects = _parent.Ball.CircleIntersect(_ball);
+        if (insects.p1.IsUndefined() || insects.p2.IsUndefined())
+        {
+            // try to return meaningful result even if the intersection had failed (unlikely)
+            Logger.err("no intersections found there intersections should be (_parent.Ball.CircleIntersect(_ball))");
+            _placement = dist <= Radius || dist <= parent.Radius ? Slice_placement.INSIDE_ANOTHER : Slice_placement.TOO_FAR;
+            return;
+        }
+
+        _placement = Slice_placement.NORMAL;
+
+        var v_move = new Vector2d(_parent.Center, Center);
+        var v1 = new Vector2d(_parent.Center, insects.p1);
+        var default_dir = v_move.Det(v1) > 0 ? RotationDirection.CW : RotationDirection.CCW;
+
+        if (dir == RotationDirection.Unknown)
+        {
+            if (magnet.IsUndefined())
+            {
+                dir = RotationDirection.CCW;    // just something
+            }
+            else
+            {
+                if (insects.p1.DistanceTo(magnet) < insects.p2.DistanceTo(magnet))  // match, use existing dir
+                    dir = default_dir;
+                else
+                    dir = default_dir == RotationDirection.CCW ? RotationDirection.CW : RotationDirection.CCW;   // flip
+            }
+        }
+
+        var arc = default_dir == dir
+            ? new Arc2F(Center, insects.p1, insects.p2, dir)
+            : new Arc2F(Center, insects.p2, insects.p1, dir);
+
+        _segments.Add(arc);
+
+        calc_teds(tool_r);
+
+        if (_mid_ted <= 0)
+        {
+            Logger.warn("forced to patch mid_ted");
+            _mid_ted = coarse_ted;    // shouldn't be, but ok
+        }
+
+        _max_ted = Math.Max(_mid_ted, _entry_ted);
+    }
+
+    public Slice(Point2 center, double radius, RotationDirection dir)
+    {
+        _ball = new Circle2F(center, radius);
+        _placement = Slice_placement.NORMAL;
+        create_arc_circle(new Point2(center.X + radius, center.Y), dir);
+    }
+}

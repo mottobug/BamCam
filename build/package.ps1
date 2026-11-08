@@ -46,7 +46,8 @@ if (Test-Path $publishDir) { Remove-Item -Recurse -Force $publishDir }
 $bundledPlugins = @(
     @{ Folder = "CentreLines"; Name = "BamCam.CentreLinesPlugin" },
     @{ Folder = "Squircle"; Name = "BamCam.SquirclePlugin" },
-    @{ Folder = "InvoluteGear"; Name = "BamCam.GearPlugin" }
+    @{ Folder = "InvoluteGear"; Name = "BamCam.GearPlugin" },
+    @{ Folder = "Matmill"; Name = "BamCam.MatmillPlugin" }
 )
 $pluginHashes = @()
 foreach ($plugin in $bundledPlugins) {
@@ -65,6 +66,8 @@ foreach ($plugin in $bundledPlugins) {
     $pluginTarget = Join-Path $publishDir "plugins/$($plugin.Folder)"
     New-Item -ItemType Directory -Force $pluginTarget | Out-Null
     Copy-Item (Join-Path $plugin.Build "$($plugin.Name).dll"), (Join-Path $plugin.Build "$($plugin.Name).deps.json") $pluginTarget
+    # Licenses of code a plugin took over from others (matmill: MIT) go with it.
+    Get-ChildItem (Join-Path $plugin.Build "LICENSE-*.txt") -ErrorAction SilentlyContinue | Copy-Item -Destination $pluginTarget
 }
 
 function Write-TextLf([string]$path, [string[]]$lines) {

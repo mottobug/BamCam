@@ -161,6 +161,19 @@ Special operations:
   also in corners and slots. That allows deep cuts with a small step over and a high feedrate. *Mixed* is not supported here and is cut as Climb, with a warning. Islands
   are left standing; *Final Pass* cuts along all walls at the end of each depth level. Places narrower than *Min
   Circle Radius* are left to the final pass. Example: `examples_to_test/Trochoidal pocket.cb`.
+- **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill)): a
+  port of the CamBam plugin [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), which comes with BamCam.
+  The pocket opens with a spiral at the widest place and clears the shape with slices along its centre lines; each slice
+  takes at most *Step Over* of the tool diameter and at least *Minimum Stepover* of that. With *Milling Direction*
+  Mixed the direction changes from slice to slice, so that most chords between them fall away (in a test pocket the
+  way was 30 % shorter). *Smooth Chords* joins slices with arcs instead of straight chords (not with Mixed), *Chord
+  Feedrate* and *Spiral Feedrate* set their own feed rates, and a *Lead In Move* of type Spiral goes down on a helix.
+  Islands stay, there is no final pass along the walls. The profile cuts a slot of *Cut Width* (default twice the tool
+  diameter) beside the shapes, on the side of *Inside Outside*; open shapes are cut to the right of their point order
+  for Outside. *Clear Inside Corners* cuts it like a pocket between the shape and an offset of it, which reaches into
+  inside corners (closed shapes only); *Corner Overcut* is not supported yet. The operations and their parameters have
+  matmill's names, so CamBam drawings with matmill operations open in BamCam, and drawings from BamCam open in CamBam
+  with matmill installed.
 - **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
   closed polylines, set the *V Angle* of the bit (and its *Tip Diameter* if it has a flat tip) and the *Target
   Depth*. The bit follows the centre lines of each shape and goes exactly as deep as the shape is wide, so the cone

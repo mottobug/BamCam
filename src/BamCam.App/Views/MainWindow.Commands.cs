@@ -436,7 +436,8 @@ public partial class MainWindow
             Log(F("Select drawing objects before inserting a {0} operation.", T(op.DisplayType)));
             return;
         }
-        op.Name = UniqueOpName(op.DisplayType.Replace(" ", ""));
+        // "Trochoidal Pocket (matmill)" gives TrochoidalPocket1: a note in brackets is no part of the name.
+        op.Name = UniqueOpName(op.DisplayType.Split(" (")[0].Replace(" ", ""));
         op.PrimitiveIds.AddRange(sel.Select(e => e.Id));
         var doc = _session.Document;
         var part = doc.ActivePart;

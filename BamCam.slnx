@@ -13,6 +13,7 @@
     <Project Path="plugins/BamCam.GCodeViewerPlugin/BamCam.GCodeViewerPlugin.csproj" />
     <Project Path="plugins/BamCam.SquirclePlugin/BamCam.SquirclePlugin.csproj" />
     <Project Path="plugins/BamCam.GearPlugin/BamCam.GearPlugin.csproj" />
+    <Project Path="plugins/BamCam.MatmillPlugin/BamCam.MatmillPlugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BamCam.Tests/BamCam.Tests.csproj" />
