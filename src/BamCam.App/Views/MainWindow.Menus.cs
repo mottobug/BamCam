@@ -305,7 +305,6 @@ public partial class MainWindow
     [
         Item("_Profile", () => CreateOp(new ProfileOp())),
         Item("P_ocket", () => CreateOp(new PocketOp())),
-        Item("_Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp())),
         Item("_Drill", () => CreateOp(new DrillOp())),
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_V-Engrave", () => CreateOp(new VEngraveOp())),
@@ -586,7 +585,12 @@ public partial class MainWindow
         p.Children.Add(ToolSeparator());
         p.Children.Add(ToolButton("IconProfile", "Profile", () => CreateOp(new ProfileOp()), OperationIconBrush));
         p.Children.Add(ToolButton("IconPocket", "Pocket", () => CreateOp(new PocketOp()), OperationIconBrush));
-        p.Children.Add(ToolButton("IconTrochoidal", "Trochoidal Pocket", () => CreateOp(new TrochoidalPocketOp()), OperationIconBrush));
+        // The trochoidal pocket comes from the matmill plugin, which comes with BamCam but can be switched off.
+        p.Children.Add(ToolButton("IconTrochoidal", "Trochoidal Pocket (matmill)", () =>
+        {
+            if (MachineOpFactory.Create("MOPTrochopock") is { } trochoidal and not UnsupportedOp) CreateOp(trochoidal);
+            else Log(T("The trochoidal pocket comes from the plugin Trochoidal Milling (matmill); switch it on in Tools > Plugins."));
+        }, OperationIconBrush));
         p.Children.Add(ToolButton("IconDrill", "Drill", () => CreateOp(new DrillOp()), OperationIconBrush));
         p.Children.Add(ToolButton("IconEngrave", "Engrave", () => CreateOp(new EngraveOp()), OperationIconBrush));
         p.Children.Add(ToolButton("IconVEngrave", "V-Engrave", () => CreateOp(new VEngraveOp()), OperationIconBrush));

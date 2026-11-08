@@ -456,13 +456,6 @@ Base of `ProfileOp`, `PocketOp` and `Profile3DOp`.
 | `PeckDistance`, `RetractHeight`, `Dwell` | pecking |
 | `SpiralFlatBase`, `DrillLeadOut`, `LeadOutLength`, `CustomScript` | further options |
 
-### `TrochoidalPocketOp`
-
-| Member | Meaning |
-|---|---|
-| `StepOver`, `MillingDirection` | `Mixed` is cut as `Climb` |
-| `MinCircleRadius`, `RampAngle`, `FinalPass`, `ChordFeedrate` | its options |
-
 ### `VEngraveOp`
 
 | Member | Meaning |

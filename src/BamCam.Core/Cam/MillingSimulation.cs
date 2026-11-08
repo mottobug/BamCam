@@ -349,7 +349,7 @@ public static class MillingSimulation
                 : double.NaN;
             List<Shape>? region = op switch
             {
-                PocketOp or TrochoidalPocketOp => Polygons.BuildShapes(closed),
+                PocketOp or MachineOp { XmlName: "MOPTrochopock" } => Polygons.BuildShapes(closed), // and the pocket of the matmill plugin
                 ProfileOp p when closed.Count > 0 => ProfileBand(closed, p, dia),
                 DrillOp drill => Polygons.BuildShapes(DrillPoints(paths).Select(c =>
                     Circle(c, (drill.HoleDiameter.Value > 0 ? drill.HoleDiameter.Value : dia) / 2))),

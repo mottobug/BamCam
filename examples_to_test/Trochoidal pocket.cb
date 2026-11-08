@@ -37,7 +37,7 @@
   <parts>
     <part Name="Part1">
       <machineops>
-        <mop xsi:type="BamCamTrochoidalPocket">
+        <mop xsi:type="MOPTrochopock">
           <StockSurface state="Default">0</StockSurface>
           <RoughingClearance state="Default">0</RoughingClearance>
           <ClearancePlane state="Default">3</ClearancePlane>
@@ -61,7 +61,8 @@
           <StartPoint state="Default" />
           <CustomMOPHeader state="Default" />
           <CustomMOPFooter state="Default" />
-          <Name>Trochoidal Pocket</Name>
+          <Name>TrochoPocket</Name>
+          <StepOver state="Value">0.15</StepOver>
           <TargetDepth state="Value">-6</TargetDepth>
           <DepthIncrement state="Value">6</DepthIncrement>
         </mop>

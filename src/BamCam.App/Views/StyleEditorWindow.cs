@@ -20,7 +20,7 @@ public sealed class StyleEditorWindow : Window
     private static readonly Func<MachineOp>[] Kinds =
     [
         () => new ProfileOp(), () => new PocketOp(), () => new DrillOp(), () => new EngraveOp(), () => new Profile3DOp(),
-        () => new VEngraveOp(), () => new TrochoidalPocketOp(), () => new DragKnifeOp(), () => new PlasmaOp(),
+        () => new VEngraveOp(), () => new DragKnifeOp(), () => new PlasmaOp(),
         () => new LatheOp(), () => new LatheFacingOp(), () => new LatheGrooveOp(), () => new LatheThreadOp(), () => new LatheDrillOp(),
     ];
 

@@ -31,7 +31,6 @@ public static class ToolpathGenerator
                 case DragKnifeOp knife: DragKnifeGenerator.Generate(ctx, knife, tp); break;
                 case PlasmaOp plasma: PlasmaGenerator.Generate(ctx, plasma, tp); break;
                 case VEngraveOp vEngrave: VEngraveGenerator.Generate(ctx, vEngrave, tp); break;
-                case TrochoidalPocketOp trochoidal: TrochoidalGenerator.Generate(ctx, trochoidal, tp); break;
                 case DrillOp d: DrillGenerator.Generate(ctx, d, tp); break;
                 case Profile3DOp p3: Profile3DGenerator.Generate(ctx, p3, tp); break;
                 case LatheOp lathe: LatheGenerator.Generate(ctx, lathe, tp); break;
@@ -90,7 +89,7 @@ public static class ToolpathGenerator
 
         var number = op.EffectiveToolNumber(ctx.Doc);
         if (number > 0) tp.Warnings.Add(Tr.F("{0}: tool {1} not found in the tool libraries.", op.Name, number));
-        if (op is PocketOp or TrochoidalPocketOp or Profile3DOp or TurningOp or ProfileOp { CutWidth.Value: > 0 })
+        if (op is PocketOp or Profile3DOp or TurningOp or ProfileOp { CutWidth.Value: > 0 })
         {
             tp.Warnings.Add(Tr.F("{0}: no toolpath without a tool diameter. Set a tool number or a tool diameter.", op.Name));
             return false;

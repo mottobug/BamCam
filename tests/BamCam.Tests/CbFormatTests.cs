@@ -132,7 +132,7 @@ public class CbFormatTests
     [Fact]
     public void Operations_cambam_does_not_know_are_marked()
     {
-        MachineOp[] onlyHere = [new PlasmaOp(), new VEngraveOp(), new TrochoidalPocketOp(), new DragKnifeOp(), new LatheFacingOp(), new LatheGrooveOp(), new LatheThreadOp(), new LatheDrillOp()];
+        MachineOp[] onlyHere = [new PlasmaOp(), new VEngraveOp(), new DragKnifeOp(), new LatheFacingOp(), new LatheGrooveOp(), new LatheThreadOp(), new LatheDrillOp()];
         MachineOp[] known = [new ProfileOp(), new PocketOp(), new EngraveOp(), new DrillOp(), new Profile3DOp(), new NcFileOp(), new LatheOp(), new UnsupportedOp("from a plugin")];
         Assert.All(onlyHere, op => Assert.True(op.OnlyInBamCam, op.XmlName));
         Assert.All(known, op => Assert.False(op.OnlyInBamCam, op.XmlName));

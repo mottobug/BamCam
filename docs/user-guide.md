@@ -155,14 +155,9 @@ Special operations:
   threading and drilling; the remaining stock is shown in the drawing. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
-- **Trochoidal pocket** (Machining ▸ Trochoidal Pocket, toolbar button with the loops) for high speed clearing:
-  the tool enters with a helix (*Ramp Angle*) at the widest place and clears the pocket in arcs along its
-  centre lines. Each arc enters the material with no engagement and widens to at most *Step Over* (a fraction of the tool diameter, e.g. 0.15); a straight chord through the cleared area (at *Chord Feedrate*) leads to the next one,
-  also in corners and slots. That allows deep cuts with a small step over and a high feedrate. *Mixed* is not supported here and is cut as Climb, with a warning. Islands
-  are left standing; *Final Pass* cuts along all walls at the end of each depth level. Places narrower than *Min
-  Circle Radius* are left to the final pass. Example: `examples_to_test/Trochoidal pocket.cb`.
-- **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill)): a
-  port of the CamBam plugin [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), which comes with BamCam.
+- **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill);
+  the toolbar button with the loops inserts the pocket) for high speed clearing: a port of the CamBam plugin
+  [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), which comes with BamCam.
   The pocket opens with a spiral at the widest place and clears the shape with slices along its centre lines; each slice
   takes at most *Step Over* of the tool diameter and at least *Minimum Stepover* of that. With *Milling Direction*
   Mixed the direction changes from slice to slice, so that most chords between them fall away (in a test pocket the
@@ -173,7 +168,8 @@ Special operations:
   for Outside. *Clear Inside Corners* cuts it like a pocket between the shape and an offset of it, which reaches into
   inside corners (closed shapes only); *Corner Overcut* is not supported yet. The operations and their parameters have
   matmill's names, so CamBam drawings with matmill operations open in BamCam, and drawings from BamCam open in CamBam
-  with matmill installed.
+  with matmill installed. Example: `examples_to_test/Trochoidal pocket.cb`. BamCam's own earlier trochoidal pocket
+  is gone; drawings with it keep it unchanged in the file, but it is no longer cut.
 - **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
   closed polylines, set the *V Angle* of the bit (and its *Tip Diameter* if it has a flat tip) and the *Target
   Depth*. The bit follows the centre lines of each shape and goes exactly as deep as the shape is wide, so the cone
@@ -247,7 +243,7 @@ BamCam reads and writes CamBam drawings (`.cb`) and post processors (`.cbpp`), i
 Values and objects BamCam does not know are kept when a file is saved again. Objects of plugins and script objects
 are also saved as plain polylines, so CamBam (and BamCam without the plugin) can still open and machine them.
 
-**Operations only BamCam has:** Plasma, V-Engrave, Trochoidal Pocket, Drag Knife and the lathe operations Facing,
+**Operations only BamCam has:** Plasma, V-Engrave, Drag Knife and the lathe operations Facing,
 Grooving, Threading and Lathe Drilling are saved in the `.cb` file, but CamBam does not know them. It opens such a
 drawing without them and without a message, and if you save it in CamBam they are gone. When you save such a drawing,
 BamCam says so in the message window. Keep a copy, or generate the G-code in BamCam.

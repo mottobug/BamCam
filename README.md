@@ -155,8 +155,9 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   holding tabs (automatic/manual, square/triangle), tangent and spiral lead-ins (spiral angle 0: one continuous
   helix, one lap per depth increment, with a flat lap only at the target depth).
 - **Pocket:** offset and hatch fills, islands.
-- **Trochoidal pocket** (high speed clearing): arcs along the centre lines of the pocket, each entering with no engagement and reaching at most
-  the step over into new material, with straight chords between them; helix entry, islands, final pass along the walls.
+- **Trochoidal pocket and profile** (high speed clearing): a port of the CamBam plugin
+  [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), shipped as a plugin; slices along the centre lines
+  between a minimum and a maximum stepover, mixed milling direction, smooth chords, islands.
 - **Drill:** canned cycles G81/G82/G83 and spiral milling.
 - **Engrave** and **NC file** (G-code back-plot).
 - **V-engrave** (V-carving) of text, regions and closed polylines: the V-bit follows the centre lines (medial axis)
