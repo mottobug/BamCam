@@ -815,17 +815,31 @@ public partial class MainWindow
             open.Activate();
             return;
         }
-        var window = new SimulationWindow(_session.Document, _session.Toolpaths);
+        var window = new SimulationWindow(_session.Document, _session.Toolpaths, AddSimulatedSurface);
         window.ShowOperations(ops);
         window.Closed += (_, _) => _simulationWindow = null;
         _simulationWindow = window;
         window.ShowFor(this);
     }
 
+    /// <summary>The material of the simulation as a surface on a layer of its own, as one undo step.</summary>
+    private void AddSimulatedSurface(SurfaceEntity surface)
+    {
+        var doc = _session.Document;
+        _session.Execute(T("Add simulated surface"), () =>
+        {
+            var layer = new Layer(doc.UniqueLayerName(T("Simulation")));
+            doc.Layers.Add(layer);
+            doc.AddEntity(surface, layer);
+        });
+        Log(F("Simulated material added as a surface with {0} triangles on layer {1}.", surface.Faces.Count / 3, surface.Layer?.Name ?? ""));
+        View.Invalidate();
+    }
+
     /// <summary>Simulation window for the selection, for the --window simulation screenshot.</summary>
     private SimulationWindow SimulationForDiagnostics()
     {
-        var window = new SimulationWindow(_session.Document, _session.Toolpaths);
+        var window = new SimulationWindow(_session.Document, _session.Toolpaths, AddSimulatedSurface);
         if (SimulationScope() is { } s) window.ShowOperations(s.Ops);
         return window;
     }

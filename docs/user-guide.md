@@ -134,9 +134,15 @@ yellow to red for rest material (corners the round tool cannot reach, holding ta
 where the tool cut below the target. Targets are the area of pockets, the cut band of profiles, drill holes and the
 surface of 3D profiles, each at its target depth. It shows what is selected in the drawing tree: one operation, all operations of a part, or (Machining, the drawing) all of them, and follows the tree while it is open; the check boxes on the left change the choice. The buttons below step through the moves one by one (◀ / ▶, or the
 arrow keys), jump to the start or end (Home / End) or play them (Space) at the speed chosen next to the buttons (1 to 1000 moves per second or as fast as possible); the counter shows the move and the total,
-with the operation and the G-code of the move, and the tool is drawn at its position. *Cell size* sets the accuracy (smaller = finer and slower), *Tolerance* how much material
-counts as rest material. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis (no
-undercuts); turning, plasma and drag knife are not shown.
+with the operation and the G-code of the move, and the tool is drawn at its position with the shape it cuts with.
+*Cell size* is the edge length of the grid cells of the simulated material, which has one height per cell: smaller is
+finer and slower. At most 4000 cells fit along a side; a smaller size is enlarged to fit, and the window says so.
+*Tolerance* only decides what is shown as rest material (yellow to red) or as cut too deep (magenta), not the
+simulation itself; by default it is half a cell. **Add to Drawing** puts the material as it is at the move shown on a
+new layer as a surface (a closed mesh through the centres of the cells, with sides and bottom), for example for a 3D
+profile; **Save STL...** writes the same mesh as a binary STL file. Fields with more than a million triangles are
+thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis
+(no undercuts); turning, plasma and drag knife are not shown.
 
 Operations refer to their objects by ID (*Primitive IDs* in the properties; `[...]` picks them in the drawing).
 Parts group operations; each part can have its own stock, origin and nesting. CAM styles provide default values;

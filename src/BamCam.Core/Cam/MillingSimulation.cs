@@ -100,9 +100,13 @@ public static class MillingSimulation
         return CamLibraries.FindTool(doc, part, op.EffectiveToolNumber(doc)) is { VeeAngle: > 0 } t ? t.VeeAngle : 90;
     }
 
+    /// <summary>Most cells along a side of the height field; a smaller cell size is enlarged to stay within it.</summary>
+    public const int MaxCells = 4000;
+
     /// <summary>
     /// Height field over the stock (or, without stock, over the cut moves plus the tool radius), with cells of
-    /// <paramref name="cell"/> (0 = about 600 cells along the longer side).
+    /// <paramref name="cell"/> (0 = about 600 cells along the longer side). A cell size that would need more than
+    /// <see cref="MaxCells"/> cells along a side is enlarged, so that the field still covers everything.
     /// </summary>
     public static HeightField Create(CadDocument doc, IReadOnlyList<(MachineOp Op, Toolpath Toolpath)> jobs, double cell = 0)
     {
@@ -130,10 +134,84 @@ public static class MillingSimulation
             top = jobs.Select(j => j.Op.StockSurface.Value).DefaultIfEmpty(0).Max();
             bottom = Math.Min(lowest, top) - 1;
         }
-        if (cell <= 0) cell = Math.Max(Math.Max(x1 - x0, y1 - y0) / 600, 0.01);
-        var nx = Math.Clamp((int)Math.Ceiling((x1 - x0) / cell), 2, 4000);
-        var ny = Math.Clamp((int)Math.Ceiling((y1 - y0) / cell), 2, 4000);
+        var widest = Math.Max(x1 - x0, y1 - y0);
+        if (cell <= 0) cell = Math.Max(widest / 600, 0.01);
+        // More cells than allowed: larger cells, not a field that ends before the stock does.
+        if (widest / cell > MaxCells) cell = widest / MaxCells * (1 + 1e-9);
+        var nx = Math.Clamp((int)Math.Ceiling((x1 - x0) / cell), 2, MaxCells);
+        var ny = Math.Clamp((int)Math.Ceiling((y1 - y0) / cell), 2, MaxCells);
         return new HeightField(x0, y0, cell, nx, ny, top, bottom);
+    }
+
+    /// <summary>
+    /// The material as a closed triangle mesh: the cut surface through the centres of the cells, the sides down to the
+    /// bottom of the field and the bottom. With more than <paramref name="maxTriangles"/> it takes every n-th cell.
+    /// </summary>
+    public static SurfaceEntity ToSurface(HeightField f, int maxTriangles = 1_000_000)
+    {
+        static List<int> Samples(int count, int step)
+        {
+            var list = new List<int>();
+            for (var i = 0; i < count - 1; i += step) list.Add(i);
+            list.Add(count - 1);
+            return list;
+        }
+        var step = 1;
+        List<int> xs, ys;
+        while (true)
+        {
+            xs = Samples(f.Nx, step);
+            ys = Samples(f.Ny, step);
+            long ring = 2L * (xs.Count - 1 + ys.Count - 1);
+            if (2L * (xs.Count - 1) * (ys.Count - 1) + 3 * ring <= Math.Max(maxTriangles, 100) || step >= Math.Max(f.Nx, f.Ny)) break;
+            step++;
+        }
+
+        var surface = new SurfaceEntity();
+        var (gx, gy) = (xs.Count, ys.Count);
+        foreach (var j in ys)
+        foreach (var i in xs)
+        {
+            var c = f.CellCentre(i, j);
+            surface.Vertices.Add(new Point3(c.X, c.Y, f[i, j]));
+        }
+        int Top(int i, int j) => j * gx + i;
+        void Face(int a, int b, int c)
+        {
+            var (p, q, r) = (surface.Vertices[a], surface.Vertices[b], surface.Vertices[c]);
+            if (Point3.Cross(q - p, r - p).Length < 1e-12) return; // a side where the cut reached the bottom
+            surface.Faces.AddRange([a, b, c]);
+        }
+        // The cut surface, counter-clockwise seen from above.
+        for (var j = 0; j + 1 < gy; j++)
+        for (var i = 0; i + 1 < gx; i++)
+        {
+            Face(Top(i, j), Top(i + 1, j), Top(i + 1, j + 1));
+            Face(Top(i, j), Top(i + 1, j + 1), Top(i, j + 1));
+        }
+        // Its border, counter-clockwise seen from above, and the sides from it down to the bottom.
+        var border = new List<int>();
+        for (var i = 0; i < gx - 1; i++) border.Add(Top(i, 0));
+        for (var j = 0; j < gy - 1; j++) border.Add(Top(gx - 1, j));
+        for (var i = gx - 1; i > 0; i--) border.Add(Top(i, gy - 1));
+        for (var j = gy - 1; j > 0; j--) border.Add(Top(0, j));
+        var below = new int[border.Count];
+        for (var k = 0; k < border.Count; k++)
+        {
+            below[k] = surface.Vertices.Count;
+            surface.Vertices.Add(surface.Vertices[border[k]] with { Z = f.Bottom });
+        }
+        var centre = surface.Vertices.Count;
+        var middle = f.CellCentre(0, 0) + (f.CellCentre(f.Nx - 1, f.Ny - 1) - f.CellCentre(0, 0)) * 0.5;
+        surface.Vertices.Add(new Point3(middle.X, middle.Y, f.Bottom));
+        for (var k = 0; k < border.Count; k++)
+        {
+            var next = (k + 1) % border.Count;
+            Face(border[k], below[k], below[next]);
+            Face(border[k], below[next], border[next]);
+            Face(centre, below[next], below[k]); // the bottom, facing down
+        }
+        return surface;
     }
 
     /// <summary>One straight piece of a move.</summary>

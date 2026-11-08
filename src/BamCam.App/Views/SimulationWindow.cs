@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using BamCam.App.Controls;
 using BamCam.Core.Cam;
@@ -53,10 +54,15 @@ public sealed class SimulationWindow : Window
     private readonly SortedDictionary<int, float[]> _checkpoints = [];
     private int _checkpointEvery = int.MaxValue;
 
-    public SimulationWindow(CadDocument doc, IReadOnlyDictionary<MachineOp, Toolpath> toolpaths)
+    private readonly Action<SurfaceEntity>? _addSurface;
+    private string _cellNote = "";
+
+    /// <param name="addSurface">Adds the simulated material to the drawing (one undo step); null hides the button.</param>
+    public SimulationWindow(CadDocument doc, IReadOnlyDictionary<MachineOp, Toolpath> toolpaths, Action<SurfaceEntity>? addSurface = null)
     {
         _doc = doc;
         _toolpaths = toolpaths;
+        _addSurface = addSurface;
         Title = T("3D Simulation");
         Width = 1100;
         Height = 740;
@@ -74,6 +80,20 @@ public sealed class SimulationWindow : Window
         var apply = new Button { Content = T("Simulate"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         apply.Click += (_, _) => Restart();
         left.Children.Add(apply);
+        // The material as it is now, at the move shown: a surface for the drawing or an STL file.
+        var exports = new StackPanel { Spacing = 6 };
+        if (_addSurface != null)
+        {
+            var add = new Button { Content = T("Add to Drawing"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+            ToolTip.SetTip(add, T("Adds the simulated material as a surface on a new layer."));
+            add.Click += (_, _) => AddToDrawing();
+            exports.Children.Add(add);
+        }
+        var stl = new Button { Content = T("Save STL..."), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
+        ToolTip.SetTip(stl, T("Saves the simulated material as an STL mesh."));
+        stl.Click += (_, _) => SaveStl();
+        exports.Children.Add(stl);
+        left.Children.Add(exports);
         left.Children.Add(Legend());
         left.Children.Add(_info);
         left.Children.Add(new TextBlock
@@ -256,8 +276,13 @@ public sealed class SimulationWindow : Window
     private void Restart()
     {
         var jobs = _ops.Where(o => o.Box.IsChecked == true && _toolpaths.ContainsKey(o.Op)).Select(o => (o.Op, _toolpaths[o.Op])).ToList();
-        var field = MillingSimulation.Create(_doc, jobs, ParseOr(_cell, 0));
-        _cell.Text = field.Cell.ToString("0.###", CultureInfo.CurrentCulture);
+        var requested = ParseOr(_cell, 0);
+        var field = MillingSimulation.Create(_doc, jobs, requested);
+        _cellNote = requested > 0 && field.Cell > requested * 1.0001
+            ? F("Cell size enlarged from {0} to {1}: at most {2} cells along a side.", requested.ToString("0.###", CultureInfo.CurrentCulture),
+                field.Cell.ToString("0.####", CultureInfo.CurrentCulture), MillingSimulation.MaxCells) + "\n"
+            : "";
+        _cell.Text = field.Cell.ToString(field.Cell < 0.01 ? "0.####" : "0.###", CultureInfo.CurrentCulture);
         var tolerance = ParseOr(_tolerance, Math.Max(0.02, field.Cell / 2));
         _tolerance.Text = tolerance.ToString("0.###", CultureInfo.CurrentCulture);
         _view.Tolerance = tolerance;
@@ -363,7 +388,7 @@ public sealed class SimulationWindow : Window
         {
             var m = _moves[_done - 1];
             _current.Text = $"{m.Op.Name} · {Describe(m)}";
-            _view.Tool = (m.End, MillingSimulation.ToolOf(_doc, m.Op).Radius);
+            _view.Tool = (m.End, MillingSimulation.ToolOf(_doc, m.Op));
         }
         _view.InvalidateVisual();
     }
@@ -399,9 +424,50 @@ public sealed class SimulationWindow : Window
         }
         var area = f.Cell * f.Cell;
         var unit = _doc.Units == DrawingUnits.Inches ? "in²" : "mm²";
-        _info.Text = F("{0} x {1} cells, {2:0.##} s.", f.Nx, f.Ny, elapsed.TotalSeconds) + "\n" +
+        _info.Text = _cellNote + F("{0} x {1} cells, {2:0.##} s.", f.Nx, f.Ny, elapsed.TotalSeconds) + "\n" +
                      (rest == 0 ? T("No rest material.") : F("Rest material on {0:0.#} {1}, up to {2:0.###} above the target.", rest * area, unit, maxRest)) +
                      (gouge == 0 ? "" : "\n" + F("Cut below the target on {0:0.#} {1}.", gouge * area, unit));
+    }
+
+    /// <summary>The material at the move shown, as a mesh; null (with a note) while the simulation is still running.</summary>
+    private SurfaceEntity? CurrentSurface()
+    {
+        if (_field is not { } field) return null;
+        if (_busy)
+        {
+            _info.Text = T("Please wait until the simulation has stopped.");
+            return null;
+        }
+        return MillingSimulation.ToSurface(field);
+    }
+
+    private void AddToDrawing()
+    {
+        if (_addSurface == null || CurrentSurface() is not { } surface) return;
+        _addSurface(surface);
+        _info.Text = F("Surface with {0} triangles added to the drawing.", surface.Faces.Count / 3);
+    }
+
+    private async void SaveStl()
+    {
+        if (CurrentSurface() is not { } surface) return;
+        var file = await StorageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+        {
+            Title = T("Save STL..."),
+            SuggestedFileName = (string.IsNullOrEmpty(_doc.Name) ? "simulation" : _doc.Name) + "-simulation.stl",
+            DefaultExtension = "stl",
+            FileTypeChoices = [new Avalonia.Platform.Storage.FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }],
+        });
+        if (file?.TryGetLocalPath() is not { } path) return;
+        try
+        {
+            BamCam.IO.Stl.StlWriter.Save(surface, path);
+            _info.Text = F("Saved {0} ({1} triangles).", path, surface.Faces.Count / 3);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _info.Text = F("Could not save {0}: {1}", path, ex.Message);
+        }
     }
 
     /// <summary>Diagnostic: jumps back and forth and steps single moves, as a user would (--window simulation).</summary>

@@ -34,8 +34,8 @@ public sealed class SimulationView : Control
     /// <summary>Material left above the target that is shown as rest material.</summary>
     public double Tolerance { get; set; } = 0.05;
 
-    /// <summary>Tool tip position and radius, drawn as an outline of the tool (null = none).</summary>
-    public (Core.Geometry.Point3 Tip, double Radius)? Tool { get; set; }
+    /// <summary>Tool tip position and the tool, drawn as its outline with the shape it cuts with (null = none).</summary>
+    public (Core.Geometry.Point3 Tip, SimTool Tool)? Tool { get; set; }
 
     public HeightField? Field
     {
@@ -283,29 +283,57 @@ public sealed class SimulationView : Control
         var lines = new List<(Point, Point)>();
         if (Tool is { } tool)
         {
-            // Outline of the tool: circles at the tip and above, joined at the sides (drawn on top).
-            var (tip, r) = tool;
-            var shaft = Math.Max(4 * r, (f.Top - f.Bottom) * 1.5);
+            var (tip, simTool) = tool;
             Point Screen(double dx, double dy, double zz)
             {
                 var q = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, zz);
                 return new Point(q.X, q.Y);
             }
-            foreach (var zz in new[] { tip.Z, tip.Z + shaft })
-                for (var k = 0; k < 32; k++)
-                {
-                    double a0 = k * Math.PI / 16, a1 = (k + 1) * Math.PI / 16;
-                    lines.Add((Screen(r * Math.Cos(a0), r * Math.Sin(a0), zz), Screen(r * Math.Cos(a1), r * Math.Sin(a1), zz)));
-                }
-            foreach (var side in new[] { 1, -1 })
-            {
-                // The two outline lines of the cylinder as seen from the viewer (along the screen's right axis).
-                double dx = side * r * cy, dy = -side * r * sy;
-                lines.Add((Screen(dx, dy, tip.Z), Screen(dx, dy, tip.Z + shaft)));
-            }
+            lines.AddRange(ToolOutline(simTool, Math.Max(4 * simTool.Radius, (f.Top - f.Bottom) * 1.5), (cy, -sy))
+                .Select(l => (Screen(l.From.X, l.From.Y, tip.Z + l.From.Z), Screen(l.To.X, l.To.Y, tip.Z + l.To.Z))));
             lines.RemoveAll(l => !double.IsFinite(l.Item1.X + l.Item1.Y + l.Item2.X + l.Item2.Y));
         }
         return (pixels, lines);
+    }
+
+    /// <summary>
+    /// Lines of a tool around its tip at (0, 0, 0): its profile across the view (ball, corner radius, cone or flat end),
+    /// a circle where the cutting part ends, the sides of the shank and a circle at its top. <paramref name="across"/> is
+    /// the direction in XY that runs across the screen.
+    /// </summary>
+    public static List<(Core.Geometry.Point3 From, Core.Geometry.Point3 To)> ToolOutline(SimTool tool, double length, (double X, double Y) across)
+    {
+        var lines = new List<(Core.Geometry.Point3, Core.Geometry.Point3)>();
+        var r = tool.Radius;
+        var shoulder = tool.HeightAt(r); // where the cutting part meets the shank
+        var top = Math.Max(length, shoulder + r);
+        Core.Geometry.Point3 Across(double d, double z) => new(d * across.X, d * across.Y, z);
+        Core.Geometry.Point3 Round(double angle, double z) => new(r * Math.Cos(angle), r * Math.Sin(angle), z);
+
+        // The profile, from one side through the tip to the other.
+        const int Steps = 24;
+        for (var k = 0; k < 2 * Steps; k++)
+        {
+            double d0 = r * (k - Steps) / Steps, d1 = r * (k + 1 - Steps) / Steps;
+            lines.Add((Across(d0, tool.HeightAt(Math.Abs(d0))), Across(d1, tool.HeightAt(Math.Abs(d1)))));
+        }
+        for (var k = 0; k < 32; k++)
+        {
+            double a0 = k * Math.PI / 16, a1 = (k + 1) * Math.PI / 16;
+            lines.Add((Round(a0, shoulder), Round(a1, shoulder)));
+            lines.Add((Round(a0, top), Round(a1, top)));
+            // Rings on the cutting part, so that a ball, a corner radius or a cone shows from every side (the profile
+            // alone lies on the shoulder ring when seen from 45 degrees).
+            if (shoulder > 1e-9)
+                foreach (var part in new[] { 0.35, 0.65, 0.85 })
+                {
+                    var d = r * part;
+                    var z = tool.HeightAt(d);
+                    lines.Add((new(d * Math.Cos(a0), d * Math.Sin(a0), z), new(d * Math.Cos(a1), d * Math.Sin(a1), z)));
+                }
+        }
+        foreach (var side in new[] { 1, -1 }) lines.Add((Across(side * r, shoulder), Across(side * r, top)));
+        return lines;
     }
 
     private static (double X, double Y, double Z) Normalize(double x, double y, double z)
