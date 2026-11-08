@@ -781,14 +781,14 @@ public partial class MainWindow
     private SimulationWindow? _simulationWindow;
 
     /// <summary>
-    /// What the simulation shows for the selection in the drawing tree: the selected milling operation, the enabled
-    /// milling operations of the selected part, or (machining options, drawing, nothing) all enabled ones. Null when
+    /// What the simulation shows for the selection in the drawing tree: the selected milling or turning operation, the
+    /// enabled ones of the selected part, or (machining options, drawing, nothing) all enabled ones. Null when
     /// something else is selected (the simulation keeps what it shows).
     /// </summary>
     private (List<MachineOp> Ops, PostScope Scope)? SimulationScope()
     {
         var doc = _session.Document;
-        static bool Milling(MachineOp o) => Core.Simulation.MillingSimulation.IsMilling(o);
+        static bool Milling(MachineOp o) => Core.Simulation.MillingSimulation.CanSimulate(o);
         return _session.Inspected switch
         {
             MachineOp op when Milling(op) => ([op], new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)),
@@ -803,10 +803,10 @@ public partial class MainWindow
     private async Task ShowSimulation()
     {
         var (ops, scope) = SimulationScope() ?? (_session.Document.Parts.SelectMany(p => p.Operations)
-            .Where(o => o.Enabled && Core.Simulation.MillingSimulation.IsMilling(o)).ToList(), PostScope.All);
+            .Where(o => o.Enabled && Core.Simulation.MillingSimulation.CanSimulate(o)).ToList(), PostScope.All);
         if (ops.Count == 0)
         {
-            Log(T("There are no milling operations to simulate."));
+            Log(T("There are no operations to simulate."));
             return;
         }
         if (ops.Any(o => !_session.Toolpaths.ContainsKey(o)) && !await GenerateToolpathsAsync(scope)) return;

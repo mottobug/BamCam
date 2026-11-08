@@ -142,7 +142,14 @@ simulation itself; by default it is half a cell. **Add to Drawing** puts the mat
 new layer as a surface (a closed mesh through the centres of the cells, with sides and bottom), for example for a 3D
 profile; **Save STL...** writes the same mesh as a binary STL file. Fields with more than a million triangles are
 thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis
-(no undercuts); turning, plasma and drag knife are not shown.
+(no undercuts); plasma and drag knife are not shown.
+
+Turning operations are simulated in the same window: the stock section is cut move by move by the tool (the nose
+radius of turning and facing tools, the grooving blade, the drill, 60° thread grooves) and shown turned about the
+spindle axis, with the tool at its position and the same buttons to step and play. It needs a stock in the machining
+options. Milling and turning are simulated apart: checking a turning operation unchecks the milling ones and the other
+way round; with both selected in the tree, the milling ones are shown. Rest material colours, cell size and the export
+buttons belong to milling only.
 
 Operations refer to their objects by ID (*Primitive IDs* in the properties; `[...]` picks them in the drawing).
 Parts group operations; each part can have its own stock, origin and nesting. CAM styles provide default values;
@@ -152,7 +159,7 @@ Special operations:
 
 - **Lathe:** draw only the profile on one side of the spindle axis (through the machining origin). Turning
   (external or internal, nose radius compensation computed or by the machine), facing, grooving / parting,
-  threading and drilling; the remaining stock is shown in the drawing. Use a lathe post processor such as
+  threading and drilling; the remaining stock is shown in the drawing and, move by move, in the 3D simulation. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
 - **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill);

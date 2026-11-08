@@ -44,10 +44,33 @@ public sealed class SimulationView : Control
         {
             var reset = _field == null || value == null || value.Nx != _field.Nx || value.Ny != _field.Ny;
             _field = value;
+            if (value != null) _turned = null;
             if (reset) ResetView();
             InvalidateVisual();
         }
     }
+
+    /// <summary>A turned part: triangles in drawing coordinates (nine floats each) inside a box that sets the view.</summary>
+    public sealed record TurnedModel(float[] Triangles, Core.Geometry.Point3 Min, Core.Geometry.Point3 Max);
+
+    private TurnedModel? _turned;
+
+    /// <summary>The turned part, shown instead of the height field (null = none).</summary>
+    public TurnedModel? Turned
+    {
+        get => _turned;
+        set
+        {
+            var reset = _turned == null || value == null || _turned.Min != value.Min || _turned.Max != value.Max;
+            _turned = value;
+            if (value != null) _field = null;
+            if (reset) ResetView();
+            InvalidateVisual();
+        }
+    }
+
+    /// <summary>The outline of the turning tool, as lines in drawing coordinates (with <see cref="Turned"/>).</summary>
+    public List<(Core.Geometry.Point3 From, Core.Geometry.Point3 To)>? TurnedTool { get; set; }
 
     public void ResetView()
     {
@@ -80,7 +103,8 @@ public sealed class SimulationView : Control
         if (_rotating)
         {
             _yaw = _dragFrom.Yaw - d.X * 0.01;
-            _pitch = Math.Clamp(_dragFrom.Pitch - d.Y * 0.01, 0, Math.PI / 2);
+            // A turned part can also be seen from below.
+            _pitch = Math.Clamp(_dragFrom.Pitch - d.Y * 0.01, _turned != null ? -Math.PI / 2 : 0, Math.PI / 2);
             InvalidateVisual();
         }
         else if (_panning)
@@ -108,7 +132,7 @@ public sealed class SimulationView : Control
         context.FillRectangle(new SolidColorBrush(Color.FromRgb(46, 48, 58)), new Rect(Bounds.Size));
         var w = (int)Bounds.Width;
         var h = (int)Bounds.Height;
-        if (_field == null || w < 2 || h < 2) return;
+        if ((_field == null && _turned == null) || w < 2 || h < 2) return;
         if (_bitmap == null || _bitmap.PixelSize.Width != w || _bitmap.PixelSize.Height != h)
         {
             _bitmap?.Dispose();
@@ -118,7 +142,7 @@ public sealed class SimulationView : Control
         List<(Point, Point)> toolLines;
         try
         {
-            (pixels, toolLines) = Draw(_field, w, h);
+            (pixels, toolLines) = _turned is { } turned ? DrawTurned(turned, w, h) : Draw(_field!, w, h);
         }
         catch (Exception ex)
         {
@@ -193,36 +217,8 @@ public sealed class SimulationView : Control
         var depthBuffer = new float[width * height];
         Array.Fill(depthBuffer, float.NegativeInfinity);
 
-        // Flat shaded triangle; the nearer surface (larger depth) wins.
-        void Triangle((double X, double Y, double Depth) p0, (double X, double Y, double Depth) p1, (double X, double Y, double Depth) p2, int color)
-        {
-            if (!double.IsFinite(p0.X + p0.Y + p1.X + p1.Y + p2.X + p2.Y + p0.Depth + p1.Depth + p2.Depth)) return;
-            var area = (p1.X - p0.X) * (p2.Y - p0.Y) - (p1.Y - p0.Y) * (p2.X - p0.X);
-            if (Math.Abs(area) < 1e-12) return;
-            var minX = (int)Math.Max(0, Math.Floor(Math.Min(p0.X, Math.Min(p1.X, p2.X))));
-            var maxX = (int)Math.Min(width - 1, Math.Ceiling(Math.Max(p0.X, Math.Max(p1.X, p2.X))));
-            var minY = (int)Math.Max(0, Math.Floor(Math.Min(p0.Y, Math.Min(p1.Y, p2.Y))));
-            var maxY = (int)Math.Min(height - 1, Math.Ceiling(Math.Max(p0.Y, Math.Max(p1.Y, p2.Y))));
-            if (minX > maxX || minY > maxY) return;
-            var inv = 1 / area;
-            for (var y = minY; y <= maxY; y++)
-            {
-                var py = y + 0.5;
-                for (var x = minX; x <= maxX; x++)
-                {
-                    var px = x + 0.5;
-                    var w0 = ((p1.X - px) * (p2.Y - py) - (p1.Y - py) * (p2.X - px)) * inv;
-                    var w1 = ((p2.X - px) * (p0.Y - py) - (p2.Y - py) * (p0.X - px)) * inv;
-                    var w2 = 1 - w0 - w1;
-                    if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
-                    var d = (float)(w0 * p0.Depth + w1 * p1.Depth + w2 * p2.Depth);
-                    var idx = y * width + x;
-                    if (d <= depthBuffer[idx]) continue;
-                    depthBuffer[idx] = d;
-                    pixels[idx] = color;
-                }
-            }
-        }
+        void Triangle((double X, double Y, double Depth) p0, (double X, double Y, double Depth) p1, (double X, double Y, double Depth) p2, int color) =>
+            Raster(pixels, depthBuffer, width, height, p0, p1, p2, color);
 
         var projected = new (double X, double Y, double Depth)[nx * ny];
         for (var j = 0; j < ny; j++)
@@ -293,6 +289,92 @@ public sealed class SimulationView : Control
                 .Select(l => (Screen(l.From.X, l.From.Y, tip.Z + l.From.Z), Screen(l.To.X, l.To.Y, tip.Z + l.To.Z))));
             lines.RemoveAll(l => !double.IsFinite(l.Item1.X + l.Item1.Y + l.Item2.X + l.Item2.Y));
         }
+        return (pixels, lines);
+    }
+
+    /// <summary>Flat shaded triangle into the pixels; the nearer surface (larger depth) wins.</summary>
+    private static void Raster(int[] pixels, float[] depthBuffer, int width, int height,
+        (double X, double Y, double Depth) p0, (double X, double Y, double Depth) p1, (double X, double Y, double Depth) p2, int color)
+    {
+        if (!double.IsFinite(p0.X + p0.Y + p1.X + p1.Y + p2.X + p2.Y + p0.Depth + p1.Depth + p2.Depth)) return;
+        var area = (p1.X - p0.X) * (p2.Y - p0.Y) - (p1.Y - p0.Y) * (p2.X - p0.X);
+        if (Math.Abs(area) < 1e-12) return;
+        var minX = (int)Math.Max(0, Math.Floor(Math.Min(p0.X, Math.Min(p1.X, p2.X))));
+        var maxX = (int)Math.Min(width - 1, Math.Ceiling(Math.Max(p0.X, Math.Max(p1.X, p2.X))));
+        var minY = (int)Math.Max(0, Math.Floor(Math.Min(p0.Y, Math.Min(p1.Y, p2.Y))));
+        var maxY = (int)Math.Min(height - 1, Math.Ceiling(Math.Max(p0.Y, Math.Max(p1.Y, p2.Y))));
+        if (minX > maxX || minY > maxY) return;
+        var inv = 1 / area;
+        for (var y = minY; y <= maxY; y++)
+        {
+            var py = y + 0.5;
+            for (var x = minX; x <= maxX; x++)
+            {
+                var px = x + 0.5;
+                var w0 = ((p1.X - px) * (p2.Y - py) - (p1.Y - py) * (p2.X - px)) * inv;
+                var w1 = ((p2.X - px) * (p0.Y - py) - (p2.Y - py) * (p0.X - px)) * inv;
+                var w2 = 1 - w0 - w1;
+                if (w0 < -1e-9 || w1 < -1e-9 || w2 < -1e-9) continue;
+                var d = (float)(w0 * p0.Depth + w1 * p1.Depth + w2 * p2.Depth);
+                var idx = y * width + x;
+                if (d <= depthBuffer[idx]) continue;
+                depthBuffer[idx] = d;
+                pixels[idx] = color;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Renders a turned part (triangles in drawing coordinates) with the same camera as the height field, and the
+    /// outline of the turning tool as screen lines.
+    /// </summary>
+    private (int[] Pixels, List<(Point, Point)> ToolLines) DrawTurned(TurnedModel model, int width, int height)
+    {
+        double cy = Math.Cos(_yaw), sy = Math.Sin(_yaw), cp = Math.Cos(_pitch), sp = Math.Sin(_pitch);
+        double midX = (model.Min.X + model.Max.X) / 2, midY = (model.Min.Y + model.Max.Y) / 2, midZ = (model.Min.Z + model.Max.Z) / 2;
+        var size = Math.Max(Math.Max(model.Max.X - model.Min.X, model.Max.Y - model.Min.Y), model.Max.Z - model.Min.Z);
+        var scale = _zoom * 0.8 * Math.Min(width, height) / Math.Max(size, 1e-6);
+        (double X, double Y, double Depth) Project(double x, double y, double zz)
+        {
+            x -= midX;
+            y -= midY;
+            zz -= midZ;
+            var rx = cy * x - sy * y;
+            var ry = sy * x + cy * y;
+            var up = ry * cp + zz * sp;
+            var depth = -ry * sp + zz * cp;
+            return (width / 2.0 + _pan.X + rx * scale, height / 2.0 + _pan.Y - up * scale, depth);
+        }
+        (double X, double Y, double Z) toViewer = (-sy * sp, -cy * sp, cp), upV = (sy * cp, cy * cp, sp), right = (cy, -sy, 0);
+        var light = Normalize(0.8 * toViewer.X + 0.4 * upV.X - 0.3 * right.X, 0.8 * toViewer.Y + 0.4 * upV.Y - 0.3 * right.Y,
+            0.8 * toViewer.Z + 0.4 * upV.Z - 0.3 * right.Z);
+
+        var pixels = new int[width * height];
+        Array.Fill(pixels, Argb(46, 48, 58));
+        var depthBuffer = new float[width * height];
+        Array.Fill(depthBuffer, float.NegativeInfinity);
+
+        var t = model.Triangles;
+        for (var i = 0; i + 8 < t.Length; i += 9)
+        {
+            double ax = t[i], ay = t[i + 1], az = t[i + 2], bx = t[i + 3], by = t[i + 4], bz = t[i + 5], qx = t[i + 6], qy = t[i + 7], qz = t[i + 8];
+            // Normal, turned towards the viewer (both sides of a triangle are lit alike).
+            double ux = bx - ax, uy = by - ay, uz = bz - az, vx = qx - ax, vy = qy - ay, vz = qz - az;
+            var n = Normalize(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx);
+            if (n.X * toViewer.X + n.Y * toViewer.Y + n.Z * toViewer.Z < 0) n = (-n.X, -n.Y, -n.Z);
+            var lambert = 0.35 + 0.65 * Math.Max(0, n.X * light.X + n.Y * light.Y + n.Z * light.Z);
+            var color = Argb((int)(205 * lambert), (int)(200 * lambert), (int)(190 * lambert));
+            Raster(pixels, depthBuffer, width, height, Project(ax, ay, az), Project(bx, by, bz), Project(qx, qy, qz), color);
+        }
+
+        var lines = new List<(Point, Point)>();
+        if (TurnedTool is { } tool)
+            foreach (var (a, b) in tool)
+            {
+                var pa = Project(a.X, a.Y, a.Z);
+                var pb = Project(b.X, b.Y, b.Z);
+                if (double.IsFinite(pa.X + pa.Y + pb.X + pb.Y)) lines.Add((new Point(pa.X, pa.Y), new Point(pb.X, pb.Y)));
+            }
         return (pixels, lines);
     }
 

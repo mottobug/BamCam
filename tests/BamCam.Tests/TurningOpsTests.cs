@@ -338,4 +338,60 @@ public class TurningOpsTests
         Assert.Contains(remaining, p => p.Contains(new Point2(40 - 30, 7.5)));
         _ = face;
     }
+
+    [Fact]
+    public void The_3d_simulation_cuts_the_section_move_by_move_and_turns_it_into_a_solid()
+    {
+        var (doc, shape) = Drawing(new(-40, 8), new(-20, 8), new(-20, 5), new(0, 5));
+        doc.Machining.Stock = new Stock { PMin = new Point3(-40, -10, -10), PMax = new Point3(3, 10, 10) };
+        var turn = Add(doc, shape, new LatheOp());
+        turn.DepthIncrement.Set(0.5);
+        Add(doc, shape, new LatheFacingOp());
+        var jobs = doc.ActivePart.Operations.Select(o => (o, ToolpathGenerator.Generate(doc, o))).ToList();
+
+        var frame = TurningSimulation.FrameOf(doc, jobs.Select(j => ((TurningOp)j.o, j.Item2)).ToList());
+        Assert.NotNull(frame);
+        var moves = TurningSimulation.Moves(doc, frame, jobs.Select(j => ((MachineOp)j.o, j.Item2)).ToList());
+        Assert.True(moves.Count > 20, $"{moves.Count} moves");
+        Assert.All(moves.Where(m => m.Move.Kind == MoveKind.Rapid), m => Assert.Empty(m.Removed));
+
+        // Step by step: the stock gets less with every cutting move, and at the end it is the turned part.
+        var section = new List<Path2> { frame.Section };
+        double Area(List<Path2> s) => s.Sum(p => Math.Abs(p.SignedArea()));
+        var areas = new List<double> { Area(section) };
+        foreach (var m in moves)
+        {
+            section = TurningSimulation.Cut(section, m);
+            areas.Add(Area(section));
+        }
+        Assert.All(areas.Zip(areas.Skip(1)), a => Assert.True(a.Second <= a.First + 1e-6));
+        bool Material(double z, double radius) => section.Any(p => p.Contains(new Point2(z, radius)));
+        Assert.True(Material(-30, 7.5), "large diameter stays");
+        Assert.True(Material(-10, 4.5), "small diameter stays");
+        Assert.False(Material(-30, 9.5), "stock above the large diameter is turned off");
+        Assert.False(Material(-10, 7), "stock above the small diameter is turned off");
+        Assert.False(Material(1.5, 2), "the end face is faced off");
+        // Same as the turned stock shown in the drawing.
+        var shown = TurningSimulation.Remaining(doc, jobs.ToDictionary(j => (MachineOp)j.o, j => j.Item2));
+        Assert.Equal(Area(section) * 2, shown.Sum(p => Math.Abs(p.SignedArea())), 1);
+
+        // Turned about the axis: inside the stock cylinder, and the small diameter is round at radius 5.
+        var tris = TurningSimulation.Revolve(frame, section);
+        Assert.True(tris.Length > 9 * 100);
+        for (var i = 0; i < tris.Length; i += 3)
+        {
+            var radius = Math.Sqrt(Math.Pow(tris[i + 1] - frame.Origin.Y, 2) + tris[i + 2] * tris[i + 2]);
+            Assert.True(radius <= 10 + 1e-3, $"point at radius {radius}");
+        }
+        // Both diameters are there, all the way round.
+        var radii = Enumerable.Range(0, tris.Length / 3).Select(i => i * 3)
+            .Select(i => (Angle: Math.Atan2(tris[i + 2], tris[i + 1] - frame.Origin.Y),
+                Radius: Math.Sqrt(Math.Pow(tris[i + 1] - frame.Origin.Y, 2) + tris[i + 2] * tris[i + 2]))).ToList();
+        foreach (var diameterRadius in new[] { 5.0, 8.0 })
+        {
+            var on = radii.Where(p => Math.Abs(p.Radius - diameterRadius) < 0.05).ToList();
+            Assert.True(on.Count > 0, $"no points at radius {diameterRadius}");
+            Assert.True(on.Max(p => p.Angle) - on.Min(p => p.Angle) > 1.9 * Math.PI, $"radius {diameterRadius} not all round");
+        }
+    }
 }

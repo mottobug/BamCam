@@ -80,6 +80,9 @@ public static class MillingSimulation
     /// <summary>Operations the simulation shows (milling; not turning, plasma or drag knife).</summary>
     public static bool IsMilling(MachineOp op) => op is not (TurningOp or PlasmaOp or DragKnifeOp);
 
+    /// <summary>Operations the 3D simulation shows: milling on a block, or turning (see <see cref="Cam.TurningSimulation"/>).</summary>
+    public static bool CanSimulate(MachineOp op) => IsMilling(op) || op is TurningOp;
+
     /// <summary>The tool of an operation for the simulation.</summary>
     public static SimTool ToolOf(CadDocument doc, MachineOp op)
     {

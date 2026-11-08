@@ -10,6 +10,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using BamCam.App.Controls;
 using BamCam.Core.Cam;
+using BamCam.Core.Geometry;
 using BamCam.Core.Simulation;
 using BamCam.Core.Model;
 using static BamCam.Core.Localization.Tr;
@@ -18,7 +19,8 @@ namespace BamCam.App.Views;
 
 /// <summary>
 /// 3D simulation of the milling operations on the stock (height field), with the material left above the target
-/// depth of each operation shown in colour. The moves can be stepped one by one, forwards and backwards.
+/// depth of each operation shown in colour, or of the turning operations (the stock section cut move by move and
+/// turned about the spindle axis). The moves can be stepped one by one, forwards and backwards.
 /// </summary>
 public sealed class SimulationWindow : Window
 {
@@ -45,17 +47,29 @@ public sealed class SimulationWindow : Window
     /// <summary>Playing speeds in moves per second (0 = as fast as the simulation runs).</summary>
     private static readonly int[] Speeds = [1, 2, 5, 10, 25, 50, 100, 250, 1000, 0];
 
+    // Milling: a height field cut by the moves.
     private HeightField? _field;
     private List<MillingSimulation.SimMove> _moves = [];
-    private int _done; // moves applied to _field
+
+    // Turning: the stock section cut by the moves, shown turned about the axis.
+    private bool _turning;
+    private TurningSimulation.Frame? _frame;
+    private List<TurningSimulation.TurnMove> _turnMoves = [];
+    private List<Path2> _section = [];
+
+    private int _done; // moves applied
+    private int _generation; // counts restarts, so that a simulation running meanwhile is dropped
     private bool _busy, _pending, _updatingSlider;
 
-    /// <summary>Copies of the heights after every n-th move, so that stepping back does not start from the beginning.</summary>
-    private readonly SortedDictionary<int, float[]> _checkpoints = [];
+    /// <summary>Copies of the material after every n-th move, so that stepping back does not start from the beginning.</summary>
+    private readonly SortedDictionary<int, object> _checkpoints = [];
     private int _checkpointEvery = int.MaxValue;
 
     private readonly Action<SurfaceEntity>? _addSurface;
     private string _cellNote = "";
+    private readonly Control _cellRow, _toleranceRow, _exports, _millLegend, _turnLegend;
+
+    private int Count => _turning ? _turnMoves.Count : _moves.Count;
 
     /// <param name="addSurface">Adds the simulated material to the drawing (one undo step); null hides the button.</param>
     public SimulationWindow(CadDocument doc, IReadOnlyDictionary<MachineOp, Toolpath> toolpaths, Action<SurfaceEntity>? addSurface = null)
@@ -75,8 +89,8 @@ public sealed class SimulationWindow : Window
         left.Children.Add(_opsPanel);
         BuildOperations(doc.Parts.SelectMany(p => p.Operations).Where(o => o.Enabled).ToList());
 
-        left.Children.Add(Row(T("Cell size"), _cell));
-        left.Children.Add(Row(T("Tolerance"), _tolerance));
+        left.Children.Add(_cellRow = Row(T("Cell size"), _cell));
+        left.Children.Add(_toleranceRow = Row(T("Tolerance"), _tolerance));
         var apply = new Button { Content = T("Simulate"), HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Center };
         apply.Click += (_, _) => Restart();
         left.Children.Add(apply);
@@ -93,14 +107,16 @@ public sealed class SimulationWindow : Window
         ToolTip.SetTip(stl, T("Saves the simulated material as an STL mesh."));
         stl.Click += (_, _) => SaveStl();
         exports.Children.Add(stl);
-        left.Children.Add(exports);
-        left.Children.Add(Legend());
+        left.Children.Add(_exports = exports);
+        left.Children.Add(_millLegend = Legend(turning: false));
+        left.Children.Add(_turnLegend = Legend(turning: true));
         left.Children.Add(_info);
         left.Children.Add(new TextBlock
         {
             Text = T("Left drag: rotate, right drag: move, wheel: zoom, double click: reset. Arrow keys: previous / next move, Home / End: start / end, Space: play."),
             TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = Brushes.DimGray,
         });
+        ShowMode();
 
         _slider.PropertyChanged += (_, e) =>
         {
@@ -116,7 +132,7 @@ public sealed class SimulationWindow : Window
             var elapsed = _tickWatch.Elapsed.TotalSeconds;
             _tickWatch.Restart();
             if (_busy) return;
-            if (_done >= _moves.Count)
+            if (_done >= Count)
             {
                 TogglePlay();
                 return;
@@ -124,7 +140,7 @@ public sealed class SimulationWindow : Window
             var speed = Speeds[Math.Max(0, _speed.SelectedIndex)];
             if (speed <= 0)
             {
-                RunTo(_done + Math.Max(1, _moves.Count / 100));
+                RunTo(_done + Math.Max(1, Count / 100));
                 return;
             }
             // Moves due since the last tick (at slow speeds one every few ticks).
@@ -140,7 +156,7 @@ public sealed class SimulationWindow : Window
         buttons.Children.Add(StepButton("◀", T("Previous move (Left)"), () => RunTo(_done - 1)));
         buttons.Children.Add(_play);
         buttons.Children.Add(StepButton("▶", T("Next move (Right)"), () => RunTo(_done + 1)));
-        buttons.Children.Add(StepButton("▶|", T("To the end (End)"), () => RunTo(_moves.Count)));
+        buttons.Children.Add(StepButton("▶|", T("To the end (End)"), () => RunTo(Count)));
         buttons.Children.Add(_speed);
 
         var status = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 0, 0), MinWidth = 260 };
@@ -169,25 +185,42 @@ public sealed class SimulationWindow : Window
     private readonly StackPanel _opsPanel = new() { Spacing = 6 };
     private bool _building;
 
-    /// <summary>One check box per milling operation with a toolpath; the given ones are checked.</summary>
+    /// <summary>
+    /// One check box per milling or turning operation with a toolpath; the given ones are checked. Milling and turning
+    /// are simulated apart (a milled block and a turned part): when the given ones hold both, the milling ones are checked.
+    /// </summary>
     private void BuildOperations(IReadOnlyCollection<MachineOp> shown)
     {
         _building = true;
         _ops.Clear();
         _opsPanel.Children.Clear();
+        var turning = !shown.Any(MillingSimulation.IsMilling) && shown.Any(o => o is TurningOp);
         foreach (var part in _doc.Parts)
         foreach (var op in part.Operations)
         {
-            if (!MillingSimulation.IsMilling(op) || !_toolpaths.ContainsKey(op)) continue;
-            var box = new CheckBox { Content = _doc.Parts.Count > 1 ? $"{part.Name}: {op.Name}" : op.Name, IsChecked = shown.Contains(op) };
+            if (!MillingSimulation.CanSimulate(op) || !_toolpaths.ContainsKey(op)) continue;
+            var box = new CheckBox
+            {
+                Content = _doc.Parts.Count > 1 ? $"{part.Name}: {op.Name}" : op.Name,
+                IsChecked = shown.Contains(op) && (op is TurningOp) == turning,
+            };
             box.IsCheckedChanged += (_, _) =>
             {
-                if (!_building) Restart();
+                if (_building) return;
+                // Checking a turning operation unchecks the milling ones and the other way round.
+                if (box.IsChecked == true)
+                {
+                    _building = true;
+                    foreach (var (other, otherBox) in _ops)
+                        if ((other is TurningOp) != (op is TurningOp)) otherBox.IsChecked = false;
+                    _building = false;
+                }
+                Restart();
             };
             _ops.Add((op, box));
             _opsPanel.Children.Add(box);
         }
-        if (_ops.Count == 0) _opsPanel.Children.Add(new TextBlock { Text = T("No milling toolpaths. Generate toolpaths first."), TextWrapping = TextWrapping.Wrap });
+        if (_ops.Count == 0) _opsPanel.Children.Add(new TextBlock { Text = T("No toolpaths to simulate. Generate toolpaths first."), TextWrapping = TextWrapping.Wrap });
         _building = false;
     }
 
@@ -197,8 +230,9 @@ public sealed class SimulationWindow : Window
     /// </summary>
     public void ShowOperations(IReadOnlyCollection<MachineOp> ops)
     {
-        var same = _ops.Count == _toolpaths.Count(t => MillingSimulation.IsMilling(t.Key)) &&
-                   _ops.All(o => (o.Box.IsChecked == true) == ops.Contains(o.Op));
+        var turning = !ops.Any(MillingSimulation.IsMilling) && ops.Any(o => o is TurningOp);
+        var same = _ops.Count == _toolpaths.Count(t => MillingSimulation.CanSimulate(t.Key)) &&
+                   _ops.All(o => (o.Box.IsChecked == true) == (ops.Contains(o.Op) && (o.Op is TurningOp) == turning));
         if (same) return;
         _timer.Stop();
         _play.Content = "▷";
@@ -235,7 +269,7 @@ public sealed class SimulationWindow : Window
             case Key.Left: RunTo(_done - 1); break;
             case Key.Right: RunTo(_done + 1); break;
             case Key.Home: RunTo(0); break;
-            case Key.End: RunTo(_moves.Count); break;
+            case Key.End: RunTo(Count); break;
             case Key.Space: TogglePlay(); break;
             default: return;
         }
@@ -251,7 +285,7 @@ public sealed class SimulationWindow : Window
         return row;
     }
 
-    private static Control Legend()
+    private static Control Legend(bool turning)
     {
         var panel = new StackPanel { Spacing = 3, Margin = new Thickness(0, 8, 0, 0) };
         void Add(Color c, string text)
@@ -261,6 +295,12 @@ public sealed class SimulationWindow : Window
             row.Children.Add(new TextBlock { Text = text, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
             panel.Children.Add(row);
         }
+        if (turning)
+        {
+            Add(Color.FromRgb(205, 200, 190), T("Material"));
+            Add(Color.FromRgb(0, 220, 255), T("Tool"));
+            return panel;
+        }
         Add(Color.FromRgb(205, 200, 190), T("Material / reached the target"));
         Add(Color.FromRgb(255, 220, 0), T("Rest material (little)"));
         Add(Color.FromRgb(255, 0, 0), T("Rest material (much)"));
@@ -269,13 +309,32 @@ public sealed class SimulationWindow : Window
         return panel;
     }
 
+    /// <summary>Cell size, tolerance, export and the colours of rest material belong to milling only.</summary>
+    private void ShowMode()
+    {
+        _cellRow.IsVisible = _toleranceRow.IsVisible = _exports.IsVisible = _millLegend.IsVisible = !_turning;
+        _turnLegend.IsVisible = _turning;
+    }
+
     private static double ParseOr(TextBox box, double fallback) =>
         double.TryParse(box.Text?.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) && v > 0 ? v : fallback;
 
-    /// <summary>New height field and moves for the checked operations, simulated to the end.</summary>
+    /// <summary>New material and moves for the checked operations, simulated to the end.</summary>
     private void Restart()
     {
         var jobs = _ops.Where(o => o.Box.IsChecked == true && _toolpaths.ContainsKey(o.Op)).Select(o => (o.Op, _toolpaths[o.Op])).ToList();
+        _generation++;
+        _done = 0;
+        _checkpoints.Clear();
+        _turning = jobs.Count > 0 && jobs.All(j => j.Op is TurningOp);
+        ShowMode();
+        if (_turning)
+        {
+            RestartTurning(jobs);
+            return;
+        }
+        _frame = null;
+        _turnMoves = [];
         var requested = ParseOr(_cell, 0);
         var field = MillingSimulation.Create(_doc, jobs, requested);
         _cellNote = requested > 0 && field.Cell > requested * 1.0001
@@ -289,27 +348,67 @@ public sealed class SimulationWindow : Window
         MillingSimulation.SetTargets(field, _doc, jobs.Select(j => j.Op));
         _moves = MillingSimulation.Moves(_doc, jobs, field.Cell / 2);
         _field = field;
-        _done = 0;
-        _checkpoints.Clear();
         // About 40 copies, at most ~200 MB in all.
         var maxCopies = (int)Math.Clamp(200_000_000L / (4L * field.Z.Length), 0, 40);
         _checkpointEvery = maxCopies == 0 ? int.MaxValue : Math.Max(20, _moves.Count / maxCopies);
         _view.Field = field;
+        StartAtEnd();
+    }
+
+    private void RestartTurning(List<(MachineOp Op, Toolpath Toolpath)> jobs)
+    {
+        _field = null;
+        _moves = [];
+        _frame = TurningSimulation.FrameOf(_doc, jobs.Select(j => ((TurningOp)j.Op, j.Toolpath)).ToList());
+        if (_frame is not { } frame)
+        {
+            _turnMoves = [];
+            _section = [];
+            _view.Turned = null;
+            _view.InvalidateVisual();
+            ShowPosition();
+            _info.Text = T("Turning needs a stock: set it in the machining options.");
+            return;
+        }
+        _turnMoves = TurningSimulation.Moves(_doc, frame, jobs);
+        _section = [frame.Section];
+        // The section is small: a copy every 25 moves.
+        _checkpointEvery = 25;
+        ShowTurned();
+        StartAtEnd();
+    }
+
+    private void StartAtEnd()
+    {
         _updatingSlider = true;
-        _slider.Maximum = Math.Max(1, _moves.Count);
-        _slider.Value = _moves.Count;
+        _slider.Maximum = Math.Max(1, Count);
+        _slider.Value = Count;
         _updatingSlider = false;
-        RunTo(_moves.Count);
+        RunTo(Count);
+    }
+
+    // ---- the material, for milling or turning
+
+    private void ResetMaterial()
+    {
+        if (_turning) _section = _frame is { } f ? [f.Section] : [];
+        else _field?.Reset();
+    }
+
+    private void Restore(object copy)
+    {
+        if (_turning) _section = (List<Path2>)copy;
+        else Array.Copy((float[])copy, _field!.Z, _field.Z.Length);
     }
 
     /// <summary>
     /// Simulates up to move <paramref name="target"/> on a worker thread. Going back restarts from the nearest
-    /// saved copy of the heights before it.
+    /// saved copy of the material before it.
     /// </summary>
     private async void RunTo(int target)
     {
-        if (_field is not { } field) return;
-        target = Math.Clamp(target, 0, _moves.Count);
+        if (_turning ? _frame == null : _field == null) return;
+        target = Math.Clamp(target, 0, Count);
         if (_busy)
         {
             _pending = true;
@@ -319,41 +418,50 @@ public sealed class SimulationWindow : Window
             return;
         }
         _busy = true;
+        var generation = _generation;
         var sw = Stopwatch.StartNew();
-        var moves = _moves;
         if (target < _done)
         {
             var restore = _checkpoints.Keys.LastOrDefault(k => k <= target);
-            if (restore > 0) Array.Copy(_checkpoints[restore], field.Z, field.Z.Length);
-            else field.Reset();
+            if (restore > 0) Restore(_checkpoints[restore]);
+            else ResetMaterial();
             _done = restore;
         }
         // In chunks of about a quarter second, showing the material in between.
+        // The worker keeps to these, so that a restart meanwhile does not mix old and new moves.
+        var turning = _turning;
+        var field = _field;
+        var moves = _moves;
+        var turnMoves = _turnMoves;
         var k = _done;
         while (k < target)
         {
             var chunkStart = k;
             var every = _checkpointEvery;
-            var copies = new List<(int, float[])>();
+            var copies = new List<(int, object)>();
+            var section = _section;
             k = await Task.Run(() =>
             {
                 var watch = Stopwatch.StartNew();
                 var i = chunkStart;
                 while (i < target && watch.ElapsedMilliseconds < 250)
                 {
-                    MillingSimulation.Cut(field, moves[i++]);
-                    if (i % every == 0) copies.Add((i, (float[])field.Z.Clone()));
+                    if (turning) section = TurningSimulation.Cut(section, turnMoves[i]);
+                    else MillingSimulation.Cut(field!, moves[i]);
+                    i++;
+                    if (i % every == 0) copies.Add((i, turning ? section : field!.Z.Clone()));
                 }
                 return i;
             });
-            if (field != _field)
+            if (generation != _generation)
             {
-                // Restarted meanwhile: simulate the new field.
+                // Restarted meanwhile: simulate the new material.
                 _busy = false;
                 _pending = false;
                 RunTo((int)Math.Round(_slider.Value));
                 return;
             }
+            if (turning) _section = section;
             foreach (var (at, copy) in copies) _checkpoints[at] = copy;
             _done = k;
             ShowPosition();
@@ -375,42 +483,67 @@ public sealed class SimulationWindow : Window
         }
     }
 
+    /// <summary>The section as it is now, turned about the axis.</summary>
+    private void ShowTurned()
+    {
+        if (_frame is not { } frame) return;
+        var r = frame.Radius;
+        var box = frame.Section.Vertices.Select(v => v.XY).ToList();
+        var min = new Point3(frame.Origin.X + box.Min(p => p.X), frame.Origin.Y - r, -r);
+        var max = new Point3(frame.Origin.X + box.Max(p => p.X), frame.Origin.Y + r, r);
+        _view.Turned = new SimulationView.TurnedModel(TurningSimulation.Revolve(frame, _section), min, max);
+    }
+
     /// <summary>Move counter, the last move done and the tool at its end.</summary>
     private void ShowPosition()
     {
-        _progress.Text = F("Move {0} of {1}", _done, _moves.Count);
-        if (_done == 0 || _done > _moves.Count)
+        _progress.Text = F("Move {0} of {1}", _done, Count);
+        if (_turning) ShowTurned();
+        if (_done == 0 || _done > Count)
         {
             _current.Text = T("Start: nothing cut yet.");
             _view.Tool = null;
+            _view.TurnedTool = null;
+        }
+        else if (_turning)
+        {
+            var m = _turnMoves[_done - 1];
+            _current.Text = $"{m.Op.Name} · {Describe(m.Move)}";
+            _view.TurnedTool = TurningSimulation.ToolLines(_doc, m, _frame!);
         }
         else
         {
             var m = _moves[_done - 1];
-            _current.Text = $"{m.Op.Name} · {Describe(m)}";
+            _current.Text = $"{m.Op.Name} · {Describe(m.Move)}";
             _view.Tool = (m.End, MillingSimulation.ToolOf(_doc, m.Op));
         }
         _view.InvalidateVisual();
     }
 
-    private static string Describe(MillingSimulation.SimMove m)
+    private static string Describe(Move move)
     {
-        var p = m.Move.To;
+        var p = move.To;
         var xyz = string.Format(CultureInfo.InvariantCulture, "X{0:0.###} Y{1:0.###} Z{2:0.###}", p.X, p.Y, p.Z);
-        var feed = m.Move.Feed > 0 ? string.Format(CultureInfo.InvariantCulture, " F{0:0.#}", m.Move.Feed) : "";
-        return m.Move.Kind switch
+        var feed = move.Feed > 0 ? string.Format(CultureInfo.InvariantCulture, " F{0:0.#}", move.Feed) : "";
+        return move.Kind switch
         {
             MoveKind.Rapid => $"G0 {xyz}",
             MoveKind.Feed => $"G1 {xyz}{feed}",
             MoveKind.ArcCW => $"G2 {xyz}{feed}",
             MoveKind.ArcCCW => $"G3 {xyz}{feed}",
             MoveKind.DrillCycle => T("Drilling cycle") + " " + xyz,
+            MoveKind.ThreadCycle => T("Threading cycle") + " " + xyz,
             _ => xyz,
         };
     }
 
     private void UpdateInfo(TimeSpan elapsed)
     {
+        if (_turning)
+        {
+            if (_frame != null) _info.Text = F("Turned part, {0:0.##} s.", elapsed.TotalSeconds);
+            return;
+        }
         if (_field is not { } f) return;
         var rest = 0;
         var gouge = 0;
@@ -432,7 +565,7 @@ public sealed class SimulationWindow : Window
     /// <summary>The material at the move shown, as a mesh; null (with a note) while the simulation is still running.</summary>
     private SurfaceEntity? CurrentSurface()
     {
-        if (_field is not { } field) return null;
+        if (_turning || _field is not { } field) return null;
         if (_busy)
         {
             _info.Text = T("Please wait until the simulation has stopped.");
@@ -476,11 +609,11 @@ public sealed class SimulationWindow : Window
         var random = new Random(1);
         for (var i = 0; i < 40; i++)
         {
-            var target = i % 4 == 0 ? random.Next(_moves.Count + 1) : _done + (i % 2 == 0 ? 1 : -1);
+            var target = i % 4 == 0 ? random.Next(Count + 1) : _done + (i % 2 == 0 ? 1 : -1);
             RunTo(target);
             await Task.Delay(60);
         }
-        RunTo(_moves.Count / 2);
+        RunTo(Count / 2);
         await Task.Delay(1500);
     }
 
@@ -492,7 +625,7 @@ public sealed class SimulationWindow : Window
             _play.Content = "▷";
             return;
         }
-        if (_done >= _moves.Count) RunTo(0);
+        if (_done >= Count) RunTo(0);
         _due = 1; // the first move at once
         _tickWatch.Restart();
         _timer.Start();
