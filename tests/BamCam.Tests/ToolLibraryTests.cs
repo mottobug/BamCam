@@ -2,6 +2,7 @@ using System.Reflection;
 using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
+using BamCam.Core.Post;
 using BamCam.Core.Simulation;
 using BamCam.IO.Cb;
 
@@ -333,6 +334,27 @@ public sealed class ToolLibraryTests : IDisposable
             if (!part.Name.StartsWith("J ", StringComparison.Ordinal))
                 Assert.True(expected.ToolProfile.Value == op.ToolProfile.Value, $"{part.Name}: profile {op.ToolProfile.Value}");
         }
+    }
+
+    [Fact]
+    public void Tool_changes_and_spindle_lines_are_those_of_the_gcode_cambam_made()
+    {
+        var mine = Path.Combine(Examples, "Vergleich Werkzeug.cb");
+        var made = Path.Combine(Examples, "Vergleich Werkzeug.nc");
+        if (!File.Exists(mine) || !File.Exists(made)) return;
+        AddDefaultLibrary();
+        var doc = CbReader.Read(System.Xml.Linq.XDocument.Load(mine));
+        // As the program does before it generates: values in the Default state come from style, part and library.
+        foreach (var op in doc.Parts.SelectMany(p => p.Operations)) LibraryFiles.ApplyStyle(doc, op);
+        var paths = doc.Parts.SelectMany(p => p.Operations).ToDictionary(op => op, op => ToolpathGenerator.Generate(doc, op));
+
+        var ours = GCodePoster.Post(doc, paths, new PostProcessorDefinition()).Text.Replace("\r\n", "\n").Split('\n');
+
+        // Tool changes, spindle lines and the names of the parts (the operations have none), not the header with its date.
+        static string[] Lines(IEnumerable<string> lines) => [.. lines.Where(l =>
+            l == "M3" || l.StartsWith("M3 ", StringComparison.Ordinal) || l.StartsWith('S') || l.EndsWith(" M6", StringComparison.Ordinal) ||
+            System.Text.RegularExpressions.Regex.IsMatch(l, @"^\( [A-J] "))];
+        Assert.Equal(Lines(File.ReadAllLines(made)), Lines(ours));
     }
 
     [Fact]

@@ -132,6 +132,7 @@ public sealed partial class GCodePoster
         if (string.IsNullOrEmpty(template)) return "";
         var sb = new StringBuilder();
         var i = 0;
+        string? speedJustWritten = null; // the speed word that {$spindle} wrote right before
         while (i < template.Length)
         {
             var start = template.IndexOf("{$", i, StringComparison.Ordinal);
@@ -140,7 +141,9 @@ public sealed partial class GCodePoster
                 sb.Append(template, i, template.Length - i);
                 break;
             }
-            sb.Append(template, i, start - i);
+            var between = template.AsSpan(i, start - i);
+            sb.Append(between);
+            if (!between.IsWhiteSpace()) speedJustWritten = null;
             var end = FindMacroEnd(template, start + 2);
             if (end < 0)
             {
@@ -148,11 +151,29 @@ public sealed partial class GCodePoster
                 break;
             }
             var body = template.Substring(start + 2, end - start - 2);
-            sb.Append(EvalMacro(body));
+            var key = body.Trim().ToLowerInvariant();
+            var value = EvalMacro(body);
+            // "{$spindle} {$s}" with a spindle text that has the speed in it ("M3 {$s}"): the speed once, not twice.
+            if (key == "s" && speedJustWritten != null && value == speedJustWritten) value = "";
+            speedJustWritten = key == "spindle" && SpindleSpeed() is { Length: > 0 } speed && ContainsWord(value, speed) ? speed : null;
+            sb.Append(value);
             i = end + 1;
         }
         return sb.ToString();
     }
+
+    private static bool ContainsWord(string text, string word)
+    {
+        for (var at = text.IndexOf(word, StringComparison.Ordinal); at >= 0; at = text.IndexOf(word, at + 1, StringComparison.Ordinal))
+        {
+            var after = at + word.Length;
+            if ((at == 0 || char.IsWhiteSpace(text[at - 1])) && (after == text.Length || !char.IsAsciiDigit(text[after]) && text[after] != '.')) return true;
+        }
+        return false;
+    }
+
+    /// <summary>The operation whose spindle the header means: the first one, as no operation is being posted yet.</summary>
+    private Job? SpindleJob => _job ?? _jobs.FirstOrDefault();
 
     private static int FindMacroEnd(string s, int from)
     {
@@ -387,7 +408,7 @@ public sealed partial class GCodePoster
         else if (a == "ccw") text = _post.SpindleCCW;
         else
         {
-            var dir = _job?.Op.SpindleDirection.Value ?? SpindleDirection.CW;
+            var dir = SpindleJob?.Op.SpindleDirection.Value ?? SpindleDirection.CW;
             text = dir switch { SpindleDirection.CCW => _post.SpindleCCW, SpindleDirection.Off => _post.SpindleOff, _ => _post.SpindleCW };
         }
         // A post can have macros in these texts ("M3 {$s}"); then a new speed is a new state too.
@@ -399,9 +420,10 @@ public sealed partial class GCodePoster
 
     private string SpindleSpeed()
     {
-        if (_job == null) return "";
+        // In the header: the speed of the first operation, so that a spindle started there runs at it.
+        if (SpindleJob is not { } job) return "";
         // Not modal: the reference output repeats the S word in every operation.
-        return "S" + _job.Op.SpindleSpeed.Value.ToString("0.###", Inv);
+        return "S" + job.Op.SpindleSpeed.Value.ToString("0.###", Inv);
     }
 
     private double ClearanceZ() => (_job?.Op ?? _jobs.FirstOrDefault()?.Op)?.ClearancePlane.Value ?? 0;
@@ -427,6 +449,8 @@ public sealed partial class GCodePoster
         if (tool.Index == _currentTool || tool.Index < 0 || (tool.Index == 0 && !first)) return "";
         _currentTool = tool.Index;
         _toolContext = tool;
+        // As in CamBam's output: after a tool change the spindle is started again ("M3 S1000", not only "S1000").
+        _spindleState = null;
         var saved = _job;
         _job ??= job;
         var text = Expand(_post.ToolChange);
