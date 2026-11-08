@@ -82,6 +82,10 @@ public partial class MainWindow : Window
             if (key is nameof(Core.Cam.Part.ToolNumber) or nameof(Core.Cam.Part.ToolLibrary) or nameof(Core.Cam.Part.ToolDiameter) or nameof(Core.Cam.Part.ToolProfile)
                 && Properties.SelectedObject is Core.Cam.Part or Core.Cam.MachiningOptions)
                 Log(Core.Cam.CamLibraries.DescribeTool(_session.Document, Properties.SelectedObject as Core.Cam.Part));
+            // The number of an operation: which tool it is, or why its diameter does not follow.
+            if (key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.ToolDiameter) && Properties.SelectedObject is Core.Cam.MachineOp withTool
+                && Core.Cam.CamLibraries.DescribeOperationTool(_session.Document, withTool) is { } toolMessage)
+                Log(toolMessage);
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
 

@@ -494,6 +494,8 @@
   "Stays empty when a tool number is set: the profile then comes from the tool library, which wins over a value typed here.": "Bleibt leer, wenn eine Werkzeugnummer gesetzt ist: Das Profil kommt dann aus der Werkzeugbibliothek, die Vorrang vor einem hier eingetragenen Wert hat.",
   "{0}: tool library '{1}' not found.":"{0}: Die Werkzeugbibliothek „{1}“ wurde nicht gefunden.",
   "{0}: tool {1} not found in the tool libraries.": "{0}: Werkzeug {1} wurde in den Werkzeugbibliotheken nicht gefunden.",
+  "{0}: tool {1} has diameter {2} in the library, but the Tool Diameter {3} typed in this operation wins. Set Tool Diameter to Default to use the library.": "{0}: Werkzeug {1} hat in der Bibliothek den Durchmesser {2}, aber der in dieser Bearbeitung eingetragene Werkzeugdurchmesser {3} hat Vorrang. Werkzeugdurchmesser auf Standard stellen, um die Bibliothek zu verwenden.",
+  "{0}: tool {1} from the library: diameter {2}, profile {3}.": "{0}: Werkzeug {1} aus der Bibliothek: Durchmesser {2}, Profil {3}.",
   "{0}: no toolpath without a tool diameter. Set a tool number or a tool diameter.": "{0}: Ohne Werkzeugdurchmesser gibt es keinen Werkzeugweg. Bitte Werkzeugnummer oder Werkzeugdurchmesser setzen.",
   "{0}: no tool diameter: the tool runs on the line. Set a tool number or a tool diameter.": "{0}: Kein Werkzeugdurchmesser: Das Werkzeug fährt auf der Linie. Bitte Werkzeugnummer oder Werkzeugdurchmesser setzen.",
   "{0}: Target Depth is above Stock Surface; using Stock Surface.":"{0}: Die Zieltiefe liegt über der Materialoberfläche; die Materialoberfläche wird verwendet.",

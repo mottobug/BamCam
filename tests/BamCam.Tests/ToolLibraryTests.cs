@@ -257,6 +257,67 @@ public sealed class ToolLibraryTests : IDisposable
         Assert.Equal(ToolProfile.BallNose, op.ToolProfile.Value);
     }
 
+    // ---------------------------------------------------------------- the message when an operation gets a tool number
+
+    [Fact]
+    public void A_number_of_the_operation_found_in_the_library_is_described()
+    {
+        var (doc, _, op) = NewOperation();
+        doc.Machining.ToolLibrary = "Mine";
+        op.ToolNumber.Set(5);
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal("cut: tool 5 from the library: diameter 12, profile BallNose.", CamLibraries.DescribeOperationTool(doc, op));
+        Assert.Equal(12, op.ToolDiameter.Value);
+    }
+
+    [Fact]
+    public void A_number_of_the_operation_that_no_library_has_is_reported()
+    {
+        var (doc, _, op) = NewOperation();
+        doc.Machining.ToolLibrary = "Mine";
+        op.ToolNumber.Set(7);
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal("cut: tool 7 not found in the tool libraries.", CamLibraries.DescribeOperationTool(doc, op));
+    }
+
+    [Fact]
+    public void A_diameter_typed_in_the_operation_wins_and_the_message_says_how_to_use_the_library()
+    {
+        // Issue 4: tool number 8 and Tool Diameter 4, both typed in the operation; the library has 8 mm.
+        var (doc, part, op) = NewOperation();
+        var library = new ToolLibrary { Name = "Default-mm" };
+        library.Tools.Add(new ToolDefinition { Index = 8, Diameter = 8, ToolProfile = ToolProfile.EndMill });
+        CamLibraries.ToolLibraries.Add(library);
+        doc.Machining.ToolLibrary = "Default-mm";
+        doc.Machining.ToolNumber = 2;
+        part.ToolLibrary = "Default-mm";
+        part.ToolNumber = 8;
+        op.ToolDiameter.Set(4);
+        op.ToolNumber.Set(8);
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal(4, op.EffectiveToolDiameter(doc));
+        var message = CamLibraries.DescribeOperationTool(doc, op)!;
+        Assert.Contains("diameter 8 in the library", message);
+        Assert.Contains("Tool Diameter 4", message);
+
+        // Set back to Default, as the message says: the library counts.
+        op.ToolDiameter.State = ParamState.Default;
+        LibraryFiles.ApplyStyle(doc, op);
+        Assert.Equal(8, op.EffectiveToolDiameter(doc));
+        Assert.Contains("from the library", CamLibraries.DescribeOperationTool(doc, op));
+    }
+
+    [Fact]
+    public void Without_a_number_there_is_nothing_to_say()
+    {
+        var (doc, _, op) = NewOperation();
+
+        Assert.Null(CamLibraries.DescribeOperationTool(doc, op));
+    }
+
     [Fact]
     public void Inherited_values_go_away_with_the_setting_of_the_part()
     {

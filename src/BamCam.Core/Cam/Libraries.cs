@@ -166,6 +166,24 @@ public static class CamLibraries
             : Localization.Tr.F("{0}: no tool set for operations without their own tool.", owner);
     }
 
+    /// <summary>
+    /// What the tool number chosen on an operation gives: the tool of the library, a number that no library has, or a
+    /// diameter typed on the operation that wins over the library. Null without a number.
+    /// </summary>
+    public static string? DescribeOperationTool(Model.CadDocument doc, MachineOp op)
+    {
+        var number = op.ToolNumber.Value;
+        if (number <= 0) return null;
+        var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
+        if (FindTool(doc, part, number, op is TurningOp) is not { } tool)
+            return Localization.Tr.F("{0}: tool {1} not found in the tool libraries.", op.Name, number);
+        if (op.ToolDiameter.State == ParamState.Value && Math.Abs(op.ToolDiameter.Value - tool.Diameter) > 1e-9)
+            return Localization.Tr.F("{0}: tool {1} has diameter {2} in the library, but the Tool Diameter {3} typed in this operation wins. Set Tool Diameter to Default to use the library.",
+                op.Name, number, tool.Diameter, op.ToolDiameter.Value);
+        return Localization.Tr.F("{0}: tool {1} from the library: diameter {2}, profile {3}.",
+            op.Name, number, tool.Diameter, Localization.Tr.T(tool.ToolProfile.ToString()));
+    }
+
     /// <summary>Name of BamCam's lathe tool library for the drawing units.</summary>
     public static string LatheLibraryName(Model.DrawingUnits units) =>
         units == Model.DrawingUnits.Inches ? "BamCam-Lathe-in" : "BamCam-Lathe-mm";
