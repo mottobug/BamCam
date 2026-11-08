@@ -337,6 +337,25 @@ public class MatmillPluginTests
         Assert.True(f[(int)((19 + 5) / 0.1), (int)((19 + 5) / 0.1)] < -2.99, "the inside corner is cleared");
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(8)]
+    public void Without_a_tool_diameter_bamcam_says_to_set_one(int toolNumber)
+    {
+        // Reported with tool number 8, which the tool library did not have: no toolpath and only an English
+        // "tool diameter is zero" from the plugin. Now BamCam's own message, as for its pocket.
+        var (doc, op) = Operation<TrochoPocketOp>(Rect(0, 0, 50, 30));
+        op.ToolDiameter.Set(0);
+        op.ToolNumber.Set(toolNumber);
+
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        Assert.DoesNotContain(tp.Moves, m => m.Kind is MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW);
+        Assert.Contains(tp.Warnings, w => w.Contains("no toolpath without a tool diameter"));
+        Assert.Equal(toolNumber > 0, tp.Warnings.Any(w => w.Contains("tool 8 not found in the tool libraries")));
+        Assert.DoesNotContain(tp.Warnings, w => w.Contains("tool diameter is zero"));
+    }
+
     [Fact]
     public void A_cut_width_below_the_tool_is_refused()
     {

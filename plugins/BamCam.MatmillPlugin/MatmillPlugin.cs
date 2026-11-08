@@ -61,6 +61,9 @@ public abstract class TrochoOp : DepthOp
     public override IReadOnlySet<string> HiddenParameters => Hidden;
 
     private static readonly HashSet<string> Hidden = [nameof(ShowChords)];
+
+    // the slices are sized by the tool: BamCam reports a missing tool diameter as for its own pocket
+    public override bool NeedsToolDiameter => true;
 }
 
 /// <summary>Trochoidal pocket (matmill's TrochoPock): clears closed shapes with slices along their medial axis.</summary>

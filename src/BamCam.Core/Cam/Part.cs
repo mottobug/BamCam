@@ -256,6 +256,13 @@ public abstract class MachineOp
 
     private static readonly HashSet<string> NoHiddenParameters = [];
 
+    /// <summary>
+    /// True when no toolpath can be made without a tool diameter (a plugin operation such as a trochoidal pocket):
+    /// BamCam then says so (no tool, or a tool number not in the libraries) and does not call the generator.
+    /// </summary>
+    [Browsable(false)]
+    public virtual bool NeedsToolDiameter => false;
+
     // ---- Common parameters (§6.2.1) -----------------------------------------------------
 
     [Param(10, "Tool")] public CamParam<WorkPlane> WorkPlane { get; set; } = new(Cam.WorkPlane.XY);

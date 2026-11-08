@@ -126,6 +126,10 @@ states, CAM style inheritance and the property grid editor like the built-in ope
 operation is saved as `<mop xsi:type="MOPMyCompanyFacing">` (the format CamBam uses for plugin operations).
 Drawings with an operation whose plugin is missing still open; the operation is kept unchanged.
 
+An operation that cannot be cut without a tool diameter overrides `NeedsToolDiameter` to return `true`. When the
+diameter is 0 and the tool number gives none, BamCam then reports it with its own (translated) message, as for a
+pocket, and does not call the generator.
+
 The generator receives a `ToolpathContext` with the resolved values (`StockSurface`, `TargetDepth`,
 `Clearance`, `ToolDiameter`, feeds, `DepthLevels(op)`) and the source geometry `SourcePaths()`, and appends
 moves in drawing coordinates:
