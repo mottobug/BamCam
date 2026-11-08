@@ -144,6 +144,34 @@ internal static class Medial_builder
     private const double VORONOI_MARGIN = 1.0;
     private const bool ANALIZE_INNER_INTERSECTIONS = false;
 
+    // take 3 well-spaced samples, find the center, check for all points to lay on a circle
+    private static bool recognize_perfect_circle(List<Point2> samples, double tolerance, ref Point2 center)
+    {
+        if (samples.Count < 4)
+            return false;
+
+        var sample0 = samples[0];
+        var sample1 = samples[samples.Count / 4];
+        var sample2 = samples[samples.Count / 2];
+
+        double xc = 0;
+        double yc = 0;
+
+        if (!GeomUtils.Circle_by_3_pt(sample0.X, sample0.Y, sample1.X, sample1.Y, sample2.X, sample2.Y, ref xc, ref yc))
+            return false;
+
+        center = new Point2(xc, yc);
+        var radius = center.DistanceTo(sample0);
+
+        foreach (var pt in samples)
+        {
+            if (Math.Abs(pt.DistanceTo(center) - radius) > tolerance)
+                return false;
+        }
+
+        return true;
+    }
+
     private static List<Line2F> get_medial_axis_segments(Topographer topo, List<Point2> samples, double general_tolerance, CancellationToken cancel)
     {
         var xs = new double[samples.Count + 1];
@@ -380,7 +408,22 @@ internal static class Medial_builder
     public static bool Build(Medial_branch root, Topographer topo, List<Point2> samples, double general_tolerance, Point2 startpoint,
         double min_dist_to_wall, bool startpoint_is_a_hint, CancellationToken cancel)
     {
-        var medial_axis_segments = get_medial_axis_segments(topo, samples, general_tolerance, cancel);
+        // NOTE: circle is a special case for the medial builder - medial axis is just a single point.
+        // worth to make a quick check.
+        // circle should be handled in a special way, completely skipping the Voronoi partitioning
+
+        List<Line2F> medial_axis_segments;
+
+        var center = Pt.Undefined;
+        if (!recognize_perfect_circle(samples, general_tolerance, ref center))
+        {
+            medial_axis_segments = get_medial_axis_segments(topo, samples, general_tolerance, cancel);
+        }
+        else
+        {
+            Logger.log("recognized perfect circle");
+            medial_axis_segments = [new Line2F(center, center)];
+        }
 
         Logger.log("analyzing segments");
 

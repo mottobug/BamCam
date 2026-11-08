@@ -129,6 +129,41 @@ public class MatmillPluginTests
 
         foreach (var m in tp.Moves.Where(m => m.Kind != MoveKind.Rapid && m.To.Z < -0.01))
             Assert.True(m.To.XY.Length <= 20 - Tool / 2 + 0.01, $"{m.To} outside");
+
+        // matmill 2.1.2 takes a circle as a circle (the medial axis is its centre): it is cleared to the wall.
+        var f = Simulate(doc, op, tp, -22, -22, 22, 22);
+        var inner = Cells(f).Where(c => c.Centre.Length < 19.4).ToList();
+        var cut = inner.Count(c => c.Z < -2.99);
+        Assert.True(cut > 0.99 * inner.Count, $"{cut} of {inner.Count} cells cut");
+    }
+
+    [Theory]
+    [InlineData(0.2)]
+    [InlineData(0.45)]
+    public void No_slice_sweeps_more_than_half_a_turn(double stepOver)
+    {
+        // matmill 2.1.2 cuts each slice as two arcs, so wide slices do not become arcs over 180 degrees
+        // that a controller may take the wrong way round.
+        var (doc, op) = Operation<TrochoPocketOp>(Rect(0, 0, 50, 30), Rect(20, 10, 28, 18));
+        op.StepOver.Set(stepOver);
+
+        var tp = Generate(doc, op);
+
+        var from = Point2.Zero;
+        var arcs = 0;
+        foreach (var m in tp.Moves)
+        {
+            if (m.Kind is MoveKind.ArcCW or MoveKind.ArcCCW && Math.Abs(m.Feed - 1000) < 1e-9)
+            {
+                var a1 = (from - m.Center).Angle;
+                var a2 = (m.To.XY - m.Center).Angle;
+                var sweep = m.Kind == MoveKind.ArcCCW ? Angles.Normalize(a2 - a1) : Angles.Normalize(a1 - a2);
+                Assert.True(sweep <= Math.PI + 1e-6, $"arc to {m.To} sweeps {sweep * 180 / Math.PI:F1} degrees");
+                arcs++;
+            }
+            if (m.Kind is MoveKind.Rapid or MoveKind.Feed or MoveKind.ArcCW or MoveKind.ArcCCW) from = m.To.XY;
+        }
+        Assert.True(arcs > 10);
     }
 
     /// <summary>The arcs that cut (cut feed rate), each turning one way or the other.</summary>

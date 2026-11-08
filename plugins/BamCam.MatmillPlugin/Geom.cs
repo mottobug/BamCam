@@ -263,6 +263,34 @@ public struct Vector2d
     public static Vector2d operator -(Vector2d a, Vector2d b) => new(a.X - b.X, a.Y - b.Y);
 }
 
+internal static class GeomUtils
+{
+    private static bool solve_cramer2(double a1, double b1, double a2, double b2, double c1, double c2, ref double x, ref double y)
+    {
+        var d = a1 * b2 - b1 * a2;
+
+        if (d == 0)
+            return false;
+
+        x = (c1 * b2 - b1 * c2) / d;
+        y = (a1 * c2 - c1 * a2) / d;
+        return true;
+    }
+
+    public static bool Circle_by_3_pt(double x1, double y1, double x2, double y2, double x3, double y3, ref double xc, ref double yc)
+    {
+        var a1 = 2 * (x1 - x2);
+        var b1 = 2 * (y1 - y2);
+        var c1 = x1 * x1 + y1 * y1 - x2 * x2 - y2 * y2;
+
+        var a2 = 2 * (x1 - x3);
+        var b2 = 2 * (y1 - y3);
+        var c2 = x1 * x1 + y1 * y1 - x3 * x3 - y3 * y3;
+
+        return solve_cramer2(a1, b1, a2, b2, c1, c2, ref xc, ref yc);
+    }
+}
+
 /// <summary>A segment of a toolpath item: a line or an arc to a point.</summary>
 internal readonly record struct Piece(Point2 To, bool IsArc, Point2 Center, bool Ccw);
 

@@ -107,17 +107,24 @@ internal class Sliced_path_generator
         // emit segments
         for (var segidx = 0; segidx < slice.Segments.Count; segidx++)
         {
-            // connect segments
+            var seg = slice.Segments[segidx];
+
+            // connect segments (the two halves of an unrefined slice meet, no shortcut then)
             if (segidx > 0)
             {
-                var shortcut = new Sliced_path_item(Sliced_path_item_type.SLICE_SHORTCUT);
-                shortcut.Add(slice.Segments[segidx - 1].P2);
-                shortcut.Add(slice.Segments[segidx].P1);
-                Path.Add(shortcut);
+                var prevseg = slice.Segments[segidx - 1];
+
+                if (seg.P1.DistanceTo(prevseg.P2) != 0.0)
+                {
+                    var shortcut = new Sliced_path_item(Sliced_path_item_type.SLICE_SHORTCUT);
+                    shortcut.Add(prevseg.P2);
+                    shortcut.Add(seg.P1);
+                    Path.Add(shortcut);
+                }
             }
 
             var arc = new Sliced_path_item(Sliced_path_item_type.SLICE);
-            arc.Add(slice.Segments[segidx]);
+            arc.Add(seg);
             Path.Add(arc);
         }
 

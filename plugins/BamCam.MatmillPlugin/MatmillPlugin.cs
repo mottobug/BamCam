@@ -2,6 +2,9 @@
 // MIT License, Copyright (c) 2016 jkmnt. See LICENSE-matmill.txt. The operations keep matmill's names and parameters
 // (MOPTrochopock, MOPTrochoprof), so that CamBam drawings with matmill operations open in BamCam and the other way round.
 // This file stands in for mop.cs, mop_pocket.cs, mop_profile.cs and plug.cs, which were written against CamBam.
+// Source: matmill 2.2.0 (master, with Clear inside corners) plus the slice fixes of 2.1.1 and 2.1.2 from the develop
+// branch (two-arc slices, wide arcs, perfect circles, lead-in/lead-out). Not taken over: the Triangle.NET Voronoi of
+// 2.3.0 (licence unclear) and the MOP transform of 2.4.0.
 
 using System.ComponentModel;
 using BamCam.Core.Cam;
