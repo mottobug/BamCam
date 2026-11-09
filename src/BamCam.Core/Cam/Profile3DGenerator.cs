@@ -69,7 +69,7 @@ internal static class Profile3DGenerator
         }
     }
 
-    /// <summary>Back face: rotate 180° about the flip axis with BackFaceZeroZ becoming Z=0. Mold: invert Z within the model's range.</summary>
+    /// <summary>Back face: rotate 180Â° about the flip axis with BackFaceZeroZ becoming Z=0. Mold: invert Z within the model's range.</summary>
     private static List<Triangle> TransformForSide(Profile3DOp op, List<Triangle> tris)
     {
         if (op.BackFace.Value)
@@ -279,26 +279,6 @@ internal static class Profile3DGenerator
         return levels.Where(z => z >= ctx.TargetDepth - 1e-9).ToList();
     }
 
-    /// <summary>
-    /// The outline of the model above each level. From level to level the area only grows, so a large mesh adds what lies
-    /// between two levels to the previous outline, instead of uniting up to a million triangles again for each level.
-    /// </summary>
-    private sealed class Silhouettes(Mesh mesh, CancellationToken cancel)
-    {
-        private List<Path2>? _outline;
-        private double _z;
-
-        public List<Path2> Above(double z)
-        {
-            if (mesh.Triangles.Count < Polygons.LargeUnionCount) return Polygons.UnionLarge(mesh.SliceAbove(z), cancel);
-            _outline = _outline != null && z <= _z
-                ? Polygons.UnionAdd(_outline, mesh.SliceAbove(z, _z), cancel)
-                : Polygons.UnionLarge(mesh.SliceAbove(z), cancel);
-            _z = z;
-            return _outline;
-        }
-    }
-
     private static List<Path2> TaperedBoundary(GenContext ctx, Profile3DOp op, List<Path2> boundary, double z)
     {
         if (Math.Abs(op.BoundaryTaper.Value) < 1e-9) return boundary;
@@ -317,7 +297,7 @@ internal static class Profile3DGenerator
         var stepFeed = op.StepoverFeedrate.Value == StepoverFeedrate.CutFeedrate ? ctx.CutFeed : ctx.PlungeFeed;
 
         var prev = ctx.StockSurface;
-        var silhouettes = new Silhouettes(mesh, ctx.Cancel);
+        var silhouettes = new MeshSilhouettes(mesh, ctx.Cancel);
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();
@@ -349,7 +329,7 @@ internal static class Profile3DGenerator
         var climb = op.MillingDirection.Value == MillingDirection.Climb;
         var cutter = new LoopCutter(ctx, mb) { LeadIn = op.LeadInMove.Value };
         var prev = ctx.StockSurface;
-        var silhouettes = new Silhouettes(mesh, ctx.Cancel);
+        var silhouettes = new MeshSilhouettes(mesh, ctx.Cancel);
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();

@@ -70,6 +70,17 @@ quadrants (diamond) and intersections (cross).
 - **trim / extend** (`Ctrl` + `+`): click the boundaries (or just press Enter for all objects), then click a line
   near its end to extend it, Shift+click a piece to trim it.
 
+**Outlines of 3D models** (Edit ▸ Surface), for example the outline of a mould cavity as the boundary of a pocket
+or a profile. Select one or more surfaces (meshes) first; the polylines go to the active layer and are selected.
+
+- **Silhouette:** the outline of the model seen from above. With a height interval of 0 one outline of the whole
+  model, at its top. With an interval, one outline for each level from the top down to the bottom, each at its
+  height: what lies above the level is projected down onto it, so overhangs are included (the area a tool from above
+  can reach around the model at that height). A level at exactly the height of a flat face already includes it.
+- **Edge Detect:** the edges of the mesh as 3D polylines: open borders (such as the rim of an open cavity) and edges
+  where two faces meet at more than the angle you give (30° by default; 0 also gives the edges between the
+  triangles of curved faces). Corners that lie closer together than a millionth count as one, as in STL files.
+
 **Text:** Draw ▸ Text uses the installed fonts. Draw ▸ Text on Polyline bends a selected text along a selected
 polyline, line, arc or circle: click the start point; `U` reverses the direction, `S` puts the text on the other
 side.

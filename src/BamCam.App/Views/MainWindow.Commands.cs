@@ -144,6 +144,57 @@ public partial class MainWindow
         });
     }
 
+    /// <summary>The selected meshes, or null with a message when none is selected.</summary>
+    private List<SurfaceEntity>? SelectedSurfaces()
+    {
+        var surfaces = Selected.OfType<SurfaceEntity>().ToList();
+        if (surfaces.Count == 0) Log(T("Select one or more surfaces (meshes) first."));
+        return surfaces.Count == 0 ? null : surfaces;
+    }
+
+    /// <summary>Outlines of the selected meshes seen from above, at one or several heights (Edit > Surface > Silhouette).</summary>
+    private async Task SurfaceSilhouette()
+    {
+        if (SelectedSurfaces() is not { } surfaces) return;
+        var interval = await Dialogs.PromptNumber(this, T("Silhouette"),
+            T("Height interval (0 = one outline of the whole model, at its top):"), 0);
+        if (interval is not { } step || step < 0) return;
+        var tris = Core.Cam.MeshOutlines.Triangles(surfaces);
+        var paths = await Task.Run(() => Core.Cam.MeshOutlines.Silhouette(tris, step));
+        AddOutlines(T("Silhouette"), paths);
+    }
+
+    /// <summary>Open borders and sharp edges of the selected meshes as 3D polylines (Edit > Surface > Edge Detect).</summary>
+    private async Task SurfaceEdges()
+    {
+        if (SelectedSurfaces() is not { } surfaces) return;
+        var angle = await Dialogs.PromptNumber(this, T("Edge Detect"),
+            T("Edges where the faces meet at more than this angle (degrees), and open borders:"), 30);
+        if (angle is not { } degrees) return;
+        var tris = Core.Cam.MeshOutlines.Triangles(surfaces);
+        var paths = await Task.Run(() => Core.Cam.MeshOutlines.Edges(tris, degrees));
+        AddOutlines(T("Edge Detect"), paths);
+    }
+
+    /// <summary>Polylines on the active layer, as one undo step, selected afterwards.</summary>
+    private void AddOutlines(string description, List<Path2> paths)
+    {
+        if (paths.Count == 0)
+        {
+            Log(F("{0}: nothing found.", description));
+            return;
+        }
+        List<Entity> created = [];
+        _session.Execute(description, () =>
+        {
+            created = paths.Select(p => (Entity)new PolylineEntity(p)).ToList();
+            foreach (var c in created) _session.Document.AddEntity(c, _session.Document.ActiveLayer);
+        });
+        _session.Select(created);
+        Log(F("{0}: {1} object(s) created.", description, created.Count));
+        View.Invalidate();
+    }
+
     private void ConvertToPolyline() => ReplaceSelection(T("Convert to polyline"), s => s.SelectMany(CadOps.ToPolylines));
 
     private void ConvertToRegion() => ReplaceSelection(T("Convert to region"), s => CadOps.ToRegions(s));
