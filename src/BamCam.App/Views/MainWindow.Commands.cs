@@ -176,6 +176,77 @@ public partial class MainWindow
         AddOutlines(T("Edge Detect"), paths);
     }
 
+    /// <summary>The outlines of the selected drawing objects (not meshes), or null with a message.</summary>
+    private List<Path2>? SelectedOutlines(bool closedOnly)
+    {
+        var paths = Selected.Where(e => e is not SurfaceEntity).SelectMany(e => e.ToPaths())
+            .Where(p => p.Count >= 2 && (!closedOnly || p.Closed)).ToList();
+        if (paths.Count == 0)
+            Log(closedOnly ? T("Select one or more closed shapes (polylines, circles, rectangles, regions, text) first.")
+                : T("Select one or more shapes first."));
+        return paths.Count == 0 ? null : paths;
+    }
+
+    /// <summary>Draw > Surface > Extrude / Extrude Solid: walls (or a closed body) from the selected outlines.</summary>
+    private async Task DrawExtrude(bool solid)
+    {
+        if (SelectedOutlines(closedOnly: solid) is not { } paths) return;
+        var title = solid ? T("Extrude Solid") : T("Extrude");
+        var height = await Dialogs.PromptNumber(this, title, T("Extrusion height (+ upwards, - downwards):"), 10);
+        if (height is not { } h || Math.Abs(h) < 1e-9) return;
+        var steps = 1;
+        if (!solid)
+        {
+            var s = await Dialogs.PromptNumber(this, title, T("Extrusion steps (rows of triangles):"), 1);
+            if (s is not { } stepCount) return;
+            steps = Math.Clamp((int)Math.Round(stepCount), 1, 1000);
+        }
+        var mesh = solid ? Core.Cad.SurfaceBuilder.ExtrudeSolid(paths, h) : Core.Cad.SurfaceBuilder.Extrude(paths, h, steps);
+        AddSurface(title, mesh);
+    }
+
+    /// <summary>Draw > Surface > Fill: the selected closed outlines as flat meshes.</summary>
+    private void DrawFill()
+    {
+        if (SelectedOutlines(closedOnly: true) is not { } paths) return;
+        AddSurface(T("Fill"), Core.Cad.SurfaceBuilder.Fill(paths));
+    }
+
+    /// <summary>A mesh on the active layer, as one undo step, selected afterwards.</summary>
+    private void AddSurface(string description, SurfaceEntity mesh)
+    {
+        if (mesh.Faces.Count == 0)
+        {
+            Log(F("{0}: nothing found.", description));
+            return;
+        }
+        _session.Execute(description, () => _session.Document.AddEntity(mesh, _session.Document.ActiveLayer));
+        _session.Select([mesh]);
+        Log(F("{0}: surface with {1} triangles created.", description, mesh.Faces.Count / 3));
+        View.Invalidate();
+    }
+
+    /// <summary>Draw > Fill Region: the selected closed outlines filled with polylines in a pattern.</summary>
+    private async Task DrawFillRegion()
+    {
+        if (SelectedOutlines(closedOnly: true) is not { } paths) return;
+        var title = T("Fill Region");
+        var margin = await Dialogs.PromptNumber(this, title, T("Margin (distance from the outlines):"), 0);
+        if (margin is not { } m || m < 0) return;
+        var step = await Dialogs.PromptNumber(this, title, T("Step over (distance between the lines):"), 1);
+        if (step is not { } s || s <= 0) return;
+        Core.Cam.RegionFillStyle[] styles =
+        [
+            Core.Cam.RegionFillStyle.InsideOffsets, Core.Cam.RegionFillStyle.OutsideOffsets, Core.Cam.RegionFillStyle.InsideOutsideOffsets,
+            Core.Cam.RegionFillStyle.HorizontalHatch, Core.Cam.RegionFillStyle.VerticalHatch,
+        ];
+        var choice = await Dialogs.PromptChoice(this, title, T("Pattern:"),
+            [T("Inside Offsets"), T("Outside Offsets"), T("Inside + Outside Offsets"), T("Horizontal Hatch"), T("Vertical Hatch")], 2);
+        if (choice is not { } c) return;
+        var lines = await Task.Run(() => Core.Cad.SurfaceBuilder.FillRegion(paths, m, s, styles[c]));
+        AddOutlines(title, lines);
+    }
+
     /// <summary>Polylines on the active layer, as one undo step, selected afterwards.</summary>
     private void AddOutlines(string description, List<Path2> paths)
     {

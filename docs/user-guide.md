@@ -74,6 +74,19 @@ quadrants (diamond) and intersections (cross).
   Show, or use View > Show All Objects. Hidden is saved in the drawing (CamBam shows such objects). Whole layers are
   hidden with right-click on the layer in the tree.
 
+**Meshes and fills from outlines** (Draw menu). Select the shapes first; the results go to the active layer and are
+selected.
+
+- **Surface ▸ Extrude:** the walls the outlines sweep when moved up (+) or down (−) by a height, as an open mesh
+  without top and bottom, in a number of rows of triangles. Open outlines give a single wall.
+- **Surface ▸ Extrude Solid:** closed outlines (with their holes, such as letters) as a closed body with walls, top
+  and bottom, facing outwards, ready for STL export or as a model for the 3D profile.
+- **Surface ▸ Fill:** closed outlines as a flat mesh without thickness.
+- **Fill Region:** closed outlines filled with polylines, a margin inside the outlines and a step over apart: Inside
+  Offsets (growing from the holes), Outside Offsets (from the outer wall inwards), Inside + Outside Offsets, or
+  horizontal or vertical hatch lines, with the outline pass. The same patterns as the pocket's *Region Fill Style*,
+  as drawing objects, for example to engrave, plot or laser an area.
+
 **Outlines of 3D models** (Edit ▸ Surface), for example the outline of a mould cavity as the boundary of a pocket
 or a profile. Select one or more surfaces (meshes) first; the polylines go to the active layer and are selected.
 

@@ -64,6 +64,29 @@ public static class Dialogs
             ? v : null;
     }
 
+    /// <summary>Asks to choose one of <paramref name="options"/>; returns its index or null. Remembers the last choice per prompt.</summary>
+    public static async Task<int?> PromptChoice(Window owner, string title, string label, IReadOnlyList<string> options, int defaultIndex = 0)
+    {
+        var key = title + "|" + label;
+        var start = LastValues.TryGetValue(key, out var last) && int.TryParse(last, out var i) && i >= 0 && i < options.Count ? i : defaultIndex;
+        var list = new ListBox { ItemsSource = options, SelectedIndex = start, MaxHeight = 220 };
+        var ok = new Button { Content = T("OK"), IsDefault = true };
+        var cancel = new Button { Content = T("Cancel"), IsCancel = true };
+        var panel = new StackPanel { Spacing = 6 };
+        panel.Children.Add(new TextBlock { Text = label, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(list);
+        panel.Children.Add(Buttons(ok, cancel));
+        var win = Frame(title, panel);
+        int? result = null;
+        ok.Click += (_, _) => { result = list.SelectedIndex >= 0 ? list.SelectedIndex : null; win.Close(); };
+        list.DoubleTapped += (_, _) => { result = list.SelectedIndex >= 0 ? list.SelectedIndex : null; win.Close(); };
+        cancel.Click += (_, _) => win.Close();
+        win.Opened += (_, _) => list.Focus();
+        await win.ShowDialog(owner);
+        if (result is { } r) LastValues[key] = r.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        return result;
+    }
+
     public static async Task Message(Window owner, string title, string message)
     {
         var ok = new Button { Content = T("OK"), IsDefault = true, IsCancel = true };

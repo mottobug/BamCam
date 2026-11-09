@@ -639,6 +639,16 @@ internal static class PocketGenerator
         ctx.Finish(tp);
     }
 
+    /// <summary>The passes of one pocket region in a fill style (also Draw > Fill Region, as polylines).</summary>
+    internal static List<Loop> FillPattern(Shape region, double step, RegionFillStyle style, bool climb = true) => style switch
+    {
+        RegionFillStyle.HorizontalHatch or RegionFillStyle.VerticalHatch =>
+            HatchSequence(region, step, style == RegionFillStyle.VerticalHatch, climb),
+        RegionFillStyle.OutsideOffsets when region.Holes.Count > 0 => OutsideOffsetSequence(region, step, climb, 0),
+        RegionFillStyle.InsideOffsets when region.Holes.Count > 0 => InsideOffsetSequence(region, step, climb, 0),
+        _ => OffsetSequence(region, step, climb),
+    };
+
     /// <summary>
     /// Outside offsets: rings parallel to the outer wall only, moving inwards; the islands are cut around
     /// separately at the end. Cut innermost first, outer wall last.

@@ -302,6 +302,11 @@ public partial class MainWindow
         Item("_Text...", DrawText),
         Item("Text on Pol_yline", TextOnPolyline),
         Item("Script O_bject", NewScriptObject),
+        Sub("S_urface",
+            Item("_Extrude...", () => _ = DrawExtrude(solid: false)),
+            Item("Extrude _Solid...", () => _ = DrawExtrude(solid: true)),
+            Item("_Fill", DrawFill)),
+        Item("Fill Re_gion...", () => _ = DrawFillRegion()),
         .. PluginMenuItems("Draw"),
     ];
 
