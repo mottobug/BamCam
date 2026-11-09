@@ -90,6 +90,10 @@ selected.
 **Outlines of 3D models** (Edit ▸ Surface), for example the outline of a mould cavity as the boundary of a pocket
 or a profile. Select one or more surfaces (meshes) first; the polylines go to the active layer and are selected.
 
+- **Plane Slice X / Y / Z:** the model cut by planes across the axis, a distance apart from its highest point down,
+  as 3D polylines: closed where the cut goes all round, open at the open borders of a mesh. Useful for 2D pockets
+  and profiles and for the boundary of a 3D profile, without drawing the model again. A face that lies exactly in a
+  plane gives no line there.
 - **Silhouette:** the outline of the model seen from above. With a height interval of 0 one outline of the whole
   model, at its top. With an interval, one outline for each level from the top down to the bottom, each at its
   height: what lies above the level is projected down onto it, so overhangs are included (the area a tool from above
@@ -97,6 +101,12 @@ or a profile. Select one or more surfaces (meshes) first; the polylines go to th
 - **Edge Detect:** the edges of the mesh as 3D polylines: open borders (such as the rim of an open cavity) and edges
   where two faces meet at more than the angle you give (30° by default; 0 also gives the edges between the
   triangles of curved faces). Corners that lie closer together than a millionth count as one, as in STL files.
+- **Project Lines to Surface:** select lines or texts and the surfaces: the lines are laid onto the surfaces from
+  above, with a point every *resolution* along them at the height of the highest face below. Where no face is, the
+  points get the lowest height of the surfaces. An Engrave operation follows the heights of these 3D lines (its
+  depth is added to them), for example to engrave text into a relief.
+- **Invert Faces:** turns the normals of the selected meshes round (the order of the corners of each triangle), for
+  meshes whose faces point inwards; saved in STL files.
 
 **Text:** Draw ▸ Text uses the installed fonts. Draw ▸ Text on Polyline bends a selected text along a selected
 polyline, line, arc or circle: click the start point; `U` reverses the direction, `S` puts the text on the other

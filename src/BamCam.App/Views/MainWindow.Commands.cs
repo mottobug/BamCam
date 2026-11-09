@@ -164,6 +164,50 @@ public partial class MainWindow
         AddOutlines(T("Silhouette"), paths);
     }
 
+    /// <summary>The selected meshes cut by planes across X, Y or Z (Edit > Surface > Plane Slice).</summary>
+    private async Task SurfacePlaneSlice(int axis)
+    {
+        if (SelectedSurfaces() is not { } surfaces) return;
+        var name = "XYZ"[axis];
+        var title = F("Plane Slice {0}", name);
+        var interval = await Dialogs.PromptNumber(this, title, F("Distance between the planes across {0}:", name), 5);
+        if (interval is not { } step || step <= 0) return;
+        var tris = Core.Cam.MeshOutlines.Triangles(surfaces);
+        var paths = await Task.Run(() => Core.Cam.MeshOutlines.PlaneSlice(tris, axis, step));
+        AddOutlines(title, paths);
+    }
+
+    /// <summary>The normals of the selected meshes turned round (Edit > Surface > Invert Faces).</summary>
+    private void SurfaceInvertFaces()
+    {
+        if (SelectedSurfaces() is not { } surfaces) return;
+        // New lists, not changed ones: undo steps share the lists of a mesh.
+        _session.Execute(T("Invert Faces"), () =>
+        {
+            foreach (var s in surfaces) s.ShareMesh(s.Vertices, Core.Cam.MeshOutlines.InvertedFaces(s.Faces));
+        });
+        Log(F("{0}: {1} surface(s) turned round.", T("Invert Faces"), surfaces.Count));
+        View.Invalidate();
+    }
+
+    /// <summary>The selected lines and texts laid onto the selected meshes from above (Edit > Surface > Project Lines to Surface).</summary>
+    private async Task SurfaceProject()
+    {
+        var surfaces = Selected.OfType<SurfaceEntity>().ToList();
+        var paths = Selected.Where(e => e is not SurfaceEntity).SelectMany(e => e.ToPaths()).Where(p => p.Count >= 2).ToList();
+        if (surfaces.Count == 0 || paths.Count == 0)
+        {
+            Log(T("Select the lines or texts to project and one or more surfaces (meshes)."));
+            return;
+        }
+        var title = T("Project Lines to Surface");
+        var resolution = await Dialogs.PromptNumber(this, title, T("Projection resolution (distance between the points along the lines):"), 0.5);
+        if (resolution is not { } step || step <= 0) return;
+        var tris = Core.Cam.MeshOutlines.Triangles(surfaces);
+        var projected = await Task.Run(() => Core.Cam.MeshOutlines.Project(paths, tris, step));
+        AddOutlines(title, projected);
+    }
+
     /// <summary>Open borders and sharp edges of the selected meshes as 3D polylines (Edit > Surface > Edge Detect).</summary>
     private async Task SurfaceEdges()
     {

@@ -124,6 +124,99 @@ public static class MeshOutlines
         return Chain(sharp, points);
     }
 
+    /// <summary>
+    /// The meshes cut by planes across an axis (0 = X, 1 = Y, 2 = Z), <paramref name="interval"/> apart from the highest
+    /// value down, as 3D polylines (closed where the cut goes all round). A face lying in a plane gives no line.
+    /// </summary>
+    public static List<Path2> PlaneSlice(IReadOnlyList<Triangle> triangles, int axis, double interval, CancellationToken cancel = default)
+    {
+        if (interval <= 0 || triangles.Count == 0) return [];
+        static double Coord(Point3 p, int a) => a == 0 ? p.X : a == 1 ? p.Y : p.Z;
+        var min = triangles.Min(t => Math.Min(Coord(t.A, axis), Math.Min(Coord(t.B, axis), Coord(t.C, axis))));
+        var max = triangles.Max(t => Math.Max(Coord(t.A, axis), Math.Max(Coord(t.B, axis), Coord(t.C, axis))));
+        var result = new List<Path2>();
+        for (var k = 1; max - k * interval > min + 1e-9; k++)
+        {
+            cancel.ThrowIfCancellationRequested();
+            var level = max - k * interval;
+            var index = new Dictionary<(long, long, long), int>();
+            var points = new List<Point3>();
+            int Id(Point3 p)
+            {
+                var key = ((long)Math.Round(p.X * 1e8), (long)Math.Round(p.Y * 1e8), (long)Math.Round(p.Z * 1e8));
+                if (index.TryGetValue(key, out var id)) return id;
+                index[key] = points.Count;
+                points.Add(p);
+                return points.Count - 1;
+            }
+            // Where an edge crosses the plane; the same for both triangles at the edge (ends in a fixed order).
+            Point3 Cut(Point3 a, Point3 b)
+            {
+                if (Coord(a, axis) > Coord(b, axis) || (Coord(a, axis) == Coord(b, axis) && (a.X, a.Y, a.Z).CompareTo((b.X, b.Y, b.Z)) > 0)) (a, b) = (b, a);
+                var t = (level - Coord(a, axis)) / (Coord(b, axis) - Coord(a, axis));
+                return a + (b - a) * t;
+            }
+            var segments = new List<(int, int)>();
+            foreach (var tri in triangles)
+            {
+                Point3[] v = [tri.A, tri.B, tri.C];
+                // A corner exactly on the plane counts as above it, so each crossing triangle gives exactly two points.
+                var above = v.Select(p => Coord(p, axis) >= level).ToArray();
+                if (above.All(x => x) || above.All(x => !x)) continue;
+                var cut = new List<Point3>(2);
+                for (var i = 0; i < 3; i++)
+                    if (above[i] != above[(i + 1) % 3]) cut.Add(Cut(v[i], v[(i + 1) % 3]));
+                if (cut.Count != 2) continue;
+                int p = Id(cut[0]), q = Id(cut[1]);
+                if (p != q) segments.Add((p, q));
+            }
+            result.AddRange(Chain(segments.Distinct().ToList(), points));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// The paths laid onto the meshes from above: points every <paramref name="resolution"/> along them (and at their
+    /// corners) get the height of the highest face below; where no face is, the lowest height of the meshes. For
+    /// engraving onto a 3D surface.
+    /// </summary>
+    public static List<Path2> Project(IEnumerable<Path2> paths, IReadOnlyList<Triangle> triangles, double resolution)
+    {
+        var mesh = new Mesh(triangles, 10);
+        if (mesh.Triangles.Count == 0 || resolution <= 0) return [];
+        var floor = mesh.Bounds.Min.Z;
+        var result = new List<Path2>();
+        foreach (var path in paths.Where(p => p.Count >= 2))
+        {
+            var flat = path.Flatten(Math.Min(0.01, resolution / 4));
+            if (path.Closed && flat.Count > 1 && Point2.Distance(flat[0], flat[^1]) > 1e-12) flat.Add(flat[0]);
+            var dense = new List<Point2>();
+            for (var i = 0; i < flat.Count; i++)
+            {
+                if (i > 0)
+                {
+                    var a = flat[i - 1];
+                    var b = flat[i];
+                    var n = (int)Math.Ceiling(Point2.Distance(a, b) / resolution);
+                    for (var k = 1; k < n; k++) dense.Add(a + (b - a) * ((double)k / n));
+                }
+                dense.Add(flat[i]);
+            }
+            if (path.Closed && dense.Count > 2) dense.RemoveAt(dense.Count - 1); // the closing point again
+            var vertices = dense.Select(p => new Vertex(new Point3(p.X, p.Y, mesh.DropCutter(p.X, p.Y, 0, CutterShape.Flat) ?? floor))).ToList();
+            result.Add(new Path2(vertices, path.Closed));
+        }
+        return result;
+    }
+
+    /// <summary>The faces with the corners of each triangle in the other order: the normals turned round.</summary>
+    public static List<int> InvertedFaces(IReadOnlyList<int> faces)
+    {
+        var result = new List<int>(faces.Count);
+        for (var i = 0; i + 2 < faces.Count; i += 3) result.AddRange([faces[i], faces[i + 2], faces[i + 1]]);
+        return result;
+    }
+
     /// <summary>Edges joined into polylines: from the ends and branch points first, then the closed loops that remain.</summary>
     private static List<Path2> Chain(List<(int A, int B)> edges, List<Point3> points)
     {

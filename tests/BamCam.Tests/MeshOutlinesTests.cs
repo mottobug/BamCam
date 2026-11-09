@@ -62,6 +62,62 @@ public class MeshOutlinesTests
     }
 
     [Fact]
+    public void Plane_slices_go_all_round_at_each_level()
+    {
+        // A box 10 x 20 x 6: slices across Z every 2 below the top (4 and 2) are its outline at those heights.
+        var tris = Box(0, 0, 0, 10, 20, 6);
+
+        var z = MeshOutlines.PlaneSlice(tris, 2, 2);
+        Assert.Equal(2, z.Count);
+        Assert.All(z, p => Assert.True(p.Closed));
+        Assert.All(z, p => Assert.Equal(60, p.Length, 6));
+        Assert.Equal([2.0, 4.0], z.Select(p => Math.Round(p.Vertices[0].Point.Z, 9)).Order());
+
+        // Across X every 3 from x = 10 down: x = 7, 4, 1, each the 20 x 6 cross section.
+        var x = MeshOutlines.PlaneSlice(tris, 0, 3);
+        Assert.Equal(3, x.Count);
+        Assert.All(x, p => Assert.Equal(2 * (20 + 6), p.Length, 6));
+        Assert.All(x, p => Assert.All(p.Vertices, v => Assert.Equal(p.Vertices[0].Point.X, v.Point.X, 9)));
+    }
+
+    [Fact]
+    public void A_slice_through_a_corner_or_a_face_stays_one_closed_line()
+    {
+        // The step pyramid sliced at the heights of its steps: corners and faces lie exactly in the planes.
+        var tris = Box(0, 0, 0, 10, 10, 2).Concat(Box(2, 2, 2, 8, 8, 4)).Concat(Box(4, 4, 4, 6, 6, 6)).ToList();
+
+        var slices = MeshOutlines.PlaneSlice(tris, 2, 1);
+
+        Assert.All(slices, p => Assert.True(p.Closed, "every slice closes"));
+        Assert.Equal(5, slices.Select(p => Math.Round(p.Vertices[0].Point.Z, 6)).Distinct().Count());
+    }
+
+    [Fact]
+    public void Lines_are_laid_onto_the_surface_and_miss_to_the_lowest_height()
+    {
+        // A ramp from z 0 at x 0 to z 10 at x 10, over y 0..10.
+        Point3 P(double x, double y) => new(x, y, x);
+        var ramp = new List<Triangle> { new(P(0, 0), P(10, 0), P(10, 10)), new(P(0, 0), P(10, 10), P(0, 10)) };
+        var line = Path2.FromPoints([new(2, 5), new(8, 5)], false);
+        var beyond = Path2.FromPoints([new(-5, 5), new(5, 5)], false);
+
+        var projected = MeshOutlines.Project([line, beyond], ramp, 0.5);
+
+        Assert.Equal(13, projected[0].Count); // 6 / 0.5 + 1
+        Assert.All(projected[0].Vertices, v => Assert.Equal(v.Point.X, v.Point.Z, 9));
+        // Off the surface: the lowest height of the mesh (0).
+        Assert.All(projected[1].Vertices.Where(v => v.Point.X < 0), v => Assert.Equal(0, v.Point.Z, 9));
+    }
+
+    [Fact]
+    public void Inverted_faces_turn_every_normal_round()
+    {
+        var faces = new List<int> { 0, 1, 2, 2, 3, 0 };
+
+        Assert.Equal([0, 2, 1, 2, 0, 3], MeshOutlines.InvertedFaces(faces));
+    }
+
+    [Fact]
     public void One_silhouette_is_the_whole_outline_at_the_top()
     {
         var tris = Box(0, 0, 0, 10, 10, 2).Concat(Box(2, 2, 2, 4, 4, 9)).ToList();
