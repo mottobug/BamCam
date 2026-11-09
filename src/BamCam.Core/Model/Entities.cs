@@ -34,6 +34,25 @@ public abstract class Entity
     [Browsable(false)]
     public List<XElement> Extensions { get; } = [];
 
+    /// <summary>Element that marks a hidden object in a .cb file (CamBam ignores it and shows the object).</summary>
+    public const string HiddenElement = "BamCamHidden";
+
+    /// <summary>
+    /// Not drawn and not picked, snapped or selected in the drawing (View > Show All Objects shows it again). Operations
+    /// that use the object still cut it. Kept in the file as an extra element, so it survives saving and undo.
+    /// </summary>
+    [Category("General"), Description("Hidden in the drawing: not drawn, picked or selected there. Operations still use it.")]
+    public bool Hidden
+    {
+        get => Extensions.Any(x => x.Name.LocalName == HiddenElement);
+        set
+        {
+            if (value == Hidden) return;
+            if (value) Extensions.Add(new XElement(HiddenElement));
+            else Extensions.RemoveAll(x => x.Name.LocalName == HiddenElement);
+        }
+    }
+
     [Browsable(false)]
     public abstract string TypeName { get; }
 

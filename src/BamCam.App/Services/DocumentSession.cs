@@ -182,7 +182,7 @@ public sealed class DocumentSession
     }
 
     public void SelectAll() =>
-        Select(Document.Layers.Where(l => l.Visible && !l.Locked).SelectMany(l => l.Entities));
+        Select(Document.Layers.Where(l => l.Visible && !l.Locked).SelectMany(l => l.Entities).Where(e => !e.Hidden));
 
     public bool IsSelected(Entity e) => _selection.Contains(e);
 

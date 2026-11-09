@@ -22,7 +22,7 @@ public sealed class TrimExtendTool : ViewTool
     /// <summary>No boundary picked: every (visible) object is a boundary.</summary>
     private bool _all;
 
-    private IEnumerable<Entity> Boundaries => Host.Session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities)
+    private IEnumerable<Entity> Boundaries => Host.Session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities).Where(e => !e.Hidden)
         .Where(e => IsBoundary(e) && (_all || _boundaries.Contains(e.Id)));
 
     public override string Prompt => _picking

@@ -46,7 +46,7 @@ public static class PdfPrint
     public static int Write(CadDocument doc, IReadOnlyDictionary<MachineOp, Toolpath> toolpaths, PrintOptions o, string path)
     {
         var mm = CuttingData.MillimetresPerUnit(doc.Units);
-        var entities = doc.Layers.Where(l => l.Visible).SelectMany(l => l.Entities.Select(e => (Layer: l, Entity: e)))
+        var entities = doc.Layers.Where(l => l.Visible).SelectMany(l => l.Entities.Where(e => !e.Hidden).Select(e => (Layer: l, Entity: e)))
             .Where(x => x.Entity is not SurfaceEntity).ToList();
         var cuts = o.Toolpaths
             ? toolpaths.Values.SelectMany(t => t.DisplaySegments()).Where(s => s.Kind != MoveKind.Rapid).ToList()

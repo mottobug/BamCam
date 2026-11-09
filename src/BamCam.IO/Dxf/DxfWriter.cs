@@ -55,6 +55,7 @@ public static class DxfWriter
             if (visibleOnly && !layer.Visible) continue;
             foreach (var e in layer.Entities)
             {
+                if (visibleOnly && e.Hidden) continue;
                 if (e is CircleEntity c && c.Transform.IsIdentity)
                 {
                     P(0, "CIRCLE"); P(8, layer.Name);
@@ -203,6 +204,7 @@ public static class DxfWriter
             if (visibleOnly && !layer.Visible) continue;
             foreach (var e in layer.Entities)
             {
+                if (visibleOnly && e.Hidden) continue;
                 switch (e)
                 {
                     case CircleEntity c when c.Transform.IsIdentity:

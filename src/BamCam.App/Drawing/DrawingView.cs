@@ -414,7 +414,7 @@ public sealed partial class DrawingView : Control, IToolHost
         {
             // Catch radius of 8 pixels in drawing units.
             var radius = Point2.Distance(_view.ToWorld(screen), _view.ToWorld(new Point(screen.X + 8, screen.Y)));
-            var entities = _session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities);
+            var entities = _session.Document.Layers.Where(l => l.Visible).SelectMany(l => l.Entities).Where(e => !e.Hidden);
             if (ObjectSnap.Find(entities, _view.ToWorld(screen), radius, Settings.ObjectSnapKinds) is { } found)
             {
                 _snapMarker = found;
@@ -439,6 +439,7 @@ public sealed partial class DrawingView : Control, IToolHost
             if (!layer.Visible || layer.Locked) continue;
             foreach (var ent in layer.Entities)
             {
+                if (ent.Hidden) continue;
                 double d;
                 if (ent is SurfaceEntity shadedSurface && Settings.ShadeSurfaces)
                     d = _surfaceShader.DistanceTo(shaded, shadedOwners.IndexOf(shadedSurface), _view, Bounds.Size, RenderScaling, screen, pixelTolerance);
@@ -495,6 +496,7 @@ public sealed partial class DrawingView : Control, IToolHost
             if (!layer.Visible || layer.Locked) continue;
             foreach (var ent in layer.Entities)
             {
+                if (ent.Hidden) continue;
                 // A mesh is read point by point: it can have a million triangles.
                 var pts = ent is SurfaceEntity surface
                     ? surface.WorldVertices().Select(p => _view.ToScreen(p))
@@ -721,6 +723,7 @@ public sealed partial class DrawingView : Control, IToolHost
             var colour = LayerColour(layer, anySelected);
             foreach (var surface in layer.Entities.OfType<SurfaceEntity>())
             {
+                if (surface.Hidden) continue;
                 var selected = session.IsSelected(surface) || (highlightIds?.Contains(surface.Id) ?? false);
                 meshes.Add(new ShadedMesh(surface.Vertices, surface.Faces, surface.Transform, selected ? Settings.SelectColor : colour));
                 owners.Add(surface);
@@ -750,6 +753,7 @@ public sealed partial class DrawingView : Control, IToolHost
             var pen = new Pen(new SolidColorBrush(LayerColour(layer, anySelected)), Math.Max(layer.PenWidth, 1));
             foreach (var ent in layer.Entities)
             {
+                if (ent.Hidden) continue;
                 var selected = session.IsSelected(ent) || (highlightIds?.Contains(ent.Id) ?? false);
                 DrawEntity(dc, ent, selected ? selectPen : pen, tol);
             }

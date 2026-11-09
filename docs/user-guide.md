@@ -68,7 +68,11 @@ quadrants (diamond) and intersections (cross).
 - **break at intersections** (Edit menu): select objects that cross; each line, arc, circle, rectangle, polyline or
   spline is split into separate polylines where it crosses another selected object (or itself);
 - **trim / extend** (`Ctrl` + `+`): click the boundaries (or just press Enter for all objects), then click a line
-  near its end to extend it, Shift+click a piece to trim it.
+  near its end to extend it, Shift+click a piece to trim it;
+- **hide** single objects (right-click > Hide): they are no longer drawn, picked, snapped to or selected, but
+  operations still cut them. In the drawing tree they are grey with *(hidden)*; select one there and right-click >
+  Show, or use View > Show All Objects. Hidden is saved in the drawing (CamBam shows such objects). Whole layers are
+  hidden with right-click on the layer in the tree.
 
 **Outlines of 3D models** (Edit ▸ Surface), for example the outline of a mould cavity as the boundary of a pocket
 or a profile. Select one or more surfaces (meshes) first; the polylines go to the active layer and are selected.

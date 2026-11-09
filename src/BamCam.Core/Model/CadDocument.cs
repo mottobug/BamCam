@@ -232,7 +232,8 @@ public sealed class CadDocument
         foreach (var l in Layers)
         {
             if (visibleOnly && !l.Visible) continue;
-            foreach (var e in l.Entities) b = b.Union(e.Bounds());
+            foreach (var e in l.Entities)
+                if (!visibleOnly || !e.Hidden) b = b.Union(e.Bounds());
         }
         return b;
     }

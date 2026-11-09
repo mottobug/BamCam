@@ -70,7 +70,8 @@ public partial class MainWindow
             var c = layer.Color;
             var ln = Node(layer, text, new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)), dimmed: !layer.Visible, expandable: true);
             // Large layers: avoid building thousands of nodes.
-            foreach (var e in layer.Entities.Take(2000)) ln.Items.Add(Node(e, F("{0} ({1})", T(e.TypeName), e.Id)));
+            foreach (var e in layer.Entities.Take(2000))
+                ln.Items.Add(Node(e, F("{0} ({1})", T(e.TypeName), e.Id) + (e.Hidden ? "  " + T("(hidden)") : ""), dimmed: e.Hidden));
             if (layer.Entities.Count > 2000) ln.Items.Add(new TreeViewItem { Header = F("… {0} more", layer.Entities.Count - 2000) });
             layers.Items.Add(ln);
         }
@@ -581,6 +582,32 @@ public partial class MainWindow
         return menu;
     }
 
+    /// <summary>Hides or shows the selected objects, as one undo step. Hidden objects leave the selection.</summary>
+    private void SetHidden(bool hidden)
+    {
+        var targets = _session.Selection.Where(e => e.Hidden != hidden).ToList();
+        if (targets.Count == 0) return;
+        _session.Execute(hidden ? T("Hide objects") : T("Show objects"), () => targets.ForEach(e => e.Hidden = hidden));
+        if (hidden) _session.Select([]);
+        Log(hidden ? F("{0} object(s) hidden. View > Show All Objects shows them again.", targets.Count)
+            : F("{0} object(s) shown.", targets.Count));
+        View.Invalidate();
+    }
+
+    /// <summary>Shows all hidden objects again (View menu), as one undo step.</summary>
+    private void ShowAllObjects()
+    {
+        var hidden = _session.Document.AllEntities().Where(e => e.Hidden).ToList();
+        if (hidden.Count == 0)
+        {
+            Log(T("No objects are hidden."));
+            return;
+        }
+        _session.Execute(T("Show objects"), () => hidden.ForEach(e => e.Hidden = false));
+        Log(F("{0} object(s) shown.", hidden.Count));
+        View.Invalidate();
+    }
+
     /// <summary>
     /// Context menu for selected drawing objects (drawing view and object tree): clipboard, point editing,
     /// properties and the complete Edit / Transform / Machining menus.
@@ -594,8 +621,11 @@ public partial class MainWindow
         {
             items.Add(Item(target is TextEntity ? "Edit _Text..." : "Edit In _Drawing", () => EditInView(target)));
             items.Add(Item("P_roperties", () => _session.Inspect(target)));
-            items.Add("-");
         }
+        // Hidden objects are only reached in the tree: there they can be shown again.
+        if (_session.Selection.Any(e => e.Hidden)) items.Add(Item("_Show", () => SetHidden(false)));
+        if (_session.Selection.Any(e => !e.Hidden)) items.Add(Item("_Hide", () => SetHidden(true)));
+        if (items.Count > 0) items.Add("-");
         items.AddRange(
         [
             Item("Cu_t", () => _ = CutSelection(), "Ctrl+X"),
