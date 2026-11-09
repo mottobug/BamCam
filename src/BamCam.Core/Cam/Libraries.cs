@@ -167,6 +167,31 @@ public static class CamLibraries
     }
 
     /// <summary>
+    /// A tool number was chosen on the operation: when a library has that tool, a Tool Diameter and Tool Profile typed in
+    /// the operation go back to Default, so that the tool's own values are used (choosing a tool means that tool).
+    /// Without such a tool they stay. Returns the display names of the parameters set back.
+    /// </summary>
+    public static List<string> FollowToolNumber(Model.CadDocument doc, MachineOp op)
+    {
+        var reset = new List<string>();
+        var number = op.ToolNumber.Value;
+        if (number <= 0) return reset;
+        var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
+        if (FindTool(doc, part, number, op is TurningOp) == null) return reset;
+        if (op.ToolDiameter.State == ParamState.Value)
+        {
+            op.ToolDiameter.State = ParamState.Default;
+            reset.Add(Localization.Tr.T("Tool Diameter"));
+        }
+        if (op.ToolProfile.State == ParamState.Value)
+        {
+            op.ToolProfile.State = ParamState.Default;
+            reset.Add(Localization.Tr.T("Tool Profile"));
+        }
+        return reset;
+    }
+
+    /// <summary>
     /// What the tool number chosen on an operation gives: the tool of the library, a number that no library has, or a
     /// diameter typed on the operation that wins over the library. Null without a number.
     /// </summary>

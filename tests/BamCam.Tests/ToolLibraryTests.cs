@@ -311,6 +311,38 @@ public sealed class ToolLibraryTests : IDisposable
     }
 
     [Fact]
+    public void Choosing_a_tool_number_brings_its_diameter_and_profile_over_typed_ones()
+    {
+        // Issue 4, step 11: diameter typed by hand, then another tool number chosen: the new tool's values are used.
+        var (doc, _, op) = NewOperation();
+        var library = new ToolLibrary { Name = "Default-mm" };
+        library.Tools.Add(new ToolDefinition { Index = 8, Diameter = 12.6, ToolProfile = ToolProfile.BallNose });
+        library.Tools.Add(new ToolDefinition { Index = 9, Diameter = 6, ToolProfile = ToolProfile.EndMill });
+        CamLibraries.ToolLibraries.Add(library);
+        op.ToolNumber.Set(8);
+        LibraryFiles.ApplyStyle(doc, op);
+        op.ToolDiameter.Set(4);
+        op.ToolProfile.Set(ToolProfile.VCutter);
+
+        op.ToolNumber.Set(9);
+        var reset = CamLibraries.FollowToolNumber(doc, op);
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal(["Tool Diameter", "Tool Profile"], reset);
+        Assert.Equal(ParamState.Default, op.ToolDiameter.State);
+        Assert.Equal(6, op.EffectiveToolDiameter(doc));
+        Assert.Equal(ToolProfile.EndMill, op.ToolProfile.Value);
+        Assert.Contains("from the library", CamLibraries.DescribeOperationTool(doc, op));
+
+        // A number no library has leaves the typed diameter, which is then all there is.
+        op.ToolDiameter.Set(5);
+        op.ToolNumber.Set(77);
+        Assert.Empty(CamLibraries.FollowToolNumber(doc, op));
+        Assert.Equal(ParamState.Value, op.ToolDiameter.State);
+        Assert.Equal(5, op.ToolDiameter.Value);
+    }
+
+    [Fact]
     public void Without_a_number_there_is_nothing_to_say()
     {
         var (doc, _, op) = NewOperation();

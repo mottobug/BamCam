@@ -78,14 +78,22 @@ public partial class MainWindow : Window
             if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
             else if (Properties.SelectedObject is Core.Cam.ToolDefinition tool) OnToolEdited(tool);
             else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
-            else OnPropertyEdited();
+            else
+            {
+                // A tool number chosen on an operation brings that tool's diameter and profile, also over typed ones.
+                var reset = key == nameof(Core.Cam.MachineOp.ToolNumber) && Properties.SelectedObject is Core.Cam.MachineOp numbered
+                    ? Core.Cam.CamLibraries.FollowToolNumber(_session.Document, numbered) : [];
+                var toolEdit = key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.ToolDiameter) && Properties.SelectedObject is Core.Cam.MachineOp;
+                OnPropertyEdited(quietTool: toolEdit);
+                // The number of an operation: which tool it is, or why its diameter does not follow (one message).
+                if (toolEdit && Properties.SelectedObject is Core.Cam.MachineOp withTool
+                    && Core.Cam.CamLibraries.DescribeOperationTool(_session.Document, withTool) is { } toolMessage)
+                    Log(reset.Count == 0 ? toolMessage
+                        : toolMessage + " " + F("{0} typed in the operation set back to Default.", string.Join(", ", reset)));
+            }
             if (key is nameof(Core.Cam.Part.ToolNumber) or nameof(Core.Cam.Part.ToolLibrary) or nameof(Core.Cam.Part.ToolDiameter) or nameof(Core.Cam.Part.ToolProfile)
                 && Properties.SelectedObject is Core.Cam.Part or Core.Cam.MachiningOptions)
                 Log(Core.Cam.CamLibraries.DescribeTool(_session.Document, Properties.SelectedObject as Core.Cam.Part));
-            // The number of an operation: which tool it is, or why its diameter does not follow.
-            if (key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.ToolDiameter) && Properties.SelectedObject is Core.Cam.MachineOp withTool
-                && Core.Cam.CamLibraries.DescribeOperationTool(_session.Document, withTool) is { } toolMessage)
-                Log(toolMessage);
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
 
@@ -180,7 +188,8 @@ public partial class MainWindow : Window
         Dispatcher.UIThread.Post(() => View.ZoomToFit(), DispatcherPriority.Background);
     }
 
-    private void OnPropertyEdited()
+    /// <param name="quietTool">The tool of an operation was edited: its own message says what the tool values are.</param>
+    private void OnPropertyEdited(bool quietTool = false)
     {
         if (_session.Inspected is TextEntity t) t.InvalidateOutlines();
         if (_session.Inspected is ScriptEntity edited) AllowScript(edited.Script); // typed by the user in the properties
@@ -188,6 +197,7 @@ public partial class MainWindow : Window
         if (_session.Inspected is Core.Cam.MachineOp op)
         {
             var changed = LibraryFiles.ApplyStyle(_session.Document, op);
+            if (quietTool) changed.RemoveAll(n => n is "ToolNumber" or "ToolDiameter" or "ToolProfile");
             if (changed.Count > 0) Log(F("{0}: style values updated ({1}).", op.Name, string.Join(", ", changed)));
         }
         if (_session.Inspected is CadDocument)

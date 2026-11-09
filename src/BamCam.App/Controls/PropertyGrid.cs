@@ -669,7 +669,10 @@ public sealed partial class PropertyGrid : DockPanel
             if (readOnly || box.Text == text) return;
             try
             {
-                Apply(node, parse(box.Text ?? ""));
+                var committed = box.Text;
+                Apply(node, parse(committed ?? ""));
+                // Enter and then losing the focus must not apply the same text twice (a second undo step and message).
+                text = committed ?? "";
             }
             catch (Exception ex)
             {

@@ -121,6 +121,9 @@ Everything can be undone with `Ctrl+Z`.
    lathe operation (Machining ▸ Lathe).
 3. **Set it up** in the properties: tool diameter (or a tool number from the library), depths, feeds, spindle
    speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation.
+   Choosing a tool number takes diameter and profile from the library, also over values typed before; a diameter
+   typed afterwards wins over the library. The small button beside a parameter (D = Default, V = typed value,
+   A = calculated) sets it back to Default.
 4. **Generate toolpaths** (`Ctrl+T`) and check them in the drawing; View ▸ Toolpath View Filter (`Ctrl+F`) steps
    through them.
 5. **Choose the post processor** (Machining ▸ Post Processor, or the list *Post Processor* of the machining options
