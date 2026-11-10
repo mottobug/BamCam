@@ -123,6 +123,50 @@ public class Profile3DTests
         Assert.Equal(R, cuts.Max(p => p.Z), 1);
     }
 
+    [Theory]
+    [InlineData(DrawingUnits.Millimeters, 1.0)]
+    [InlineData(DrawingUnits.Inches, 1 / 25.4)]
+    public void Scanline_finish_stays_on_the_surface_between_its_points(DrawingUnits units, double scale)
+    {
+        // Issue 7: in inches the straight moves between the points left the surface (up to 0.05 inch into it), because
+        // whole curves were dropped point by point. The same hemisphere in mm and in inches.
+        var (doc, op) = Setup(Profile3DMethod.Horizontal, RoughingFinishing.Finishing, ToolProfile.BallNose);
+        doc.Units = units;
+        foreach (var e in doc.AllEntities()) e.ApplyTransform(Matrix4.Scale(scale, scale, scale));
+        op.ToolDiameter.Set(4 * scale);
+        op.StockSurface.Set(10 * scale);
+        op.ClearancePlane.Set(15 * scale);
+        op.BoundaryMargin.Set(3 * scale);
+        op.StepOver.Set(0.2);
+        op.Resolution.Set(0.05);
+
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        double Surface(Point3 p)
+        {
+            var d = Math.Sqrt(p.X * p.X + p.Y * p.Y) / scale;
+            return (d < R + 2 ? Math.Max(Math.Sqrt(Math.Pow(R + 2, 2) - d * d) - 2, 0) : 0) * scale;
+        }
+        var worst = 0.0;
+        Point3? from = null;
+        foreach (var m in tp.Moves)
+        {
+            // Moves along the surface (not the plunges, which go straight down).
+            if (m.Kind == MoveKind.Feed && from is { } f && Point2.Distance(f.XY, m.To.XY) > 1e-9 * scale)
+                for (var k = 1; k < 10; k++)
+                {
+                    var p = f + (m.To - f) * (k / 10.0);
+                    // Over the sphere: at its rim the ball turns round the edge, where the samples are too far apart.
+                    if (Math.Sqrt(p.X * p.X + p.Y * p.Y) / scale < R)
+                        worst = Math.Max(worst, Math.Abs(p.Z - Surface(p)));
+                }
+            if (m.IsMotion) from = m.To;
+        }
+        // Faceting of this coarse mesh (6° segments, about 0.024 mm) and the sampling: within 0.05 mm, the same in either
+        // unit. Before, whole arcs of points were dropped.
+        Assert.True(worst < 0.05 * scale, $"{worst / scale:0.####} mm off the surface between points");
+    }
+
     [Fact]
     public void Scanline_roughing_passes_respect_depth_levels()
     {

@@ -218,12 +218,14 @@ internal static class Profile3DGenerator
             : [double.NegativeInfinity];
         var linkDist = step * 1.5 + res;
         var prev = ctx.StockSurface;
+        // 2 µm in the units of the drawing (in inches the same length, not 0.002 inches).
+        var tolerance = ctx.Doc.Units == DrawingUnits.Inches ? 0.002 / 25.4 : 0.002;
         foreach (var level in levels)
         {
             foreach (var segments in rowSegments)
             foreach (var seg in segments)
             {
-                var pts = Simplify(seg.Select(p => p with { Z = Math.Max(p.Z, level) }).ToList(), 0.002);
+                var pts = Simplify(seg.Select(p => p with { Z = Math.Max(p.Z, level) }).ToList(), tolerance);
                 if (mb.Position is { } pos && Point2.Distance(pos.XY, pts[0].XY) <= linkDist && Math.Abs(pos.Z - pts[0].Z) < dia)
                 {
                     mb.Line(pts[0], ctx.CutFeed);
@@ -251,22 +253,44 @@ internal static class Profile3DGenerator
         return inside;
     }
 
-    /// <summary>Drops points that lie on the straight line between their neighbours.</summary>
-    private static List<Point3> Simplify(List<Point3> pts, double tol)
+    /// <summary>
+    /// Fewer points, where the straight moves between the points kept stay within <paramref name="tol"/> of every point
+    /// dropped (Douglas-Peucker). Checking each point only against the line to its next neighbour, as before, dropped
+    /// whole curves point by point: in inches the tool then cut up to 0.05 into the surface between the points.
+    /// </summary>
+    internal static List<Point3> Simplify(List<Point3> pts, double tol)
     {
         if (pts.Count < 3) return pts;
-        var result = new List<Point3> { pts[0] };
-        for (var i = 1; i < pts.Count - 1; i++)
+        var keep = new bool[pts.Count];
+        keep[0] = keep[^1] = true;
+        var stack = new Stack<(int, int)>();
+        stack.Push((0, pts.Count - 1));
+        while (stack.Count > 0)
         {
-            var a = result[^1];
-            var b = pts[i + 1];
-            var ab = b - a;
+            var (first, last) = stack.Pop();
+            if (last - first < 2) continue;
+            var a = pts[first];
+            var ab = pts[last] - a;
             var len = ab.Length;
-            if (len < 1e-12) continue;
-            var dist = Point3.Cross(pts[i] - a, ab).Length / len;
-            if (dist > tol) result.Add(pts[i]);
+            var worst = -1.0;
+            var worstAt = -1;
+            for (var i = first + 1; i < last; i++)
+            {
+                var d = len < 1e-12 ? (pts[i] - a).Length : Point3.Cross(pts[i] - a, ab).Length / len;
+                if (d > worst)
+                {
+                    worst = d;
+                    worstAt = i;
+                }
+            }
+            if (worst <= tol) continue;
+            keep[worstAt] = true;
+            stack.Push((first, worstAt));
+            stack.Push((worstAt, last));
         }
-        result.Add(pts[^1]);
+        var result = new List<Point3>();
+        for (var i = 0; i < pts.Count; i++)
+            if (keep[i]) result.Add(pts[i]);
         return result;
     }
 
