@@ -45,6 +45,18 @@ BamCam needs a system supported by .NET 10; on Windows that is Windows 10 versio
     <td>Text along a polyline: the preview follows the cursor on the guide</td>
     <td>Image import: traced outlines previewed while the threshold is set</td>
   </tr>
+  <tr>
+    <td><a href="docs/screenshots/thread-milling.png"><img src="docs/screenshots/thread-milling.png" alt="Thread milling: four internal M8 threads, an external M16 thread and an M6 tapped hole"></a></td>
+    <td><a href="docs/screenshots/trochoidal-pocket.png"><img src="docs/screenshots/trochoidal-pocket.png" alt="Trochoidal pocket around an island"></a></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Thread milling: four M8 internal threads bottom up, an M16 external thread top down in two passes, and an M6
+        hole tapped with G84 (<code>examples_to_test/Thread milling.cb</code>)</td>
+    <td>Trochoidal pocket around an island with the matmill plugin: arcs along the centre lines, chords between them
+        (<code>examples_to_test/Trochoidal pocket.cb</code>)</td>
+    <td></td>
+  </tr>
 </table>
 
 ## Documentation
@@ -159,6 +171,10 @@ divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
   [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), shipped as a plugin; slices along the centre lines
   between a minimum and a maximum stepover, mixed milling direction, smooth chords, islands.
 - **Drill:** canned cycles G81/G82/G83 and spiral milling.
+- **Thread milling:** internal and external threads on a helix, right- or left-hand, bottom up (climb in a right-hand
+  internal thread) or top down, radial passes, single-point or multi-tooth cutters, arc lead-in from the hole centre.
+- **Tapping (G84):** feed = pitch × spindle speed, for tapping heads or rigid tapping; the cycle is a template of the
+  post processor.
 - **Engrave** and **NC file** (G-code back-plot).
 - **V-engrave** (V-carving) of text, regions and closed polylines: the V-bit follows the centre lines (medial axis)
   and goes as deep as the shape is wide, with sharp corners; areas wider than the cone at the target depth get a
