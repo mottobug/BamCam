@@ -23,6 +23,9 @@ public sealed partial class PropertyGrid : DockPanel
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private readonly StackPanel _rows = new();
+
+    /// <summary>Width of the expanded vertical scroll bar, kept free at the right of the rows when it is shown.</summary>
+    private const double ScrollBarWidth = 14;
     private readonly TextBlock _help = new() { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4), FontSize = 11 };
     private readonly TextBlock _title = new() { FontWeight = FontWeight.SemiBold, Margin = new Thickness(4, 2) };
     private readonly ToggleButton _sortToggle = new() { Content = "A-Z", Padding = new Thickness(4, 0), MinHeight = 20, FontSize = 11 };
@@ -68,7 +71,17 @@ public sealed partial class PropertyGrid : DockPanel
         SetDock(_helpPanel, Dock.Bottom);
         Children.Add(_helpPanel);
 
-        Children.Add(new ScrollViewer { Content = _rows, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Background = Brushes.White });
+        var scroll = new ScrollViewer { Content = _rows, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Background = Brushes.White };
+        // The scroll bar lies over the content: when it is needed, the rows end before it, so that the buttons at their
+        // right end (▾, [...], the arrow of a list) stay clear of it.
+        scroll.PropertyChanged += (_, e) =>
+        {
+            if (e.Property != ScrollViewer.ExtentProperty && e.Property != ScrollViewer.ViewportProperty) return;
+            var needed = scroll.Extent.Height > scroll.Viewport.Height + 0.5;
+            var margin = new Thickness(0, 0, needed ? ScrollBarWidth : 0, 0);
+            if (_rows.Margin != margin) _rows.Margin = margin;
+        };
+        Children.Add(scroll);
 
         _sortToggle.IsCheckedChanged += (_, _) => Rebuild();
         _helpToggle.IsCheckedChanged += (_, _) => _helpPanel.IsVisible = _helpToggle.IsChecked == true;
