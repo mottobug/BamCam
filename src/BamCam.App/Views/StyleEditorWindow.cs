@@ -39,6 +39,9 @@ public sealed class StyleEditorWindow : Window
     private MachineOp _op;
     private bool _loading;
 
+    /// <summary>The kind of operation shown last, so that the next style opens with the same one.</summary>
+    private static int _lastKind;
+
     public StyleEditorWindow(CamStyleLibrary library, CamStyle style, bool readOnly, Action changed)
     {
         _library = library;
@@ -58,11 +61,13 @@ public sealed class StyleEditorWindow : Window
 
         var kinds = Kinds.Select(k => k()).ToList();
         _kind.ItemsSource = kinds.Select(k => T(k.DisplayType)).ToList();
-        _kind.SelectedIndex = 0;
-        _op = kinds[0];
+        var first = Math.Clamp(_lastKind, 0, kinds.Count - 1);
+        _kind.SelectedIndex = first;
+        _op = kinds[first];
         _kind.SelectionChanged += (_, _) =>
         {
             if (_kind.SelectedIndex < 0) return;
+            _lastKind = _kind.SelectedIndex;
             _op = Kinds[_kind.SelectedIndex]();
             Load();
         };
@@ -97,13 +102,14 @@ public sealed class StyleEditorWindow : Window
         }
         Row(0, T("Name"), _name);
         Row(1, T("Parent Style"), _parent);
-        Row(2, T("Values for"), _kind);
+        Row(2, T("Show values for"), _kind);
 
         var hint = new TextBlock
         {
-            Text = readOnly
+            Text = (readOnly
                 ? T("This library belongs to CamBam and is read-only. Right-click it in the System tab and choose Copy to BamCam to edit it.")
-                : T("Values set here (V, A) are part of the style; values marked D are inherited from the parent style. Use the D / V / A button of a value to inherit it again."),
+                : T("Values set here (V, A) are part of the style; values marked D are inherited from the parent style. Use the D / V / A button of a value to inherit it again."))
+                + " " + T("A style holds values for every kind of operation; the list above only chooses which are shown."),
             TextWrapping = TextWrapping.Wrap, FontSize = 11, Foreground = readOnly ? Brushes.DarkRed : Brushes.DimGray, Margin = new Thickness(10, 0, 10, 6),
         };
         var close = new Button { Content = T("Close"), IsCancel = true, MinWidth = 80, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(10) };

@@ -33,7 +33,7 @@ commands and plugins.
 |---|---|
 | Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code). |
 | **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
-| **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (per kind of operation; D = inherited). |
+| **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (D = inherited). A style holds values for every kind of operation; *Show values for* only chooses which are shown, and the next style opens with the same kind. Each style opens in one window. |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
 | Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms; Alt + left drag rotates (Tools ▸ Options ▸ Rotation Mode also allows holding the middle or right button and dragging with the left one, as in CamBam); right button opens the context menu. 3D meshes appear as shaded surfaces; View ▸ Shade Surfaces switches to wireframes. Lines and toolpaths always lie over a surface, even when they run behind it. |
 | Messages (bottom) | What BamCam did, warnings and errors. |
@@ -159,8 +159,15 @@ Everything can be undone with `Ctrl+Z`.
    lathe operation (Machining ▸ Lathe).
 3. **Set it up** in the properties: tool diameter (or a tool number from the library), depths, feeds, spindle
    speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation.
-   Choosing a tool number takes diameter and profile from the library, also over values typed before; a diameter
-   typed afterwards wins over the library. The small button beside a parameter (D = Default, V = typed value,
+   The ▾ button beside *Tool Number* lists the tools of the library that applies (typing a number works too), and
+   *Style*, *Style Library* and *Tool Library* are drop-down lists. A tool number brings the tool's diameter and
+   profile; a style brings its values. Where a choice disagrees with values set elsewhere, BamCam asks instead of
+   deciding, and stores the answer in the operation: a tool chosen while a diameter or profile is typed in the
+   operation (take the tool's or keep the typed ones), a style chosen while the operation has typed values it sets
+   otherwise, and a style whose tool number differs from the number of the operation, part or machining options
+   (which tool to use). Drawings opened as they are use the operation's own number, else its style's, else the
+   part's, else the machining options'. Without any tool library (Default-mm or Default-in, as on a computer without
+   CamBam) BamCam offers to create one. The small button beside a parameter (D = Default, V = typed value,
    A = calculated) sets it back to Default.
 4. **Generate toolpaths** (`Ctrl+T`) and check them in the drawing; View ▸ Toolpath View Filter (`Ctrl+F`) steps
    through them.

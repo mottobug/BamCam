@@ -11,8 +11,16 @@ namespace BamCam.App.Services;
 /// </summary>
 public sealed class SystemLibrary
 {
+    /// <summary>
+    /// BamCam's own libraries, post processors, scripts and plugins: %APPDATA%\BamCam, or the folder named by the
+    /// environment variable BAMCAM_SYSTEM (another configuration, or a test that must not touch the real one).
+    /// </summary>
     public static string SystemFolder { get; } =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BamCam");
+        Environment.GetEnvironmentVariable("BAMCAM_SYSTEM") is { Length: > 0 } own ? Path.GetFullPath(own)
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BamCam");
+
+    /// <summary>BAMCAM_IGNORE_CAMBAM=1: the data of a CamBam installation is left out (as on a computer without CamBam).</summary>
+    private static bool IgnoreCamBam => Environment.GetEnvironmentVariable("BAMCAM_IGNORE_CAMBAM") == "1";
 
     public static string PostFolder => Path.Combine(SystemFolder, "post");
 
@@ -20,7 +28,7 @@ public sealed class SystemLibrary
     private static IEnumerable<string> CamBamPostFolders()
     {
         var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        if (!Directory.Exists(common)) yield break;
+        if (IgnoreCamBam || !Directory.Exists(common)) yield break;
         foreach (var dir in Directory.GetDirectories(common, "CamBam*"))
         {
             var post = Path.Combine(dir, "post");
@@ -45,7 +53,7 @@ public sealed class SystemLibrary
     private static IEnumerable<string> CamBamFolders(string sub)
     {
         var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        if (!Directory.Exists(common)) yield break;
+        if (IgnoreCamBam || !Directory.Exists(common)) yield break;
         foreach (var dir in Directory.GetDirectories(common, "CamBam*"))
         {
             var p = Path.Combine(dir, sub);
@@ -57,7 +65,7 @@ public sealed class SystemLibrary
     public static IEnumerable<string> CamBamDataFolders()
     {
         var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        return Directory.Exists(common) ? Directory.GetDirectories(common, "CamBam*") : [];
+        return !IgnoreCamBam && Directory.Exists(common) ? Directory.GetDirectories(common, "CamBam*") : [];
     }
 
     public static string PlasmaFolder => Path.Combine(SystemFolder, "plasma");
@@ -69,9 +77,7 @@ public sealed class SystemLibrary
         LoadCutData();
 
         // Translation tables of a local CamBam: drawings saved by a localised CamBam contain translated values.
-        var common = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        if (Directory.Exists(common))
-            foreach (var dir in Directory.GetDirectories(common, "CamBam*"))
+        foreach (var dir in CamBamDataFolders())
             foreach (var file in Directory.GetFiles(dir, "translate_*").Where(f => Path.GetExtension(f).Length == 0))
             {
                 try { CbLocalization.LoadTranslationFile(file); }

@@ -110,8 +110,19 @@ public sealed partial class PropertyGrid : DockPanel
         public bool IsFontName { get; init; }
         /// <summary>Action of a [...] button next to a drop-down list (opens where its entries are edited).</summary>
         public Action? Browse { get; init; }
+        /// <summary>Values to pick from a ▾ button next to a text field that still takes any typed value (tool numbers).</summary>
+        public IReadOnlyList<KeyValuePair<object, string>>? Suggestions { get; init; }
         public bool IsComposite => IsCompositeType(Type);
     }
+
+    /// <summary>
+    /// Drop-down entries that depend on the object (the styles of the library a part uses), by object and property name;
+    /// null = none, or those of the property's <see cref="ChoicesAttribute"/>.
+    /// </summary>
+    public Func<object, string, IReadOnlyList<KeyValuePair<string, string>>?>? DynamicChoices { get; set; }
+
+    /// <summary>Values to pick for a text field (tool numbers from the libraries), by object and property name; null = none.</summary>
+    public Func<object, string, IReadOnlyList<KeyValuePair<object, string>>?>? DynamicSuggestions { get; set; }
 
     public static bool IsCompositeType(Type t) =>
         t == typeof(Stock) || t == typeof(NestingSettings) || t == typeof(LeadMove) ||
@@ -148,6 +159,8 @@ public sealed partial class PropertyGrid : DockPanel
             var display = Tr.T(DisplayNameOf(prop));
             var desc = prop.GetCustomAttribute<DescriptionAttribute>()?.Description is { } d ? Tr.T(d) : null;
             var choices = prop.GetCustomAttribute<ChoicesAttribute>();
+            var dynamicChoices = DynamicChoices?.Invoke(target, prop.Name);
+            var suggestions = DynamicSuggestions?.Invoke(target, prop.Name);
             var key = prefix + prop.Name;
 
             if (typeof(ICamParam).IsAssignableFrom(prop.PropertyType))
@@ -163,8 +176,9 @@ public sealed partial class PropertyGrid : DockPanel
                         param.State = ParamState.Value;
                         param.RawXml = null;
                     },
-                    Param = param, Depth = depth, Choices = choices?.GetChoices(target.GetType()),
+                    Param = param, Depth = depth, Choices = dynamicChoices ?? choices?.GetChoices(target.GetType()),
                     Browse = choices is { Browse: true } ? BrowseAction(target, prop) : null,
+                    Suggestions = suggestions,
                 };
                 continue;
             }
@@ -231,8 +245,9 @@ public sealed partial class PropertyGrid : DockPanel
             {
                 Key = key, Display = display, Category = category, CategoryKey = categoryKey, Order = order, Description = desc, Type = prop.PropertyType,
                 Get = () => prop.GetValue(target), Set = setter, Depth = depth,
-                Choices = choices?.GetChoices(target.GetType()),
+                Choices = dynamicChoices ?? choices?.GetChoices(target.GetType()),
                 IsFontName = prop.GetCustomAttribute<FontNameAttribute>() != null,
+                Suggestions = suggestions,
             };
         }
     }
@@ -249,6 +264,21 @@ public sealed partial class PropertyGrid : DockPanel
         t == typeof(Matrix4) || Nullable.GetUnderlyingType(t) == typeof(string);
 
     // ------------------------------------------------------------------ layout
+
+    /// <summary>
+    /// Diagnostic (--set): sets a value of the shown object as typing it would (the text is parsed as the field parses
+    /// it, the events are the same). False when the object has no such value.
+    /// </summary>
+    public bool SetForDiagnostics(string key, string text)
+    {
+        if (_target == null || NodesFor(_target, 0, "", null).FirstOrDefault(n => n.Key == key) is not { } node) return false;
+        object? value = node.Type == typeof(int) ? int.Parse(text, Inv)
+            : node.Type == typeof(double) ? double.Parse(text, NumberStyles.Float, Inv)
+            : node.Type.IsEnum ? Enum.Parse(node.Type, text)
+            : text;
+        Apply(node, value);
+        return true;
+    }
 
     private void Rebuild()
     {
@@ -574,7 +604,27 @@ public sealed partial class PropertyGrid : DockPanel
             _ when t == typeof(OptionalPoint) => s => string.IsNullOrWhiteSpace(s) ? OptionalPoint.None : new OptionalPoint(ParsePoint(s)),
             _ => s => s,
         };
-        return TextEditor(node, text, readOnly, isDefault, parse);
+        var editor = TextEditor(node, text, readOnly, isDefault, parse);
+        if (readOnly || node.Suggestions is not { Count: > 0 } suggestions) return editor;
+        // A ▾ button with values to pick (the tools of the libraries); typing any value still works.
+        var pick = new Button { Content = "▾", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+        ToolTip.SetTip(pick, Tr.T("Choose from the list"));
+        pick.Click += (_, _) =>
+        {
+            var menu = new ContextMenu { MaxHeight = 420 };
+            foreach (var (value, label) in suggestions)
+            {
+                var item = new MenuItem { Header = label, FontWeight = Equals(value, node.Get()) ? FontWeight.SemiBold : FontWeight.Normal };
+                item.Click += (_, _) => Apply(node, value);
+                menu.Items.Add(item);
+            }
+            menu.Open(pick);
+        };
+        var withPick = new DockPanel();
+        DockPanel.SetDock(pick, Dock.Right);
+        withPick.Children.Add(pick);
+        withPick.Children.Add(editor);
+        return withPick;
     }
 
     private static List<string>? _fontNames;
@@ -670,9 +720,11 @@ public sealed partial class PropertyGrid : DockPanel
             try
             {
                 var committed = box.Text;
-                Apply(node, parse(committed ?? ""));
-                // Enter and then losing the focus must not apply the same text twice (a second undo step and message).
+                var value = parse(committed ?? "");
+                // Enter and then losing the focus must not apply the same text twice (a second undo step and message);
+                // remembered before applying, because applying may open a question that takes the focus away.
                 text = committed ?? "";
+                Apply(node, value);
             }
             catch (Exception ex)
             {

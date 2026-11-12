@@ -101,15 +101,26 @@ public partial class MainWindow
         _session.NotifyChanged();
     }
 
+    /// <summary>The open style windows: one per style, opening it again brings it to the front.</summary>
+    private readonly Dictionary<CamStyle, StyleEditorWindow> _styleWindows = [];
+
     private void EditStyle(CamStyleLibrary lib, CamStyle style)
     {
+        if (_styleWindows.TryGetValue(style, out var open))
+        {
+            open.Activate();
+            return;
+        }
         var own = IsOwnLibrary(lib.SourcePath, "styles");
-        new StyleEditorWindow(lib, style, !own, () =>
+        var window = new StyleEditorWindow(lib, style, !own, () =>
         {
             // Operations with Default values follow the edited style.
             foreach (var op in _session.Document.Parts.SelectMany(p => p.Operations)) LibraryFiles.ApplyStyle(_session.Document, op);
             _session.NotifyChanged();
-        }).Show(this);
+        });
+        _styleWindows[style] = window;
+        window.Closed += (_, _) => _styleWindows.Remove(style);
+        window.Show(this);
     }
 
     private void SaveStyleLibrary(CamStyleLibrary lib)

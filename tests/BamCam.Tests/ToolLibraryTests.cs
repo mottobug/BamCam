@@ -342,6 +342,115 @@ public sealed class ToolLibraryTests : IDisposable
         Assert.Equal(5, op.ToolDiameter.Value);
     }
 
+    /// <summary>The default style library with Tasche6 and Tasche8 (tool number and diameter as the forum post 29 sets them).</summary>
+    private static CamStyleLibrary PocketStyles()
+    {
+        var lib = new CamStyleLibrary { Name = "Standard-mm" };
+        lib.Styles.Add(new CamStyle { Name = "" });
+        foreach (var size in new[] { 6, 8 })
+        {
+            var style = new CamStyle { Name = $"Tasche{size}" };
+            style.Values["ToolNumber"] = new System.Xml.Linq.XElement("ToolNumber", new System.Xml.Linq.XAttribute("state", "Value"), size);
+            style.Values["ToolDiameter"] = new System.Xml.Linq.XElement("ToolDiameter", new System.Xml.Linq.XAttribute("state", "Value"), size);
+            style.Values["CutFeedrate"] = new System.Xml.Linq.XElement("CutFeedrate", new System.Xml.Linq.XAttribute("state", "Value"), 100 * size);
+            lib.Styles.Add(style);
+        }
+        CamLibraries.StyleLibraries.Add(lib);
+        return lib;
+    }
+
+    [Fact]
+    public void The_tool_of_a_style_wins_over_the_part_and_its_diameter_goes_with_it()
+    {
+        // Forum post 29: the styles carry tool number and diameter; the library has no tool 8, the machining options
+        // name tool 5. Before, the number of the machining options and the library won, and the diameter became 12 or 0.
+        PocketStyles();
+        var (doc, _, op) = NewOperation();
+        doc.Machining.ToolLibrary = "Mine";
+        doc.Machining.ToolNumber = 5;
+        op.Style = "Tasche8";
+
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal(8, op.ToolNumber.Value);
+        Assert.Equal(8, op.EffectiveToolDiameter(doc));
+        Assert.Equal(800, op.CutFeedrate.Value);
+
+        // Changing the style changes the values.
+        op.Style = "Tasche6";
+        LibraryFiles.ApplyStyle(doc, op);
+        Assert.Equal(6, op.ToolNumber.Value);
+        Assert.Equal(6, op.EffectiveToolDiameter(doc));
+        Assert.Equal(600, op.CutFeedrate.Value);
+
+        // A number typed in the operation (as the answer to the question) wins over the style.
+        op.ToolNumber.Set(5);
+        LibraryFiles.ApplyStyle(doc, op);
+        Assert.Equal(12, op.EffectiveToolDiameter(doc));
+        Assert.Equal(6, LibraryFiles.StyleToolNumber(doc, op));
+
+        // The answer "tool of the style" stores the style's number in the operation: its diameter goes with it, also
+        // when no library has that tool.
+        op.Style = "Tasche8";
+        op.ToolNumber.Set(8);
+        LibraryFiles.ApplyStyle(doc, op);
+        Assert.Equal(8, op.EffectiveToolDiameter(doc));
+        Assert.Equal(8, LibraryFiles.StyleToolDiameter(doc, op));
+    }
+
+    [Fact]
+    public void A_style_with_a_number_only_takes_the_diameter_from_the_library()
+    {
+        var lib = PocketStyles();
+        lib.Find("Tasche6")!.Values.Remove("ToolDiameter");
+        lib.Find("Tasche6")!.Values["ToolNumber"] = new System.Xml.Linq.XElement("ToolNumber", new System.Xml.Linq.XAttribute("state", "Value"), 5);
+        var (doc, _, op) = NewOperation();
+        doc.Machining.ToolLibrary = "Mine";
+        op.Style = "Tasche6";
+
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal(5, op.ToolNumber.Value);
+        Assert.Equal(12, op.EffectiveToolDiameter(doc));
+        Assert.Equal(ToolProfile.BallNose, op.ToolProfile.Value);
+    }
+
+    [Fact]
+    public void Typed_values_that_the_style_sets_otherwise_are_found_and_can_be_taken()
+    {
+        PocketStyles();
+        var (doc, _, op) = NewOperation();
+        op.Style = "Tasche8";
+        op.CutFeedrate.Set(250);
+        op.PlungeFeedrate.Set(50); // the style does not set it: no conflict
+        LibraryFiles.ApplyStyle(doc, op);
+
+        Assert.Equal(["CutFeedrate"], LibraryFiles.StyleConflicts(doc, op));
+        Assert.Equal(250, op.CutFeedrate.Value);
+
+        LibraryFiles.TakeStyleValues(doc, op, ["CutFeedrate"]);
+        Assert.Equal(800, op.CutFeedrate.Value);
+        Assert.Empty(LibraryFiles.StyleConflicts(doc, op));
+        Assert.Equal(50, op.PlungeFeedrate.Value);
+    }
+
+    [Fact]
+    public void The_tool_list_shows_each_number_once_from_the_library_searched_first()
+    {
+        var (doc, part, _) = NewOperation();
+        part.ToolLibrary = "Other";
+        doc.Machining.ToolLibrary = "Mine";
+        CamLibraries.ToolLibraries.First(l => l.Name == "Mine").Tools.Add(new ToolDefinition { Index = 2, Diameter = 3, Name = "small" });
+
+        var tools = CamLibraries.AvailableTools(doc, part);
+
+        Assert.Equal([2, 5], tools.Select(t => t.Tool.Index));
+        Assert.Equal("Other", tools.Single(t => t.Tool.Index == 5).Library); // the part's library is searched first
+        Assert.Equal(20, tools.Single(t => t.Tool.Index == 5).Tool.Diameter);
+        Assert.True(CamLibraries.HasToolLibrary(doc, part));
+        Assert.False(CamLibraries.HasToolLibrary(CadDocument.CreateNew(), null)); // no Default-mm here
+    }
+
     [Fact]
     public void Without_a_number_there_is_nothing_to_say()
     {

@@ -230,9 +230,9 @@ public static class LibraryFiles
         return changed;
     }
 
-    private static List<string> ApplyStyleValues(CadDocument doc, MachineOp op)
+    /// <summary>The style library and the values of the style chain that reach an operation (its own style, else the part's, else the machining options').</summary>
+    private static (CamStyleLibrary? Library, Dictionary<string, XElement> Values) ResolveStyle(CadDocument doc, MachineOp op)
     {
-        var changed = new List<string>();
         var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
         var lib = CamLibraries.FindStyleLibrary(doc, part);
         var styleName = !string.IsNullOrEmpty(op.Style) ? op.Style
@@ -249,19 +249,85 @@ public static class LibraryFiles
             foreach (var style in lib.Chain(styleName))
             foreach (var (name, el) in style.Values)
                 resolved[name] = el;
+        return (lib, resolved);
+    }
 
-        // Tool cascade, also without any style, in the order of CamBam. It wins over the style.
-        // Diameter: a number on the operation -> a diameter typed in the part or machining options -> the library.
-        // Profile: the library -> the part or machining options. A number that is not found gives 0 and Unspecified.
+    /// <summary>A value set in a style (state Value), or null.</summary>
+    private static T? StyleValue<T>(Dictionary<string, XElement> resolved, string name, CamParam<T> template) where T : struct
+    {
+        if (!resolved.TryGetValue(name, out var el)) return null;
+        var temp = (CamParam<T>)template.CloneParam();
+        CbParams.Read(temp, el);
+        return temp.State == ParamState.Value && temp.RawXml == null ? temp.Value : null;
+    }
+
+    /// <summary>The tool diameter the style of an operation sets (0 = none).</summary>
+    public static double StyleToolDiameter(CadDocument doc, MachineOp op) =>
+        Math.Max(StyleValue(ResolveStyle(doc, op).Values, "ToolDiameter", op.ToolDiameter) ?? 0, 0);
+
+    /// <summary>The tool number the style of an operation sets (0 = none).</summary>
+    public static int StyleToolNumber(CadDocument doc, MachineOp op) =>
+        Math.Max(StyleValue(ResolveStyle(doc, op).Values, "ToolNumber", op.ToolNumber) ?? 0, 0);
+
+    /// <summary>
+    /// Values typed in the operation (state Value) that its style sets differently, by parameter name. The tool values
+    /// are left out: they have their own questions.
+    /// </summary>
+    public static List<string> StyleConflicts(CadDocument doc, MachineOp op)
+    {
+        var (_, resolved) = ResolveStyle(doc, op);
+        var conflicts = new List<string>();
+        foreach (var (name, param, _) in op.Parameters())
+        {
+            if (param.State != ParamState.Value || name is "ToolNumber" or "ToolDiameter" or "ToolProfile") continue;
+            if (!resolved.TryGetValue(name, out var el)) continue;
+            var temp = param.CloneParam();
+            CbParams.Read(temp, el);
+            if (temp.State != ParamState.Value || temp.RawXml != null) continue;
+            if (!Equals(temp.BoxedValue, param.BoxedValue)) conflicts.Add(name);
+        }
+        return conflicts;
+    }
+
+    /// <summary>Sets the named parameters of an operation back to Default and applies the style: they take the style's values.</summary>
+    public static void TakeStyleValues(CadDocument doc, MachineOp op, IEnumerable<string> names)
+    {
+        var set = names.ToHashSet();
+        foreach (var (name, param, _) in op.Parameters())
+            if (set.Contains(name)) param.State = ParamState.Default;
+        ApplyStyle(doc, op);
+    }
+
+    private static List<string> ApplyStyleValues(CadDocument doc, MachineOp op)
+    {
+        var changed = new List<string>();
+        var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
+        var (lib, resolved) = ResolveStyle(doc, op);
+
+        // Tool cascade, also without any style. A number typed in the operation, else the number of its style, else the
+        // part's, else the machining options'. Where they disagree BamCam asks when the user chooses (and stores the answer
+        // as the operation's own number); this order only decides for drawings opened as they are.
+        // Diameter: the style's own diameter goes with the style's number; a diameter typed in the part or machining
+        // options goes with theirs; otherwise the library. A number that is not found gives 0 and Unspecified.
         var numberOnOp = op.ToolNumber is { State: ParamState.Value, Value: > 0 };
+        var styleNumber = StyleValue(resolved, "ToolNumber", op.ToolNumber) ?? 0;
+        var styleDiameter = StyleValue(resolved, "ToolDiameter", op.ToolDiameter) ?? 0;
+        var styleProfile = StyleValue(resolved, "ToolProfile", op.ToolProfile) ?? ToolProfile.Unspecified;
+        // The style's tool: also when the operation chose the same number (the answer "tool of the style" is stored so),
+        // its diameter and profile go with it.
+        var numberFromStyle = styleNumber > 0 && (!numberOnOp || op.ToolNumber.Value == styleNumber);
         var number = numberOnOp ? op.ToolNumber.Value
+            : numberFromStyle ? styleNumber
             : part is { ToolNumber: > 0 } ? part.ToolNumber : doc.Machining.ToolNumber;
         var typedDiameter = part is { ToolDiameter: > 0 } ? part.ToolDiameter : doc.Machining.ToolDiameter;
         var typedProfile = part is { ToolProfile: not ToolProfile.Unspecified } ? part.ToolProfile : doc.Machining.ToolProfile;
+        if (numberFromStyle) typedProfile = styleProfile;
         var tool = CamLibraries.FindTool(doc, part, number, op is TurningOp);
-        double? diameter = !numberOnOp && typedDiameter > 0 ? typedDiameter
+        double? diameter = numberFromStyle ? (styleDiameter > 0 ? styleDiameter : tool?.Diameter ?? 0)
+            : !numberOnOp && typedDiameter > 0 ? typedDiameter
             : number > 0 ? tool?.Diameter ?? 0 : null;
-        ToolProfile? profile = tool is { ToolProfile: not ToolProfile.Unspecified } ? tool.ToolProfile
+        ToolProfile? profile = numberFromStyle && styleProfile != ToolProfile.Unspecified ? styleProfile
+            : tool is { ToolProfile: not ToolProfile.Unspecified } ? tool.ToolProfile
             : typedProfile != ToolProfile.Unspecified ? typedProfile
             : number > 0 && tool == null ? ToolProfile.Unspecified : null;
 

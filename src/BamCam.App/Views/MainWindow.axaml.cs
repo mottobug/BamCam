@@ -68,6 +68,7 @@ public partial class MainWindow : Window
             if (e.Target is Core.Cam.PlasmaOp plasma) ShowCutData(plasma);
         };
 
+        SetupToolAndStyleChoices();
         Properties.ValueChanging += (_, _) =>
         {
             // Configuration edits are not part of the drawing's undo history.
@@ -80,20 +81,21 @@ public partial class MainWindow : Window
             else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
             else
             {
-                // A tool number chosen on an operation brings that tool's diameter and profile, also over typed ones.
-                var reset = key == nameof(Core.Cam.MachineOp.ToolNumber) && Properties.SelectedObject is Core.Cam.MachineOp numbered
-                    ? Core.Cam.CamLibraries.FollowToolNumber(_session.Document, numbered) : [];
                 var toolEdit = key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.ToolDiameter) && Properties.SelectedObject is Core.Cam.MachineOp;
                 OnPropertyEdited(quietTool: toolEdit);
-                // The number of an operation: which tool it is, or why its diameter does not follow (one message).
-                if (toolEdit && Properties.SelectedObject is Core.Cam.MachineOp withTool
+                // The number of an operation: which tool it is (a diameter typed against it is asked about instead).
+                if (key == nameof(Core.Cam.MachineOp.ToolNumber) && Properties.SelectedObject is Core.Cam.MachineOp withTool
                     && Core.Cam.CamLibraries.DescribeOperationTool(_session.Document, withTool) is { } toolMessage)
-                    Log(reset.Count == 0 ? toolMessage
-                        : toolMessage + " " + F("{0} typed in the operation set back to Default.", string.Join(", ", reset)));
+                    Log(toolMessage);
             }
             if (key is nameof(Core.Cam.Part.ToolNumber) or nameof(Core.Cam.Part.ToolLibrary) or nameof(Core.Cam.Part.ToolDiameter) or nameof(Core.Cam.Part.ToolProfile)
                 && Properties.SelectedObject is Core.Cam.Part or Core.Cam.MachiningOptions)
                 Log(Core.Cam.CamLibraries.DescribeTool(_session.Document, Properties.SelectedObject as Core.Cam.Part));
+            // Where the chosen tool or style disagrees with values set elsewhere, ask (the answer is stored in the operations).
+            if ((key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.Style)
+                    && Properties.SelectedObject is Core.Cam.MachineOp or Core.Cam.Part or Core.Cam.MachiningOptions)
+                || (key is nameof(Core.Cam.MachineOp.ToolDiameter) or nameof(Core.Cam.MachineOp.ToolProfile) && Properties.SelectedObject is Core.Cam.MachineOp))
+                _ = AskAboutToolAndStyle(key, Properties.SelectedObject);
             if (key == nameof(Core.Cam.MachineOp.PrimitiveIds) && Properties.SelectedObject is Core.Cam.MachineOp op) CheckPrimitiveIds(op);
         };
 
@@ -351,6 +353,28 @@ public partial class MainWindow : Window
                 f.ZEnabled = v.Length > 1;
                 if (f.ZEnabled) f.ZIndex = int.Parse(v[1], CultureInfo.InvariantCulture);
                 ShowToolpathFilter();
+            }
+            // --set Key=value;Key=value: sets values of the inspected object as the properties would (tool and style
+            // questions included) and logs the windows that are open afterwards.
+            // --answers 0,1: the buttons pressed in the questions that follow (logged instead of shown).
+            if (options.TryGetValue("--answers", out var answers))
+            {
+                Dialogs.DiagnosticAnswers = new Queue<int>(answers.Split(',').Select(s => int.Parse(s, CultureInfo.InvariantCulture)));
+                Dialogs.DiagnosticLog = Log;
+            }
+            if (options.TryGetValue("--set", out var assignments))
+            {
+                var inspected = Properties.SelectedObject;
+                foreach (var a in assignments.Split(';', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var (k, v) = (a[..a.IndexOf('=')], a[(a.IndexOf('=') + 1)..]);
+                    Log($"--set {k}={v}: {(Properties.SetForDiagnostics(k, v) ? "set" : "not found")}");
+                    await Task.Delay(500);
+                    Log("--set: open windows: " + string.Join(" | ", OwnedWindows.Select(w => w.Title)));
+                    if (inspected is Core.Cam.MachineOp mop)
+                        Log($"--set: {mop.Name} style '{mop.Style}', tool {mop.ToolNumber.Value} [{mop.ToolNumber.State}], diameter {mop.ToolDiameter.Value} [{mop.ToolDiameter.State}] " +
+                            $"(effective {mop.EffectiveToolDiameter(_session.Document)}), profile {mop.ToolProfile.Value} [{mop.ToolProfile.State}], cut feed {mop.CutFeedrate.Value} [{mop.CutFeedrate.State}]");
+                }
             }
             // --align-menu: opens the align menu of the toolbar and logs whether it is open.
             if (options.ContainsKey("--align-menu") && _alignButton != null)

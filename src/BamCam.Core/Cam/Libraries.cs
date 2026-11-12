@@ -116,6 +116,70 @@ public static class CamLibraries
         ToolLibraries.Select(l => new KeyValuePair<string, string>(l.Name, l.Name))
             .Prepend(new KeyValuePair<string, string>("", Localization.Tr.T("(default)")));
 
+    /// <summary>The tool library used when none is chosen: Default-mm or Default-in.</summary>
+    public static string DefaultToolLibraryName(Model.CadDocument doc) => doc.Units == Model.DrawingUnits.Inches ? "Default-in" : "Default-mm";
+
+    /// <summary>The style library used when none is chosen (and no material library fits): Standard-mm or Standard-in.</summary>
+    public static string DefaultStyleLibraryName(Model.CadDocument doc) => doc.Units == Model.DrawingUnits.Inches ? "Standard-in" : "Standard-mm";
+
+    /// <summary>
+    /// The tool libraries for a drop-down list, the empty entry naming the library it stands for
+    /// ("(default: Default-mm)", or "not found" when there is none).
+    /// </summary>
+    public static List<KeyValuePair<string, string>> ToolLibraryChoices(Model.CadDocument doc)
+    {
+        var fallback = DefaultToolLibraryName(doc);
+        var exists = ToolLibraries.Any(l => l.Name.Equals(fallback, StringComparison.OrdinalIgnoreCase));
+        var label = exists ? Localization.Tr.F("(default: {0})", fallback) : Localization.Tr.F("(default: {0}, not found)", fallback);
+        return [new("", label), .. ToolLibraries.Select(l => new KeyValuePair<string, string>(l.Name, l.Name))];
+    }
+
+    /// <summary>The style libraries for a drop-down list; the empty entry is the one found by <see cref="FindStyleLibrary"/>.</summary>
+    public static List<KeyValuePair<string, string>> StyleLibraryChoices(Model.CadDocument doc)
+    {
+        var fallback = DefaultStyleLibraryName(doc);
+        var exists = StyleLibraries.Any(l => l.Name.Equals(fallback, StringComparison.OrdinalIgnoreCase));
+        var label = exists ? Localization.Tr.F("(default: {0})", fallback) : Localization.Tr.F("(default: {0}, not found)", fallback);
+        return [new("", label), .. StyleLibraries.Select(l => new KeyValuePair<string, string>(l.Name, l.Name))];
+    }
+
+    /// <summary>The styles of a library for a drop-down list; the empty entry means no style of its own.</summary>
+    public static List<KeyValuePair<string, string>> StyleChoices(CamStyleLibrary? library, string noneLabel) =>
+        [new("", noneLabel), .. (library?.Styles ?? []).Where(s => s.Name.Length > 0).Select(s => new KeyValuePair<string, string>(s.Name, s.Name))];
+
+    /// <summary>
+    /// The tools a tool number can choose for an operation of the part, in the order <see cref="FindTool"/> searches the
+    /// libraries: for each number the tool that would be found, with the name of its library.
+    /// </summary>
+    public static List<(ToolDefinition Tool, string Library)> AvailableTools(Model.CadDocument doc, Part? part, bool lathe = false)
+    {
+        var result = new List<(ToolDefinition, string)>();
+        var seen = new HashSet<int>();
+        foreach (var name in new[] { part?.ToolLibrary, doc.Machining.ToolLibrary, lathe ? LatheLibraryName(doc.Units) : null, DefaultToolLibraryName(doc) })
+        {
+            if (string.IsNullOrEmpty(name)) continue;
+            var lib = ToolLibraries.FirstOrDefault(l => l.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (lib == null) continue;
+            foreach (var tool in lib.Tools.Where(t => t.Index > 0))
+                if (seen.Add(tool.Index)) result.Add((tool, lib.Name));
+        }
+        return result.OrderBy(t => t.Item1.Index).ToList();
+    }
+
+    /// <summary>"8: 8 mm EndMill" — the number, name or diameter and profile of a tool, for lists and questions.</summary>
+    public static string ToolLabel(ToolDefinition tool)
+    {
+        var name = tool.Name.Trim();
+        var detail = Localization.Tr.F("Ø {0} {1}", tool.Diameter.ToString("0.####", System.Globalization.CultureInfo.CurrentCulture),
+            Localization.Tr.T(tool.ToolProfile.ToString()));
+        return name.Length > 0 ? $"{tool.Index}: {name} ({detail})" : $"{tool.Index}: {detail}";
+    }
+
+    /// <summary>Whether any tool library could give tools for the drawing (a chosen one or the default one).</summary>
+    public static bool HasToolLibrary(Model.CadDocument doc, Part? part) =>
+        new[] { part?.ToolLibrary, doc.Machining.ToolLibrary, DefaultToolLibraryName(doc) }
+            .Any(n => !string.IsNullOrEmpty(n) && ToolLibraries.Any(l => l.Name.Equals(n, StringComparison.OrdinalIgnoreCase)));
+
     /// <summary>Plasma cut data by name: tables in the drawing's units first, then all others.</summary>
     public static PlasmaCutData? FindCutData(Model.CadDocument doc, string? name)
     {

@@ -98,6 +98,43 @@ public static class Dialogs
         await win.ShowDialog(owner);
     }
 
+    /// <summary>
+    /// A question with its own answers as buttons (the first is the default). Returns the index of the button, or null
+    /// when the window is closed.
+    /// </summary>
+    /// <summary>Diagnostic (--answers): the buttons to press in the next questions, in order; each question is logged.</summary>
+    public static Queue<int>? DiagnosticAnswers { get; set; }
+
+    public static Action<string>? DiagnosticLog { get; set; }
+
+    public static async Task<int?> Choose(Window owner, string title, string message, params string[] answers)
+    {
+        if (DiagnosticAnswers is { Count: > 0 } queue)
+        {
+            var pressed = queue.Dequeue();
+            DiagnosticLog?.Invoke($"question '{title}': {message.Replace('\n', ' ')} [{string.Join(" | ", answers)}] -> {answers.ElementAtOrDefault(pressed)}");
+            return pressed;
+        }
+        var panel = new StackPanel { Spacing = 6 };
+        panel.Children.Add(new SelectableTextBlock { Text = message, TextWrapping = TextWrapping.Wrap });
+        int? result = null;
+        Window? win = null;
+        var buttons = answers.Select((a, i) =>
+        {
+            var b = new Button { Content = a, IsDefault = i == 0 };
+            b.Click += (_, _) => { result = i; win?.Close(); };
+            return b;
+        }).ToArray();
+        var row = Buttons(buttons);
+        row.HorizontalAlignment = HorizontalAlignment.Stretch;
+        row.Orientation = Orientation.Vertical;
+        foreach (var b in buttons) b.HorizontalAlignment = HorizontalAlignment.Stretch;
+        panel.Children.Add(row);
+        win = Frame(title, panel, 460);
+        await win.ShowDialog(owner);
+        return result;
+    }
+
     /// <summary>Yes / No / Cancel question. Returns true, false or null (cancel).</summary>
     public static async Task<bool?> Ask(Window owner, string title, string message, bool withCancel = true)
     {
