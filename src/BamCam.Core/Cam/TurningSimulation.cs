@@ -72,6 +72,7 @@ public static class TurningSimulation
             if (side == 0) continue;
             Point2 Lathe(Point3 p) => new(p.X - origin.X, (p.Y - origin.Y) * side);
             var r = op.EffectiveToolDiameter(doc) / 2;
+            var tool = ToolOf(doc, op);
             Point3? pos = tp.StartPosition;
             var index = 0;
             foreach (var m in tp.Moves)
@@ -92,7 +93,7 @@ public static class TurningSimulation
                     if (pos is { } drive) removed.AddRange(ThreadGrooves(Lathe(drive), Lathe(m.To), m.Thread));
                 }
                 else if (points.Count > 0 && m.Kind != MoveKind.Rapid)
-                    removed.AddRange(Swept(op, r, points, frame.Radius + 1));
+                    removed.AddRange(Swept(op, r, points, frame.Radius + 1, tool));
                 result.Add(new TurnMove(op, m, index, m.To, side,
                     removed.Where(p => p.Count >= 3).Select(p => Polygons.EnsureOrientation(p, ccw: true)).ToList()));
                 pos = m.To;
@@ -105,16 +106,40 @@ public static class TurningSimulation
     public static List<Path2> Cut(List<Path2> remaining, TurnMove move) =>
         move.Removed.Count == 0 || remaining.Count == 0 ? remaining : Polygons.Difference(remaining, move.Removed);
 
+    /// <summary>The library tool of a turning operation (insert shape, grooving corner radius), or null.</summary>
+    private static ToolDefinition? ToolOf(CadDocument doc, MachineOp op) =>
+        CamLibraries.FindTool(doc, doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op.EffectiveToolNumber(doc), lathe: true);
+
+    private static bool LeftHand(MachineOp op) => op is LatheOp { LatheCutDirection.Value: LatheCutDirection.LeftHand };
+
+    private static bool Internal(MachineOp op) => op is LatheOp { TurningSide.Value: TurningSide.Internal };
+
     /// <summary>What the tool sweeps along the points of one move (lathe coordinates).</summary>
-    private static IEnumerable<Path2> Swept(MachineOp op, double r, List<Point2> points, double top)
+    private static IEnumerable<Path2> Swept(MachineOp op, double r, List<Point2> points, double top, ToolDefinition? tool)
     {
         switch (op)
         {
+            case LatheGrooveOp when tool is { CornerRadius: > 0 }:
+            {
+                // Blade with rounded corners, its tip (left corner) at the points.
+                var low = points.Min(p => p.Y);
+                var blade = LatheInsert.GroovingBlade(2 * r, tool.CornerRadius, Math.Max(top - low, 2 * r));
+                foreach (var p in Polygons.MinkowskiSum(blade, Path2.FromPoints(points, false), closed: false, 0.005)) yield return p;
+                break;
+            }
             case LatheGrooveOp:
                 // Blade: from the tip (left corner) one tool width towards +Z, upwards from the tip.
                 foreach (var (a, b) in points.Zip(points.Skip(1)))
                     yield return Box(Math.Min(a.X, b.X), Math.Max(a.X, b.X) + 2 * r, Math.Min(a.Y, b.Y), top);
                 break;
+            case not LatheDrillOp when LatheInsert.Outline(tool, r, LeftHand(op), Internal(op)) is { } insert:
+            {
+                // The whole insert around the nose centre, along the path of the nose centre.
+                var toCenter = NoseOffset(op, r);
+                var centres = Path2.FromPoints(points.Select(p => p + toCenter), false);
+                foreach (var p in Polygons.MinkowskiSum(insert, centres, closed: false, 0.005)) yield return p;
+                break;
+            }
             case LatheDrillOp:
                 if (points.Max(p => p.X) - points.Min(p => p.X) > 1e-9)
                     yield return Box(points.Min(p => p.X), points.Max(p => p.X), 0, r);
@@ -239,10 +264,23 @@ public static class TurningSimulation
             for (var i = 0; i + 1 < pts.Length; i++) lines.Add((World(pts[i]), World(pts[i + 1])));
         }
         var length = Math.Max(6 * r, frame.Radius * 0.6);
+        var tool = ToolOf(doc, op);
+        void Outline(Path2 shape, Point2 at)
+        {
+            var pts = shape.Flatten(0.01);
+            Poly([.. pts.Select(p => at + p), at + pts[0]]);
+        }
         switch (op)
         {
+            case LatheGrooveOp when tool is { CornerRadius: > 0 }:
+                Outline(LatheInsert.GroovingBlade(2 * r, tool.CornerRadius, length), t);
+                break;
             case LatheGrooveOp:
                 Poly(t, t + new Point2(2 * r, 0), t + new Point2(2 * r, length), t + new Point2(0, length), t);
+                break;
+            case not (LatheDrillOp or LatheThreadOp) when LatheInsert.Outline(tool, op.EffectiveToolDiameter(doc) / 2, LeftHand(op), Internal(op)) is { } insert:
+                // The real insert in its holder angle, around the nose centre.
+                Outline(insert, t + NoseOffset(op, op.EffectiveToolDiameter(doc) / 2));
                 break;
             case LatheDrillOp:
                 Poly(t + new Point2(0, -r), t + new Point2(length, -r));

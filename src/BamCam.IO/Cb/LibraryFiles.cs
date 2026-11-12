@@ -111,6 +111,12 @@ public static class LibraryFiles
                         if (CbFormat.TryParseEnum(typeof(LatheToolType), v, out var lt)) tool.LatheToolType = (LatheToolType)lt;
                         break;
                     case "TipOrientation": tool.TipOrientation = CbFormat.ParseInt(v); break;
+                    case "InsertShape":
+                        if (CbFormat.TryParseEnum(typeof(InsertShape), v, out var shape)) tool.InsertShape = (InsertShape)shape;
+                        break;
+                    case "ApproachAngle": tool.ApproachAngle = CbFormat.ParseDouble(v); break;
+                    case "CuttingEdgeLength": tool.CuttingEdgeLength = CbFormat.ParseDouble(v); break;
+                    case "CornerRadius": tool.CornerRadius = CbFormat.ParseDouble(v); break;
                     default: tool.Extensions.Add(new XElement(c)); break;
                 }
             }
@@ -148,6 +154,13 @@ public static class LibraryFiles
             if (t.Comment.Length > 0) el.Add(new XElement("Comment", t.Comment));
             if (t.LatheToolType != LatheToolType.None) el.Add(new XElement("LatheToolType", t.LatheToolType));
             if (t.TipOrientation != 0) el.Add(new XElement("TipOrientation", t.TipOrientation));
+            if (t.InsertShape != InsertShape.None)
+            {
+                el.Add(new XElement("InsertShape", t.InsertShape));
+                el.Add(new XElement("ApproachAngle", D(t.ApproachAngle)));
+                if (t.CuttingEdgeLength > 0) el.Add(new XElement("CuttingEdgeLength", D(t.CuttingEdgeLength)));
+            }
+            if (t.CornerRadius > 0) el.Add(new XElement("CornerRadius", D(t.CornerRadius)));
             foreach (var x in t.Extensions) el.Add(new XElement(x));
             root.Add(el);
         }

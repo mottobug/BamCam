@@ -200,6 +200,11 @@ internal sealed class GenContext
     public Stock Stock { get; }
     public double ToolDiameter { get; }
     public double ToolRadius => ToolDiameter / 2;
+
+    /// <summary>The library tool of the operation's tool number (lathe tools for turning operations), or null.</summary>
+    public ToolDefinition? LibraryTool => _libraryTool ??= CamLibraries.FindTool(Doc, Part, Op.EffectiveToolNumber(Doc), Op is TurningOp);
+    private ToolDefinition? _libraryTool;
+
     public double StockSurface { get; }
     public double TargetDepth { get; }
     public double Clearance { get; }

@@ -63,6 +63,30 @@ internal static class LatheGenerator
                 tp.Warnings.Add(Tr.F("{0}: the profile could not be offset for the tool.", op.Name));
                 continue;
             }
+            // With an insert shape the whole insert has to stay out of the part, not only its nose: where the nose path
+            // would take the insert into the part, the insert rides along the edge of the area it must keep out of,
+            // and material is left there.
+            Path2? blocked = null;
+            if (LatheInsert.Outline(ctx.LibraryTool, r, leftHand: dir > 0) is { } insert)
+            {
+                var grown = clearance > 1e-9
+                    ? Polygons.Offset([insert], clearance).OrderByDescending(p => Math.Abs(p.SignedArea())).First()
+                    : insert;
+                blocked = InsertOutline(profile, grown);
+                var gouges = Collisions(contour, blocked);
+                if (blocked != null && gouges.Count > 0)
+                {
+                    if (CenterContour(profile, blocked, d, analytic: false) is { } riding) contour = riding;
+                    var tool = ctx.LibraryTool!;
+                    foreach (var (z0, z1) in gouges)
+                        tp.Warnings.Add(Tr.F("{0}: the insert ({1}, approach angle {2}°, down at most {3}°) cannot follow the profile between Z {4} and Z {5}; material is left there.",
+                            op.Name, tool.InsertShape, tool.ApproachAngle.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture),
+                            LatheInsert.MaxPlungeAngle(tool).ToString("0.#", System.Globalization.CultureInfo.CurrentCulture),
+                            z0.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture), z1.ToString("0.###", System.Globalization.CultureInfo.CurrentCulture)));
+                    if (op.NoseCompensation.Value == NoseCompensation.Machine)
+                        tp.Warnings.Add(Tr.F("{0}: with the machine's nose radius compensation the control follows the profile and the insert would cut into it there. Use Nose Compensation Computed.", op.Name));
+                }
+            }
             if (dir > 0) contour = contour.Reversed();
 
             var moves = new LatheMoves(tp, ToDrawing, clearanceX, ctx.PlungeFeed, ctx.CutFeed, r, dir, bore ? -side : side);
@@ -71,7 +95,7 @@ internal static class LatheGenerator
                 var pts = profile.Flatten(ToolpathGenerator.ChordTolerance);
                 var zMin = pts.Min(p => p.X);
                 var zMax = (stock.IsEmpty ? pts.Max(p => p.X) + d : stock.PMax.X) + r;
-                var ring = ExactOutline(profile, outline, d);
+                var ring = blocked ?? ExactOutline(profile, outline, d);
                 for (var tip = stockSurface - increment; tip + r > 1e-9; tip -= increment)
                 {
                     foreach (var (from, to) in FreeIntervals(ring, tip + r, zMin, zMax, dir))
@@ -120,6 +144,41 @@ internal static class LatheGenerator
         return grown.OrderByDescending(p => Math.Abs(p.SignedArea())).FirstOrDefault();
     }
 
+    /// <summary>
+    /// Where the nose centre must not go so that the whole insert (<paramref name="insert"/>, around the nose centre)
+    /// stays out of the material: the material region (profile closed to the axis) grown by the mirrored insert.
+    /// </summary>
+    internal static Path2? InsertOutline(Path2 profile, Path2 insert)
+    {
+        var start = profile.Vertices[0].Point;
+        var end = profile.Vertices[^1].Point;
+        var region = new Path2(new List<Vertex>(profile.Vertices.Take(profile.Count - 1))
+            { new(end), new(end with { Y = 0 }), new(start with { Y = 0 }) }, true);
+        var mirrored = insert.Transformed(Matrix4.Scale(-1, -1, 1));
+        return Polygons.MinkowskiSum(mirrored, region, closed: true, ToolpathGenerator.ChordTolerance)
+            .OrderByDescending(p => Math.Abs(p.SignedArea())).FirstOrDefault();
+    }
+
+    /// <summary>Z ranges where the nose centre path lies inside the blocked area (the insert would cut into the part).</summary>
+    internal static List<(double Z0, double Z1)> Collisions(Path2 contour, Path2? blocked)
+    {
+        var result = new List<(double, double)>();
+        if (blocked == null) return result;
+        (double Lo, double Hi)? run = null;
+        foreach (var p in contour.Flatten(0.005))
+        {
+            var inside = blocked.Contains(p) && blocked.DistanceTo(p) > 0.002;
+            if (inside) run = run is { } r ? (Math.Min(r.Lo, p.X), Math.Max(r.Hi, p.X)) : (p.X, p.X);
+            else if (run is { } done)
+            {
+                result.Add(done);
+                run = null;
+            }
+        }
+        if (run is { } last) result.Add(last);
+        return result.Select(r => (Math.Round(r.Item1, 3), Math.Round(r.Item2, 3))).ToList();
+    }
+
     /// <summary>The grown outline with exact arcs and lines (for exact pass end points).</summary>
     internal static Path2 ExactOutline(Path2 profile, Path2 outline, double d)
     {
@@ -137,14 +196,14 @@ internal static class LatheGenerator
     /// outline between the profile end points, each moved by <paramref name="d"/> perpendicular to the profile.
     /// Arcs and lines are snapped to the exact offset geometry.
     /// </summary>
-    internal static Path2? CenterContour(Path2 profile, Path2 outline, double d)
+    internal static Path2? CenterContour(Path2 profile, Path2 outline, double d, bool analytic = true)
     {
         var pts = profile.Flatten(ToolpathGenerator.ChordTolerance);
         if (pts.Count < 2) return null;
         // The profile may be drawn in either direction; the outer side is away from the axis.
         var increasing = pts[^1].X >= pts[0].X;
         // Exact offset where possible (tiny corner arcs exactly like CamBam), the polygon offset otherwise.
-        if (AnalyticOffset(profile, d) is { } exact) return increasing ? exact.Reversed() : exact;
+        if (analytic && AnalyticOffset(profile, d) is { } exact) return increasing ? exact.Reversed() : exact;
         Point2 Normal(Point2 a, Point2 b)
         {
             var t = (b - a).Normalized();

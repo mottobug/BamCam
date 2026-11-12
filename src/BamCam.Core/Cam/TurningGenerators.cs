@@ -135,6 +135,11 @@ internal static class TurningGenerators
         var positions = new List<double>();
         for (var z = z0; z < z1 - width - 1e-9; z += stepOver) positions.Add(z);
         positions.Add(z1 - width);
+        // A blade with rounded corners is flat only between them: plunges further apart leave ridges on the bottom.
+        var cornerRadius = ctx.LibraryTool?.CornerRadius ?? 0;
+        if (cornerRadius > 0 && positions.Count > 1 && !op.FinishPass.Value && stepOver > width - 2 * cornerRadius + 1e-9)
+            tp.Warnings.Add(Tr.F("{0}: the corner radius {1} of the blade leaves ridges on the bottom between the plunges; use a smaller Step Over (at most {2}) or a finish pass.",
+                op.Name, cornerRadius, (width - 2 * cornerRadius) / width));
 
         var w = new TurningWriter(tp, frame);
         var peck = op.DepthIncrement.Value;

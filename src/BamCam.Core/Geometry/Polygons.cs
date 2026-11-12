@@ -215,6 +215,38 @@ public static class Polygons
     /// <summary>Area below which a loop from <see cref="UnionLarge"/> counts as a sliver of a tile border.</summary>
     private const double SliverArea = 1e-6;
 
+    /// <summary>
+    /// The area <paramref name="pattern"/> (a closed shape) sweeps when its origin moves along <paramref name="path"/>;
+    /// for a closed path the area inside it is included. Used for the area a turning insert sweeps or must stay out of.
+    /// </summary>
+    public static List<Path2> MinkowskiSum(Path2 pattern, Path2 path, bool closed, double tolerance = Tolerance.Chord)
+    {
+        // In integer coordinates of a millionth (as the other operations here): the double variant rounds to 0.01.
+        const double scale = 1e6;
+        Path64 ToInt(Path2 path2)
+        {
+            var result = new Path64();
+            foreach (var q in path2.Flatten(tolerance)) result.Add(new Point64(Math.Round(q.X * scale), Math.Round(q.Y * scale)));
+            return result;
+        }
+        var p = ToInt(pattern);
+        var line = ToInt(path);
+        if (line.Count == 0 || p.Count < 3) return [];
+        if (line.Count == 1) line.Add(line[0]);
+        var swept = Clipper.MinkowskiSum(p, line, closed);
+        // Clipper sums only the bands the pattern's edges sweep; the pattern itself at each point of the path closes
+        // the gaps where the pattern is longer than the move.
+        foreach (var at in line)
+        {
+            var placed = new Path64(p.Count);
+            foreach (var q in p) placed.Add(new Point64(q.X + at.X, q.Y + at.Y));
+            swept.Add(Clipper.IsPositive(placed) ? placed : Clipper.ReversePath(placed));
+        }
+        if (closed) swept.Add(line);
+        return Clipper.Union(swept, FillRule.NonZero)
+            .Select(r => Path2.FromPoints(r.Select(q => new Point2(q.X / scale, q.Y / scale)), closed: true)).ToList();
+    }
+
     public static List<Path2> Difference(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Difference, a, b);
     public static List<Path2> Intersection(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Intersection, a, b);
     public static List<Path2> Xor(IEnumerable<Path2> a, IEnumerable<Path2> b) => Boolean(ClipType.Xor, a, b);

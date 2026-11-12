@@ -207,7 +207,14 @@ Special operations:
 
 - **Lathe:** draw only the profile on one side of the spindle axis (through the machining origin). Turning
   (external or internal, nose radius compensation computed or by the machine), facing, grooving / parting,
-  threading and drilling; the remaining stock is shown in the drawing and, move by move, in the 3D simulation. Use a lathe post processor such as
+  threading and drilling; the remaining stock is shown in the drawing and, move by move, in the 3D simulation.
+  Turning tools in the tool library can have an *Insert Shape* (C80, D55, V35, T60, W80, S90, K55, Round) and the
+  *Approach Angle* κr of their holder: the toolpath then keeps the whole insert out of the part, not only its nose. A
+  contour falling steeper than the insert allows (about 180° − κr − corner angle, e.g. 52° for a VBMT in a 93° holder)
+  is followed at the steepest angle the insert can take; the material left there is reported with its Z range and
+  shown in the simulation. Grooving blades can have a *Corner Radius* (0 = square corners); BamCam warns when the
+  plunges are further apart than the flat of the blade and would leave ridges. Without an insert shape the tool is
+  its nose radius, as before. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
 - **Thread milling** (Machining ▸ Thread Milling): select circles (or points with a *Thread Diameter*). Internal or

@@ -46,6 +46,12 @@ public sealed class CamStyleLibrary
 /// <summary>Kind of lathe tool (BamCam addition to the tool library).</summary>
 public enum LatheToolType { None, Turning, Grooving, Threading, Drilling }
 
+/// <summary>
+/// Shape of a turning insert by its ISO letter and corner angle (BamCam addition to the tool library). None and Round:
+/// only the nose radius is taken into account.
+/// </summary>
+public enum InsertShape { None, C80, D55, V35, T60, W80, S90, K55, Round }
+
 public sealed class ToolDefinition
 {
     [Category("Tool")] public int Index { get; set; }
@@ -71,6 +77,22 @@ public sealed class ToolDefinition
     [Category("Lathe"), DisplayName("Tip Orientation"),
      Description("Imaginary tool tip number (1-9) to enter in the control's tool table when the machine compensates the nose radius (G41/G42); 3 = external turning towards the chuck. Kept for reference, not used in the tool path.")]
     public int TipOrientation { get; set; }
+
+    [Category("Lathe"), DisplayName("Insert Shape"),
+     Description("Shape of the turning insert (ISO letter and corner angle): C80, D55, V35, T60, W80 (trigon), S90, K55 or Round. With a shape the toolpath keeps the whole insert out of the part, not only its nose; None: only the nose radius.")]
+    public InsertShape InsertShape { get; set; }
+
+    [Category("Lathe"), DisplayName("Approach Angle"),
+     Description("Approach angle κr of the holder in degrees: between the feed direction and the main cutting edge, e.g. 93 (SVJBR, SDJCR), 95 (PCLNR, PWLNR), 107.5 (SVHBR), 45 (SSSCR). With the corner angle it decides how steeply the insert can go down a falling contour: about 180 − κr − corner angle.")]
+    public double ApproachAngle { get; set; } = 93;
+
+    [Category("Lathe"), DisplayName("Cutting Edge Length"),
+     Description("Length of the cutting edges of the insert; 0 = ten times the nose diameter.")]
+    public double CuttingEdgeLength { get; set; }
+
+    [Category("Lathe"), DisplayName("Corner Radius"),
+     Description("Grooving and parting inserts: radius of the two corners of the blade (0 = square corners). Diameter is the blade width.")]
+    public double CornerRadius { get; set; }
 
     [Browsable(false)]
     public List<XElement> Extensions { get; } = [];
@@ -284,25 +306,27 @@ public static class CamLibraries
     public static ToolLibrary LatheTemplates(bool inches)
     {
         var lib = new ToolLibrary { Name = LatheLibraryName(inches ? Model.DrawingUnits.Inches : Model.DrawingUnits.Millimeters), NumberFormat = "0.0##" };
-        void Add(int index, string name, double diameter, LatheToolType type, int tip, ToolProfile profile = ToolProfile.Lathe) =>
+        void Add(int index, string name, double diameter, LatheToolType type, int tip, ToolProfile profile = ToolProfile.Lathe,
+            InsertShape insert = InsertShape.None, double approach = 93, double corner = 0) =>
             lib.Tools.Add(new ToolDefinition
             {
                 Index = index, Name = name, Diameter = diameter, ToolProfile = profile, LatheToolType = type, TipOrientation = tip,
+                InsertShape = insert, ApproachAngle = approach, CornerRadius = corner,
             });
         if (inches)
         {
-            Add(1, "Turning R1/32 (roughing)", 0.0625, LatheToolType.Turning, 3);
-            Add(2, "Turning R1/64 (finishing)", 0.03125, LatheToolType.Turning, 3);
-            Add(3, "Grooving 1/8", 0.125, LatheToolType.Grooving, 3);
+            Add(1, "Turning CNMG R1/32, 95° (roughing)", 0.0625, LatheToolType.Turning, 3, insert: InsertShape.C80, approach: 95);
+            Add(2, "Turning VBMT R1/64, 93° (finishing)", 0.03125, LatheToolType.Turning, 3, insert: InsertShape.V35, approach: 93);
+            Add(3, "Grooving 1/8, R0.008", 0.125, LatheToolType.Grooving, 3, corner: 0.008);
             Add(4, "Parting 1/16", 0.0625, LatheToolType.Grooving, 3);
             Add(5, "Threading 60°", 0.008, LatheToolType.Threading, 8);
             Add(6, "Drill 1/4", 0.25, LatheToolType.Drilling, 0, ToolProfile.Drill);
         }
         else
         {
-            Add(1, "Turning R0.8 (roughing)", 1.6, LatheToolType.Turning, 3);
-            Add(2, "Turning R0.4 (finishing)", 0.8, LatheToolType.Turning, 3);
-            Add(3, "Grooving 3 mm", 3, LatheToolType.Grooving, 3);
+            Add(1, "Turning CNMG R0.8, 95° (roughing)", 1.6, LatheToolType.Turning, 3, insert: InsertShape.C80, approach: 95);
+            Add(2, "Turning VBMT R0.4, 93° (finishing)", 0.8, LatheToolType.Turning, 3, insert: InsertShape.V35, approach: 93);
+            Add(3, "Grooving 3 mm, R0.2", 3, LatheToolType.Grooving, 3, corner: 0.2);
             Add(4, "Parting 2 mm", 2, LatheToolType.Grooving, 3);
             Add(5, "Threading 60°", 0.2, LatheToolType.Threading, 8);
             Add(6, "Drill 5 mm", 5, LatheToolType.Drilling, 0, ToolProfile.Drill);
