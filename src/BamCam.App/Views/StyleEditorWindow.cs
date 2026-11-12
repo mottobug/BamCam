@@ -19,7 +19,8 @@ public sealed class StyleEditorWindow : Window
     /// <summary>Kinds of operations whose parameters a style can set.</summary>
     private static readonly Func<MachineOp>[] Kinds =
     [
-        () => new ProfileOp(), () => new PocketOp(), () => new DrillOp(), () => new EngraveOp(), () => new Profile3DOp(),
+        () => new ProfileOp(), () => new PocketOp(), () => new DrillOp(), () => new ThreadMillOp(), () => new TapOp(),
+        () => new EngraveOp(), () => new Profile3DOp(),
         () => new VEngraveOp(), () => new DragKnifeOp(), () => new PlasmaOp(),
         () => new LatheOp(), () => new LatheFacingOp(), () => new LatheGrooveOp(), () => new LatheThreadOp(), () => new LatheDrillOp(),
     ];

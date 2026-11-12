@@ -825,6 +825,31 @@ internal static class DrillGenerator
 {
     public static void Generate(GenContext ctx, DrillOp op, Toolpath tp)
     {
+        var ordered = Holes(ctx, op);
+        var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
+        var method = op.DrillingMethod.Value;
+        foreach (var (p, holeDia) in ordered)
+        {
+            if (method is DrillingMethod.SpiralMill_CW or DrillingMethod.SpiralMill_CCW)
+                SpiralMill(ctx, op, mb, p, op.HoleDiameter.Value > 0 ? op.HoleDiameter.Value : holeDia, method == DrillingMethod.SpiralMill_CW);
+            else
+            {
+                mb.Rapid(p.ToPoint3(ctx.Clearance));
+                var retract = op.RetractHeight.State == ParamState.Auto ? ctx.StockSurface + ctx.FastPlunge : op.RetractHeight.Value;
+                tp.Add(Move.Drill(p.ToPoint3(ctx.TargetDepth), ctx.PlungeFeed,
+                    new DrillCycle(retract, op.PeckDistance.Value, op.Dwell.Value)));
+            }
+        }
+        mb.Retract();
+        ctx.Finish(tp);
+    }
+
+    /// <summary>
+    /// The holes of an operation (points of point lists, centres and diameters of circles, centres of other shapes),
+    /// moved by its transform and ordered nearest-neighbour from its start point. Also for thread milling and tapping.
+    /// </summary>
+    internal static List<(Point2 P, double Diameter)> Holes(GenContext ctx, MachineOp op)
+    {
         var holes = new List<(Point2 P, double Diameter)>();
         foreach (var id in op.PrimitiveIds)
         {
@@ -859,23 +884,7 @@ internal static class DrillGenerator
             ordered.Add(next);
             pos = next.P;
         }
-
-        var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
-        var method = op.DrillingMethod.Value;
-        foreach (var (p, holeDia) in ordered)
-        {
-            if (method is DrillingMethod.SpiralMill_CW or DrillingMethod.SpiralMill_CCW)
-                SpiralMill(ctx, op, mb, p, op.HoleDiameter.Value > 0 ? op.HoleDiameter.Value : holeDia, method == DrillingMethod.SpiralMill_CW);
-            else
-            {
-                mb.Rapid(p.ToPoint3(ctx.Clearance));
-                var retract = op.RetractHeight.State == ParamState.Auto ? ctx.StockSurface + ctx.FastPlunge : op.RetractHeight.Value;
-                tp.Add(Move.Drill(p.ToPoint3(ctx.TargetDepth), ctx.PlungeFeed,
-                    new DrillCycle(retract, op.PeckDistance.Value, op.Dwell.Value)));
-            }
-        }
-        mb.Retract();
-        ctx.Finish(tp);
+        return ordered;
     }
 
     private static void SpiralMill(GenContext ctx, DrillOp op, MoveBuilder mb, Point2 c, double holeDia, bool clockwise)

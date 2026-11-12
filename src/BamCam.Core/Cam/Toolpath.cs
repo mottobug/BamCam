@@ -24,8 +24,8 @@ public enum CutterSide { Off, Left, Right }
 public readonly record struct ThreadCycle(double Pitch, double PeakOffset, double FirstCut, double Depth, double Degression,
     double InfeedAngle, int SpringPasses);
 
-/// <summary>Canned drilling cycle parameters (G81/G82/G83).</summary>
-public readonly record struct DrillCycle(double RetractZ, double Peck, double Dwell);
+/// <summary>Canned drilling cycle parameters (G81/G82/G83; G84 tapping when <paramref name="TapPitch"/> is set).</summary>
+public readonly record struct DrillCycle(double RetractZ, double Peck, double Dwell, double TapPitch = 0);
 
 /// <summary>
 /// One machine move. For arcs, <see cref="Center"/> is the arc centre (absolute XY) and the

@@ -32,6 +32,8 @@ public static class ToolpathGenerator
                 case PlasmaOp plasma: PlasmaGenerator.Generate(ctx, plasma, tp); break;
                 case VEngraveOp vEngrave: VEngraveGenerator.Generate(ctx, vEngrave, tp); break;
                 case DrillOp d: DrillGenerator.Generate(ctx, d, tp); break;
+                case ThreadMillOp thread: ThreadMillGenerator.Generate(ctx, thread, tp); break;
+                case TapOp tap: TapGenerator.Generate(ctx, tap, tp); break;
                 case Profile3DOp p3: Profile3DGenerator.Generate(ctx, p3, tp); break;
                 case LatheOp lathe: LatheGenerator.Generate(ctx, lathe, tp); break;
                 case LatheFacingOp facing: TurningGenerators.Facing(ctx, facing, tp); break;

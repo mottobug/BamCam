@@ -34,6 +34,9 @@ public sealed partial class GCodePoster
     private readonly List<Job> _jobs;
     private readonly Dictionary<string, string> _userMacros = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _warnings = [];
+
+    /// <summary>Operations whose tapped holes were left out (warned once each).</summary>
+    private readonly HashSet<string> _tapWarned = [];
     private readonly DateTime _now;
 
     // Modal output state: last emitted formatted value per register (null = unknown).
@@ -300,12 +303,12 @@ public sealed partial class GCodePoster
         // G-code word macros, modal with leading underscore.
         var modal = key.StartsWith('_');
         var word = modal ? key[1..] : key;
-        if (word is "g0" or "g1" or "g2" or "g3" or "g81" or "g82" or "g83")
+        if (word is "g0" or "g1" or "g2" or "g3" or "g81" or "g82" or "g83" or "g84")
         {
             var text = word switch
             {
                 "g0" => _post.G0, "g1" => _post.G1, "g2" => _post.G2, "g3" => _post.G3,
-                "g81" => _post.G81, "g82" => _post.G82, _ => _post.G83,
+                "g81" => _post.G81, "g82" => _post.G82, "g84" => _post.G84, _ => _post.G83,
             };
             if (modal && text == _lastG) return "";
             _lastG = text;
@@ -552,6 +555,12 @@ public sealed partial class GCodePoster
                     continue;
                 case MoveKind.DrillCycle:
                 {
+                    if (m.Cycle.TapPitch > 0 && string.IsNullOrWhiteSpace(_post.Tap))
+                    {
+                        // A machine that cannot tap: the holes are left out, not drilled with the tap.
+                        if (_tapWarned.Add(job.Op.Name)) _warnings.Add(Tr.F("Post processor '{0}' has no tapping cycle (Tap): the tapped holes are left out.", _post.Name));
+                        continue;
+                    }
                     if (!inCanned)
                     {
                         Line(Expand(_post.CannedCycleStart));
@@ -560,7 +569,13 @@ public sealed partial class GCodePoster
                     var p = Out(m.To);
                     var regs = new Dictionary<char, double> { ['X'] = p.X, ['Y'] = p.Y, ['Z'] = p.Z, ['R'] = m.Cycle.RetractZ, ['F'] = m.Feed };
                     var tpl = _post.Drill;
-                    if (m.Cycle.Peck > 0) { tpl = _post.DrillPeck; regs['Q'] = m.Cycle.Peck; }
+                    if (m.Cycle.TapPitch > 0)
+                    {
+                        tpl = _post.Tap;
+                        regs['K'] = m.Cycle.TapPitch;
+                        regs['P'] = m.Cycle.Dwell;
+                    }
+                    else if (m.Cycle.Peck > 0) { tpl = _post.DrillPeck; regs['Q'] = m.Cycle.Peck; }
                     else if (m.Cycle.Dwell > 0) { tpl = _post.DrillDwell; regs['P'] = m.Cycle.Dwell; }
                     Line(MoveLine(tpl, MoveKind.DrillCycle, regs, forceEmit: true, keepZ: true));
                     pos = m.To with { Z = _posZ };

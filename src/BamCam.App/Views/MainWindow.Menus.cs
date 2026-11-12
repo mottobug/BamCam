@@ -320,6 +320,8 @@ public partial class MainWindow
         Item("_Profile", () => CreateOp(new ProfileOp())),
         Item("P_ocket", () => CreateOp(new PocketOp())),
         Item("_Drill", () => CreateOp(new DrillOp())),
+        Item("_Thread Milling", () => CreateOp(new ThreadMillOp())),
+        Item("Tapping (G8_4)", () => CreateOp(new TapOp())),
         Item("_Engrave", () => CreateOp(new EngraveOp())),
         Item("_V-Engrave", () => CreateOp(new VEngraveOp())),
         Item("_3D Profile", () => CreateOp(new Profile3DOp())),

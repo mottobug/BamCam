@@ -47,6 +47,7 @@ public sealed class PostProcessorDefinition
     [Category("G Codes")] public string G81 { get; set; } = "G81";
     [Category("G Codes")] public string G82 { get; set; } = "G82";
     [Category("G Codes")] public string G83 { get; set; } = "G83";
+    [Category("G Codes")] public string G84 { get; set; } = "G84";
     [Category("G Codes")] public string ArcCenterAbsolute { get; set; } = "";
     [Category("G Codes")] public string ArcCenterIncremental { get; set; } = "";
     [Category("G Codes")] public string CannedCycleStart { get; set; } = "G98";
@@ -84,6 +85,9 @@ public sealed class PostProcessorDefinition
     [Category("Canned Cycles")] public string Drill { get; set; } = "{$g81} {$_x} {$_y} {$_z} {$_r} {$_f}";
     [Category("Canned Cycles")] public string DrillDwell { get; set; } = "{$g82} {$_x} {$_y} {$_z} {$p} {$_r} {$_f}";
     [Category("Canned Cycles")] public string DrillPeck { get; set; } = "{$g83} {$_x} {$_y} {$_z} {$_q} {$_r} {$_f}";
+    /// <summary>Tapping cycle (empty = the machine cannot tap: the holes are left out with a warning). Registers: F pitch × spindle speed, K pitch, P dwell.</summary>
+    [Category("Canned Cycles"), Description("Tapping cycle (G84); empty when the machine cannot tap. Registers: X Y Z R, F = pitch × spindle speed, K pitch, P dwell.")]
+    public string Tap { get; set; } = "{$g84} {$_x} {$_y} {$_z} {$_r} {$_f}";
 
     // ---- Line numbering ----
     [Category("Line Numbering")] public bool AddLineNumbers { get; set; }
@@ -189,6 +193,8 @@ public sealed class PostProcessorDefinition
             Footer = "{$clearance}\r\n{$spindle(off)}\r\n{$cbfile.footer}\r\n{$endrewind}\r\n%",
             ArcCenterAbsolute = "G90.1",
             ArcCenterIncremental = "G91.1",
+            // LinuxCNC taps with G33.1, not with G84.
+            Tap = "",
             NumberFormat = "0.0####",
         };
         yield return new PostProcessorDefinition
@@ -209,6 +215,8 @@ public sealed class PostProcessorDefinition
             // LinuxCNC limits the spindle speed with the D word of G96.
             ConstantSurfaceSpeed = "G96 {$d} {$s}",
             SpindleSpeedLimit = "",
+            // LinuxCNC taps with G33.1, not with G84.
+            Tap = "",
             NumberFormat = "0.0####",
         };
         yield return new PostProcessorDefinition
@@ -218,6 +226,7 @@ public sealed class PostProcessorDefinition
             CannedCycleStart = "",
             CannedCycleEnd = "",
             DrillPeck = "",
+            Tap = "",
             VelocityModeExactStop = "",
             VelocityModeConstantVelocity = "",
             NumberFormat = "0.0##",
@@ -235,6 +244,7 @@ public sealed class PostProcessorDefinition
             CannedCycleStart = "",
             CannedCycleEnd = "",
             DrillPeck = "",
+            Tap = "",
             VelocityModeExactStop = "",
             VelocityModeConstantVelocity = "",
             TorchOn = "M3 S1000",
@@ -253,6 +263,7 @@ public sealed class PostProcessorDefinition
             CannedCycleStart = "",
             CannedCycleEnd = "",
             DrillPeck = "",
+            Tap = "",
             VelocityModeExactStop = "",
             VelocityModeConstantVelocity = "",
             TorchOn = "M3 S1000",

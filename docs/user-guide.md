@@ -210,6 +210,17 @@ Special operations:
   threading and drilling; the remaining stock is shown in the drawing and, move by move, in the 3D simulation. Use a lathe post processor such as
   *LinuxCNC Turn*.
 - **Drag knife** for vinyl and foil: set the blade offset; corners get swivel arcs.
+- **Thread milling** (Machining ▸ Thread Milling): select circles (or points with a *Thread Diameter*). Internal or
+  external, pitch, right- or left-hand, bottom up or top down, radial passes; the thread depth is the ISO depth unless
+  you set one. The helix turns so that it cuts the chosen hand (right-hand with a clockwise spindle: bottom up is climb
+  milling in a hole, top down conventional), from the target depth to the stock surface in whole turns. The tool comes
+  in on a half circle from the centre of the hole (from outside a stud) and leaves the same way. With *Cutter Length*
+  set, a cutter with several teeth turns once per cutter length instead of running one helix over the whole thread.
+  The tool diameter is the cutting diameter of the thread mill.
+- **Tapping (G84)** (Machining ▸ Tapping): select the holes and set the pitch; the feed is pitch × spindle speed, for
+  a tapping head or rigid tapping. The post processor writes its *Tap* cycle; posts without one (LinuxCNC, GRBL)
+  leave these holes out with a warning. Thread milling and tapping are BamCam operations: CamBam opens a drawing
+  without them.
 - **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill);
   the toolbar button with the loops inserts the pocket) for high speed clearing: a port of the CamBam plugin
   [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), which comes with BamCam.
