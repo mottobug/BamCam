@@ -334,3 +334,14 @@ File ▸ Insert File adds a file to the open drawing; undo removes the whole ins
 - **`.stl`:** becomes a surface on the active layer.
 - **G-code** (`.nc`, `.tap`, `.gcode`, `.ngc`, `.cnc` and any other file): becomes an NC File operation of the active
   part and is shown as a toolpath.
+
+## 9. Not implemented yet
+
+These CamBam functions are not in BamCam yet. If one of them matters to you, say so in
+[issue 12](https://github.com/mottobug/BamCam/issues/12) or open a new issue; that decides what comes next.
+
+- **Import of STEP, 3DS and Gerber files.** STL, DXF, G-code and images can be imported.
+- **STL export of the drawing.** Only the stock of the 3D simulation can be saved as STL.
+- **Rotary axis** (wrapping toolpaths around a cylinder for a 4th axis).
+- **Corner Overcut of the trochoidal profile (matmill).** The profile is cut without it, with a warning.
+- **Drawing on other planes than XY.** Shapes are drawn at Z = 0; they can be moved and rotated in 3D afterwards.
