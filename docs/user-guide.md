@@ -228,9 +228,17 @@ Special operations:
   set, a cutter with several teeth turns once per cutter length instead of running one helix over the whole thread.
   The tool diameter is the cutting diameter of the thread mill.
 - **Tapping (G84)** (Machining ▸ Tapping): select the holes and set the pitch; the feed is pitch × spindle speed, for
-  a tapping head or rigid tapping. The post processor writes its *Tap* cycle; posts without one (LinuxCNC, GRBL)
+  a tapping head or rigid tapping. *Feed Factor* (percent, default 100) lowers it for a tension-compression tapping
+  head, e.g. to 95 %, so the head takes up the difference when the spindle does not follow exactly; the right value
+  depends on the machine. The post processor writes its *Tap* cycle; posts without one (LinuxCNC, GRBL)
   leave these holes out with a warning. Thread milling and tapping are BamCam operations: CamBam opens a drawing
-  without them.
+  without them. Save an operation per thread as a style to reuse it.
+- **Drilling with a custom script**: with *Drilling Method* Custom Script the drill operation writes the text of
+  *Custom Script* at every hole instead of a canned cycle, as in CamBam, e.g. `G84 X$x Y$y Z$z R$r F$f P$p` for
+  a tapping cycle with your own numbers. `|` starts a new line. Macros: `$x` `$y` position of the hole, `$z` target
+  depth, `$h` Z of the drill point, `$r` retract height, `$c` clearance plane, `$s` stock surface, `$f` plunge
+  feedrate, `$p` dwell, `$q` peck distance, `$d` hole diameter, `$t` tool diameter, `$n` tool number. After the
+  script BamCam moves the tool up to the clearance plane before it goes to the next hole.
 - **Trochoidal pocket and profile (matmill)** (Machining ▸ Trochoidal Pocket (matmill) / Trochoidal Profile (matmill);
   the toolbar button with the loops inserts the pocket) for high speed clearing: a port of the CamBam plugin
   [matmill](https://github.com/jkmnt/matmill) by jkmnt (MIT License), which comes with BamCam.

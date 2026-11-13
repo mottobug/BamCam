@@ -1,3 +1,4 @@
+using System.Globalization;
 using BamCam.Core.Geometry;
 using BamCam.Core.Localization;
 using BamCam.Core.Model;
@@ -828,16 +829,27 @@ internal static class DrillGenerator
         var ordered = Holes(ctx, op);
         var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
         var method = op.DrillingMethod.Value;
-        foreach (var (p, holeDia) in ordered)
+        var script = op.CustomScript.Value ?? "";
+        if (method == DrillingMethod.CustomScript && string.IsNullOrWhiteSpace(script))
         {
+            ctx.Warnings.Add(Tr.F("{0}: Drilling Method is Custom Script, but the Custom Script is empty: no holes.", op.Name));
+            ctx.Finish(tp);
+            return;
+        }
+        var retract = op.RetractHeight.State == ParamState.Auto ? ctx.StockSurface + ctx.FastPlunge : op.RetractHeight.Value;
+        foreach (var (p, holeDia, z) in ordered)
+        {
+            var dia = op.HoleDiameter.Value > 0 ? op.HoleDiameter.Value : holeDia;
             if (method is DrillingMethod.SpiralMill_CW or DrillingMethod.SpiralMill_CCW)
-                SpiralMill(ctx, op, mb, p, op.HoleDiameter.Value > 0 ? op.HoleDiameter.Value : holeDia, method == DrillingMethod.SpiralMill_CW);
+                SpiralMill(ctx, op, mb, p, dia, method == DrillingMethod.SpiralMill_CW);
             else
             {
                 mb.Rapid(p.ToPoint3(ctx.Clearance));
-                var retract = op.RetractHeight.State == ParamState.Auto ? ctx.StockSurface + ctx.FastPlunge : op.RetractHeight.Value;
-                tp.Add(Move.Drill(p.ToPoint3(ctx.TargetDepth), ctx.PlungeFeed,
-                    new DrillCycle(retract, op.PeckDistance.Value, op.Dwell.Value)));
+                var move = Move.Drill(p.ToPoint3(ctx.TargetDepth), ctx.PlungeFeed,
+                    new DrillCycle(retract, op.PeckDistance.Value, op.Dwell.Value));
+                if (method == DrillingMethod.CustomScript)
+                    move = move with { Text = ExpandScript(ctx, op, script, dia, z, retract) };
+                tp.Add(move);
             }
         }
         mb.Retract();
@@ -845,25 +857,51 @@ internal static class DrillGenerator
     }
 
     /// <summary>
+    /// The custom drilling script of one hole with the macros of the operation filled in (CamBam's list):
+    /// $c clearance plane, $d hole diameter, $f plunge feedrate, $h Z of the drill point, $n tool number, $p dwell,
+    /// $q peck distance, $r retract height, $s stock surface, $t tool diameter, $z target depth. $x and $y stay for
+    /// the post processor, which knows the output position of the hole (machining origin, nesting copies).
+    /// </summary>
+    private static string ExpandScript(GenContext ctx, DrillOp op, string script, double holeDiameter, double z, double retract)
+    {
+        static string N(double v) => Math.Round(v, 6).ToString("0.######", CultureInfo.InvariantCulture);
+        return System.Text.RegularExpressions.Regex.Replace(script, @"\$([cdfhnpqrstz])", m => m.Groups[1].Value[0] switch
+        {
+            'c' => N(ctx.Clearance),
+            'd' => N(holeDiameter),
+            'f' => N(ctx.PlungeFeed),
+            'h' => N(z),
+            'n' => op.EffectiveToolNumber(ctx.Doc).ToString(CultureInfo.InvariantCulture),
+            'p' => N(op.Dwell.Value),
+            'q' => N(op.PeckDistance.Value),
+            'r' => N(retract),
+            's' => N(ctx.StockSurface),
+            't' => N(ctx.ToolDiameter),
+            _ => N(ctx.TargetDepth),
+        });
+    }
+
+    /// <summary>
     /// The holes of an operation (points of point lists, centres and diameters of circles, centres of other shapes),
     /// moved by its transform and ordered nearest-neighbour from its start point. Also for thread milling and tapping.
     /// </summary>
-    internal static List<(Point2 P, double Diameter)> Holes(GenContext ctx, MachineOp op)
+    internal static List<(Point2 P, double Diameter, double Z)> Holes(GenContext ctx, MachineOp op)
     {
-        var holes = new List<(Point2 P, double Diameter)>();
+        var holes = new List<(Point2 P, double Diameter, double Z)>();
         foreach (var id in op.PrimitiveIds)
         {
             switch (ctx.Doc.FindEntity(id))
             {
                 case PointListEntity pl:
-                    holes.AddRange(pl.WorldPoints().Select(p => (p.XY, 0.0)));
+                    holes.AddRange(pl.WorldPoints().Select(p => (p.XY, 0.0, p.Z)));
                     break;
                 case CircleEntity c:
-                    holes.Add((c.Transform.Transform(c.Center).XY, c.Diameter * c.Transform.ScaleXY));
+                    var centre = c.Transform.Transform(c.Center);
+                    holes.Add((centre.XY, c.Diameter * c.Transform.ScaleXY, centre.Z));
                     break;
                 case { } e:
                     var b = e.Bounds();
-                    if (!b.IsEmpty) holes.Add((b.Center.XY, Math.Min(b.Width, b.Height)));
+                    if (!b.IsEmpty) holes.Add((b.Center.XY, Math.Min(b.Width, b.Height), b.Center.Z));
                     break;
                 default:
                     ctx.Warnings.Add(Tr.F("{0}: drawing object {1} not found.", op.Name, id));
@@ -872,10 +910,10 @@ internal static class DrillGenerator
         }
 
         var mt = op.MOPTransform.Value;
-        if (!mt.IsIdentity) holes = holes.Select(h => (mt.Transform(h.P), h.Diameter)).ToList();
+        if (!mt.IsIdentity) holes = holes.Select(h => (mt.Transform(h.P), h.Diameter, h.Z)).ToList();
 
         // Nearest-neighbour ordering.
-        var ordered = new List<(Point2 P, double Diameter)>();
+        var ordered = new List<(Point2 P, double Diameter, double Z)>();
         var pos = op.StartPoint.Value.Point?.XY ?? (holes.Count > 0 ? holes[0].P : Point2.Zero);
         while (holes.Count > 0)
         {

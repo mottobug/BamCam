@@ -208,6 +208,55 @@ public class ThreadMillTests
     }
 
     [Fact]
+    public void The_feed_factor_lowers_the_tapping_feed_for_a_tension_compression_head()
+    {
+        var (doc, op) = Setup<TapOp>(o => { o.Pitch.Set(1.25); o.FeedFactor.Set(95); });
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "Mach3");
+        var line = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text.Split("\r\n").Single(l => l.StartsWith("G84"));
+
+        Assert.Contains("F1187.5", line); // 1.25 × 1000 × 95 %
+    }
+
+    [Fact]
+    public void A_custom_drilling_script_is_written_for_every_hole_with_its_macros()
+    {
+        var (doc, op) = Setup<DrillOp>(o =>
+        {
+            o.DrillingMethod.Set(DrillingMethod.CustomScript);
+            o.CustomScript.Set("G84 X$x Y$y Z$z R$r F$f P$p|(D$d S$s C$c T$t)");
+            o.RetractHeight.Set(2);
+            o.PlungeFeedrate.Set(950);
+            o.Dwell.Set(0.5);
+        });
+        var tp = ToolpathGenerator.Generate(doc, op);
+        Assert.Empty(tp.Warnings);
+
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "Mach3");
+        var lines = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text.Split("\r\n");
+
+        var at = Array.FindIndex(lines, l => l.StartsWith("G84"));
+        // $x and $y in the number format of the post processor, the other macros as plain numbers.
+        Assert.Equal("G84 X20.0 Y10.0 Z-10 R2 F950 P0.5", lines[at]);
+        Assert.Equal("(D8 S0 C5 T6)", lines[at + 1]);
+        Assert.DoesNotContain(lines, l => l.StartsWith("G81"));
+        // Afterwards the tool goes up before it moves on.
+        Assert.StartsWith("G0 Z", lines.Skip(at + 2).First(l => l.StartsWith("G0")));
+    }
+
+    [Fact]
+    public void An_empty_custom_drilling_script_drills_nothing_and_says_so()
+    {
+        var (doc, op) = Setup<DrillOp>(o => o.DrillingMethod.Set(DrillingMethod.CustomScript));
+
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        Assert.DoesNotContain(tp.Moves, m => m.Kind == MoveKind.DrillCycle);
+        Assert.Contains(tp.Warnings, w => w.Contains("Custom Script is empty"));
+    }
+
+    [Fact]
     public void Tapping_needs_a_spindle_speed()
     {
         var (doc, op) = Setup<TapOp>(o => o.SpindleSpeed.Set(0));

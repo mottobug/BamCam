@@ -89,6 +89,10 @@ public sealed class TapOp : DepthOp
 
     [Param(62, "Tapping"), Description("Dwell at the bottom in seconds (0 = none), for controls that use it.")]
     public CamParam<double> Dwell { get; set; } = new(0);
+
+    [Param(63, "Tapping"), DisplayName("Feed Factor"),
+     Description("Feed in percent of pitch × spindle speed. 100 for rigid tapping; a little less (e.g. 95) lets a tension-compression tapping head take up the difference when the spindle does not follow the feed exactly. Try it out on the machine.")]
+    public CamParam<double> FeedFactor { get; set; } = new(100);
 }
 
 internal static class ThreadMillGenerator
@@ -123,7 +127,7 @@ internal static class ThreadMillGenerator
         var levels = Levels(top, bottom, pitch, op.CutterLength.Value, up);
 
         var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
-        foreach (var (c, holeDiameter) in DrillGenerator.Holes(ctx, op))
+        foreach (var (c, holeDiameter, _) in DrillGenerator.Holes(ctx, op))
         {
             var major = op.ThreadDiameter.Value > 0 ? op.ThreadDiameter.Value : holeDiameter;
             if (major <= 0)
@@ -203,13 +207,14 @@ internal static class TapGenerator
         var speed = op.SpindleSpeed.Value;
         if (pitch <= 0) ctx.Warnings.Add(Tr.F("{0}: the pitch must be larger than 0.", op.Name));
         else if (speed <= 0) ctx.Warnings.Add(Tr.F("{0}: tapping needs a spindle speed: the feed is pitch × spindle speed.", op.Name));
+        else if (op.FeedFactor.Value is <= 0 or > 200) ctx.Warnings.Add(Tr.F("{0}: the feed factor must be between 0 and 200 %.", op.Name));
         else
         {
             if (op.SpindleDirection.Value != SpindleDirection.CW)
                 ctx.Warnings.Add(Tr.F("{0}: G84 taps a right-hand thread with the spindle turning clockwise (CW).", op.Name));
             var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
-            var feed = pitch * speed;
-            foreach (var (p, _) in DrillGenerator.Holes(ctx, op))
+            var feed = pitch * speed * op.FeedFactor.Value / 100;
+            foreach (var (p, _, _) in DrillGenerator.Holes(ctx, op))
             {
                 mb.Rapid(p.ToPoint3(ctx.Clearance));
                 tp.Add(Move.Drill(p.ToPoint3(ctx.TargetDepth), feed, new DrillCycle(op.RetractHeight.Value, 0, op.Dwell.Value, pitch)));

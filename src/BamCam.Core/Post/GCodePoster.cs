@@ -553,6 +553,21 @@ public sealed partial class GCodePoster
                 case MoveKind.Torch:
                     TorchBlocks(m, Line);
                     continue;
+                case MoveKind.DrillCycle when m.Text != null:
+                {
+                    // Custom drilling script (Drilling Method = Custom Script): the generator filled in the
+                    // operation's macros, the position of the hole is known only here. "|" starts a new line.
+                    var hole = Out(m.To);
+                    var text = System.Text.RegularExpressions.Regex.Replace(m.Text, @"\$([xy])",
+                        x => Num(x.Groups[1].Value == "x" ? hole.X : hole.Y));
+                    foreach (var l in text.Replace("\r", "").Split('|', '\n')) Line(l.Trim());
+                    // What the script did is unknown: write every word again, and leave the hole upwards first.
+                    _last.Clear();
+                    _lastG = null;
+                    _posZ = hole.Z;
+                    pos = m.To;
+                    continue;
+                }
                 case MoveKind.DrillCycle:
                 {
                     if (m.Cycle.TapPitch > 0 && string.IsNullOrWhiteSpace(_post.Tap))
