@@ -97,6 +97,9 @@ public sealed class AppSettings
     [Category("CAM"), DisplayName("Default GCode Extension")] public string DefaultGCodeExtension { get; set; } = ".nc";
     [Category("CAM"), DisplayName("Out File Prompt"), Description("When to ask for the G-code file name: if the file exists, always, or never.")]
     public OutFilePrompt OutFilePrompt { get; set; } = OutFilePrompt.IfExists;
+    [Category("CAM"), DisplayName("G-code Follows Selection"),
+     Description("Machining > Produce G-code (Ctrl+W) and its toolbar button post only the part or operation selected in the drawing tree (all of them when Machining, the drawing or nothing is selected). Off: they always post the whole drawing, as in CamBam. The right-click menus of a part or operation post just that one either way.")]
+    public bool GCodeFollowsSelection { get; set; }
     [Category("CAM"), DisplayName("GCode Editor"), Description("External editor command for Edit Gcode. Empty = internal editor.")]
     public string GCodeEditor { get; set; } = "";
 

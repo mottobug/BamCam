@@ -173,7 +173,10 @@ Everything can be undone with `Ctrl+Z`.
    through them.
 5. **Choose the post processor** (Machining ▸ Post Processor, or the list *Post Processor* of the machining options
    in the drawing tree; it is saved in the drawing, so each file can have its own machine. Without a choice the default
-   from the options applies) and **produce G-code** (`Ctrl+W`).
+   from the options applies) and **produce G-code** (`Ctrl+W`). This posts the whole drawing, as in CamBam; the
+   right-click menu of a part or operation posts just that one. With *G-code Follows Selection* (Tools ▸ Options,
+   CAM) `Ctrl+W` and the toolbar button post the part or operation selected in the drawing tree instead. The title
+   of the save dialog always says what is being posted.
 
 **3D simulation** (Machining ▸ 3D Simulation, `Ctrl+Shift+T`, toolbar button next to *Generate*): a separate
 window shows the stock after the milling operations as a shaded 3D model, cut with the real tool shape (end mill,

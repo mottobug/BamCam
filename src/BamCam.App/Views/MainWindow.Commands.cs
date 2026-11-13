@@ -788,6 +788,27 @@ public partial class MainWindow
         return name;
     }
 
+    /// <summary>
+    /// What Machining > Produce G-code and its toolbar button post: the whole drawing, or with G-code Follows Selection
+    /// the part or operation selected in the drawing tree (issue 11).
+    /// </summary>
+    private PostScope MenuPostScope()
+    {
+        if (!_settings.GCodeFollowsSelection) return PostScope.All;
+        return _session.Inspected switch
+        {
+            Core.Cam.MachineOp op when _session.Document.Parts.FirstOrDefault(p => p.Operations.Contains(op)) is { } part => new PostScope(part, op),
+            Core.Cam.Part part => new PostScope(part),
+            _ => PostScope.All,
+        };
+    }
+
+    /// <summary>"whole drawing", "part Part1", "operation Pocket1": what a post covers, for the save dialog.</summary>
+    private static string ScopeLabel(PostScope scope) =>
+        scope.Operation != null ? F("operation {0}", scope.Operation.Name)
+        : scope.Part != null ? F("part {0}", scope.Part.Name)
+        : T("whole drawing");
+
     private async Task ProduceGCode(PostScope scope)
     {
         var doc = _session.Document;
@@ -813,7 +834,7 @@ public partial class MainWindow
                 : scope.Part != null ? $"{doc.Name}.{scope.Part.Name}{ext}" : $"{doc.Name}{ext}";
             var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = T("Produce G-code"),
+                Title = T("Produce G-code") + " – " + ScopeLabel(scope),
                 SuggestedFileName = suggested,
                 DefaultExtension = ext.TrimStart('.'),
                 FileTypeChoices = [NcType, AllType],

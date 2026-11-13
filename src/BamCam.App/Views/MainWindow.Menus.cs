@@ -339,7 +339,7 @@ public partial class MainWindow
         "-",
         Item("_Generate Toolpaths", () => GenerateToolpaths(), "Ctrl+T"),
         Item("3D _Simulation...", () => _ = ShowSimulation(), "Ctrl+Shift+T"),
-        Item("Produce G_code", () => _ = ProduceGCode(PostScope.All), "Ctrl+W"),
+        Item("Produce G_code", () => _ = ProduceGCode(MenuPostScope()), "Ctrl+W"),
         Item("Edit Gcode", EditGCode),
         .. PluginMenuItems("Machining"),
     ];
@@ -643,7 +643,7 @@ public partial class MainWindow
         }
         p.Children.Add(ToolButton("IconGenerate", "Generate toolpaths (Ctrl+T)", () => GenerateToolpaths(), ActionIconBrush));
         p.Children.Add(ToolButton("IconSimulate", "3D simulation (Ctrl+Shift+T)", () => _ = ShowSimulation(), ActionIconBrush));
-        p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(PostScope.All), ActionIconBrush));
+        p.Children.Add(ToolButton("IconGcode", "Produce G-code (Ctrl+W)", () => _ = ProduceGCode(MenuPostScope()), ActionIconBrush));
         RefreshToolButtons();
     }
 }
