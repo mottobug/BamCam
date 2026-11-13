@@ -4,6 +4,13 @@ using BamCam.Core.Geometry;
 
 namespace BamCam.Core.Model;
 
+/// <summary>Descriptions of the free text field Tag (CamBam's name), shown as "Notiz" in German.</summary>
+internal static class TagText
+{
+    public const string Note = "Free text, e.g. a note. It is saved in the drawing and changes neither the drawing nor the toolpaths; scripts and plugins can keep their own values here.";
+    public const string OperationNote = "Free text, e.g. a note. It is saved in the drawing and does not change the toolpaths; the post processor can write it into the G-code with {$mop.tag}, scripts and plugins can keep their own values here.";
+}
+
 /// <summary>RGB colour as stored in project files ("r,g,b").</summary>
 public readonly record struct RgbColor(byte R, byte G, byte B)
 {
@@ -20,7 +27,7 @@ public abstract class Entity
     [Category("General"), Description("Unique object identifier.")]
     public int Id { get; set; }
 
-    [Category("General"), Description("Optional user tag.")]
+    [Category("General"), Description(TagText.Note)]
     public string? Tag { get; set; }
 
     /// <summary>Object transform applied on top of the stored geometry.</summary>

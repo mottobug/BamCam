@@ -76,7 +76,7 @@ public sealed class Part
     [Category("Part"), Description("Disabled parts are skipped when generating toolpaths and G-code.")]
     public bool Enabled { get; set; } = true;
 
-    [Category("Part"), Description("Free text notes.")]
+    [Category("Part"), Description(Model.TagText.Note)]
     public string? Tag { get; set; }
 
     [Category("Output"), DisplayName("Out File")]
@@ -239,7 +239,7 @@ public abstract class MachineOp
     [Category("General"), Description("CAM style providing default values.")]
     public string Style { get; set; } = "";
 
-    [Category("General")]
+    [Category("General"), Description(Model.TagText.OperationNote)]
     public string? Tag { get; set; }
 
 

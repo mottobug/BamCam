@@ -34,7 +34,7 @@ public sealed class Layer
     [Category("Layer"), Description("Pen width used for display.")]
     public double PenWidth { get; set; } = 1;
 
-    [Category("Layer")]
+    [Category("Layer"), Description(TagText.Note)]
     public string? Tag { get; set; }
 
     /// <summary>Layer script source (kept verbatim).</summary>
