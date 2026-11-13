@@ -127,7 +127,7 @@ public partial class MainWindow : Window
         Closed += (_, _) => SaveSettings();
 
         OnDocumentReplaced();
-        Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf)."));
+        Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf / .svg)."));
         // Plugins after the window is shown: new plugins are confirmed in a dialog.
         Opened += async (_, _) =>
         {
@@ -234,6 +234,7 @@ public partial class MainWindow : Window
 
     private static FilePickerFileType CbType => new(T("BamCam / CamBam drawing")) { Patterns = ["*.cb"] };
     private static FilePickerFileType DxfType => new(T("DXF drawing")) { Patterns = ["*.dxf"] };
+    private static FilePickerFileType SvgType => new(T("SVG drawing")) { Patterns = ["*.svg"] };
     private static readonly FilePickerFileType NcType = new("G-code") { Patterns = ["*.nc", "*.tap", "*.gcode", "*.ngc", "*.cnc"] };
     private static FilePickerFileType AllType => new(T("All files")) { Patterns = ["*"] };
 
@@ -530,8 +531,8 @@ public partial class MainWindow : Window
         {
             Title = T("Open"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType(T("Drawings")) { Patterns = ["*.cb", "*.dxf", .. _plugins.Importers.SelectMany(i => i.Patterns)] },
-                CbType, DxfType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] },
+            FileTypeFilter = [new FilePickerFileType(T("Drawings")) { Patterns = ["*.cb", "*.dxf", "*.svg", .. _plugins.Importers.SelectMany(i => i.Patterns)] },
+                CbType, DxfType, SvgType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] },
                 .. _plugins.Importers.Select(i => new FilePickerFileType(i.Format.Name) { Patterns = i.Patterns }), NcType, AllType],
         });
         if (files.Count == 0) return;
@@ -539,7 +540,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// File ▸ Insert File: adds a file to this drawing. Drawings (.cb, .dxf) bring their objects and, if wanted, their
+    /// File ▸ Insert File: adds a file to this drawing. Drawings (.cb, .dxf, .svg) bring their objects and, if wanted, their
     /// operations; an STL file becomes a surface; anything else is treated as G-code and becomes an NC File operation.
     /// </summary>
     private async void InsertFile()
@@ -548,8 +549,8 @@ public partial class MainWindow : Window
         {
             Title = T("Insert File"),
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType(T("Drawings, STL and G-code")) { Patterns = ["*.cb", "*.dxf", "*.stl", .. NcType.Patterns!] },
-                CbType, DxfType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }, NcType, AllType],
+            FileTypeFilter = [new FilePickerFileType(T("Drawings, STL and G-code")) { Patterns = ["*.cb", "*.dxf", "*.svg", "*.stl", .. NcType.Patterns!] },
+                CbType, DxfType, SvgType, new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }, NcType, AllType],
         });
         if (files.Count == 0 || files[0].TryGetLocalPath() is not { } path) return;
         CadDocument source;
@@ -568,6 +569,11 @@ public partial class MainWindow : Window
                     foreach (var w in warnings.Distinct()) Log(F("DXF: {0}", w));
                     // The reader takes no units from the file: the numbers are meant in the units of this drawing.
                     source.Units = _session.Document.Units;
+                    break;
+                case ".svg":
+                    // SVG has real sizes: read straight into the units of this drawing.
+                    source = IO.Svg.SvgReader.Load(path, _session.Document.Units, out var svgWarnings);
+                    foreach (var w in svgWarnings) Log(F("SVG: {0}", w));
                     break;
                 default:
                     InsertNcFile(path);
@@ -638,8 +644,8 @@ public partial class MainWindow : Window
                 InsertSurface(path);
                 return;
             }
-            var importer = ext is ".cb" or ".dxf" ? null : _plugins.Importers.FirstOrDefault(i => i.Handles(path));
-            if (importer == null && ext is not (".cb" or ".dxf"))
+            var importer = ext is ".cb" or ".dxf" or ".svg" ? null : _plugins.Importers.FirstOrDefault(i => i.Handles(path));
+            if (importer == null && ext is not (".cb" or ".dxf" or ".svg"))
             {
                 // Anything else is treated as G-code and back-plotted as an NC File operation.
                 InsertNcFile(path);
@@ -656,6 +662,11 @@ public partial class MainWindow : Window
             {
                 doc = DxfReader.Load(path, out var warnings);
                 foreach (var w in warnings.Distinct()) Log(F("DXF: {0}", w));
+            }
+            else if (ext == ".svg")
+            {
+                doc = IO.Svg.SvgReader.Load(path, _settings.DrawingUnits, out var warnings);
+                foreach (var w in warnings) Log(F("SVG: {0}", w));
             }
             else
             {

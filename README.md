@@ -4,7 +4,7 @@ Cross-platform 2.5D CAD/CAM application (Windows, Linux, macOS) whose workflow a
 CamBam. Built with **Avalonia 11** on **.NET 10**.
 
 BamCam reads and writes CamBam-compatible drawings (`.cb`) and post processors (`.cbpp`), imports DXF,
-STL and G-code, and produces G-code through a template engine that understands the `{$macro}` language of
+SVG, STL and G-code, and produces G-code through a template engine that understands the `{$macro}` language of
 `.cbpp` files. Operations only BamCam has (such as Plasma or V-Engrave) are not shown by CamBam, and saving the
 drawing there loses them.
 

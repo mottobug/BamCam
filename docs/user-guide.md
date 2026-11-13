@@ -323,9 +323,18 @@ display, drawing, files, post processor and update settings.
 
 ## 8. Files
 
-BamCam reads and writes CamBam drawings (`.cb`) and post processors (`.cbpp`), imports DXF, STL, G-code and images.
+BamCam reads and writes CamBam drawings (`.cb`) and post processors (`.cbpp`), imports DXF, SVG, STL, G-code and images.
 Values and objects BamCam does not know are kept when a file is saved again. Objects of plugins and script objects
 are also saved as plain polylines, so CamBam (and BamCam without the plugin) can still open and machine them.
+
+**SVG** (from Inkscape, Illustrator, Affinity and others; File ▸ Open, File ▸ Insert File or drag and drop): the drawing
+keeps its real size (plain numbers are pixels at 96 per inch) and its place on the page, whose lower left corner
+becomes the origin. Inkscape layers become layers (in files of other programs the named top-level groups); objects
+outside a layer go to a layer named after the file. Circles stay circles and rectangles stay rectangles where the
+transform allows; every other path becomes a polyline per subpath, with Bézier curves and elliptical arcs fitted with
+arcs to 0.005 mm. Hidden objects and layers are left out. Text and embedded images are skipped with a message:
+convert text to paths first (Inkscape: Path ▸ Object to Path), import images with File ▸ Import Image. Strokes and
+fills do not matter: the outline of each path is imported, not the width of its line.
 
 **Operations only BamCam has:** Plasma, V-Engrave, Drag Knife and the lathe operations Facing,
 Grooving, Threading and Lathe Drilling are saved in the `.cb` file, but CamBam does not know them. It opens such a
@@ -334,11 +343,11 @@ BamCam says so in the message window. Keep a copy, or generate the G-code in Bam
 
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 
-- **`.cb` and `.dxf`:** the objects stay at their original position and are selected afterwards, so they can be moved
+- **`.cb`, `.dxf` and `.svg`:** the objects stay at their original position and are selected afterwards, so they can be moved
   at once. They go to the layer of the same name, other layers are added. If you also insert the machining operations
   of a `.cb` file, each part with operations becomes a new part; its output file is cleared, and the post processor of
   the open drawing applies. A `.cb` drawing in other units is scaled, without its operations. The numbers of a `.dxf`
-  file are taken in the units of the open drawing.
+  file are taken in the units of the open drawing; an `.svg` file is converted to them.
 - **`.stl`:** becomes a surface on the active layer.
 - **G-code** (`.nc`, `.tap`, `.gcode`, `.ngc`, `.cnc` and any other file): becomes an NC File operation of the active
   part and is shown as a toolpath.
