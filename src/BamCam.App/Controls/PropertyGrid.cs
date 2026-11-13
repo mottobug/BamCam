@@ -288,6 +288,7 @@ public sealed partial class PropertyGrid : DockPanel
         object? value = node.Type == typeof(int) ? int.Parse(text, Inv)
             : node.Type == typeof(double) ? double.Parse(text, NumberStyles.Float, Inv)
             : node.Type.IsEnum ? Enum.Parse(node.Type, text)
+            : node.Type == typeof(Matrix4) ? Matrix4.FromArray(text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(s => double.Parse(s, NumberStyles.Float, Inv)).ToArray())
             : text;
         Apply(node, value);
         return true;
@@ -606,7 +607,24 @@ public sealed partial class PropertyGrid : DockPanel
             _ => Convert.ToString(value, Inv) ?? "",
         };
 
-        if (t == typeof(Matrix4)) readOnly = true;
+        if (t == typeof(Matrix4))
+        {
+            // The 16 numbers are shown; [...] edits them as scale, rotation and move.
+            var shown = TextEditor(node, text, true, isDefault, s => s);
+            if (readOnly || value is not Matrix4 matrix) return shown;
+            var panel = new DockPanel();
+            var button = new Button { Content = "...", Padding = new Thickness(6, 0), MinHeight = 18, Margin = new Thickness(1), VerticalAlignment = VerticalAlignment.Center };
+            ToolTip.SetTip(button, Tr.T("Edit: scale, rotate, move, mirror"));
+            button.Click += async (_, _) =>
+            {
+                if (TopLevel.GetTopLevel(this) is not Window owner) return;
+                if (await Views.TransformDialog.Edit(owner, matrix) is { } edited && edited != matrix) Apply(node, edited);
+            };
+            DockPanel.SetDock(button, Dock.Right);
+            panel.Children.Add(button);
+            panel.Children.Add(shown);
+            return panel;
+        }
 
         Func<string, object?> parse = t switch
         {

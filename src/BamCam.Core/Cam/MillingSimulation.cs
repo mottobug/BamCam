@@ -365,7 +365,7 @@ public static class MillingSimulation
             }
             else if (op is Profile3DOp { BackFace.Value: false, Mold.Value: false, Additive.Value: false })
             {
-                foreach (var s in op.PrimitiveIds.Select(doc.FindEntity).OfType<SurfaceEntity>()) Surface(f, s);
+                foreach (var s in op.PrimitiveIds.Select(doc.FindEntity).OfType<SurfaceEntity>()) Surface(f, s, op.MOPTransform.Value);
             }
         }
     }
@@ -425,9 +425,10 @@ public static class MillingSimulation
     }
 
     /// <summary>Target of the cells under a mesh: its highest surface there.</summary>
-    private static void Surface(HeightField f, SurfaceEntity s)
+    /// <summary>The surface as target, moved, turned or mirrored with the transform of the operation, as it is cut.</summary>
+    private static void Surface(HeightField f, SurfaceEntity s, Matrix4 transform)
     {
-        var v = s.WorldVertices().ToList();
+        var v = s.WorldVertices().Select(p => transform.IsIdentity ? p : transform.Transform(p)).ToList();
         var surface = new float[f.Target.Length];
         Array.Fill(surface, float.NaN);
         for (var t = 0; t + 2 < s.Faces.Count; t += 3)

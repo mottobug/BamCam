@@ -284,7 +284,9 @@ public abstract class MachineOp
     [Param(35, "Spindle")] public CamParam<int> SpindleRange { get; set; } = new(0);
     [Param(36, "G-Code")] public CamParam<VelocityMode> VelocityMode { get; set; } = new(Cam.VelocityMode.Undefined);
     [Param(37, "Options")] public CamParam<OptionalPoint> StartPoint { get; set; } = new(OptionalPoint.None);
-    [Param(38, "Options", XmlName = "Transform")] public CamParam<Matrix4> MOPTransform { get; set; } = new(Matrix4.Identity);
+    [Param(38, "Options", XmlName = "Transform"),
+     Description("Moves, turns, scales or mirrors the drawing objects of this operation before its toolpath is computed, e.g. scale Y -1 for the other half of a mold. The milling direction stays as set. Click [...] to edit.")]
+    public CamParam<Matrix4> MOPTransform { get; set; } = new(Matrix4.Identity);
 
     /// <summary>
     /// Set while the tool values in the Default state came from the part or the machining options, so that they go
