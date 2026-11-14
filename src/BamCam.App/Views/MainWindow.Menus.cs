@@ -513,6 +513,40 @@ public partial class MainWindow
         return menu;
     }
 
+    /// <summary>Toolbar buttons that open a menu of plugin commands (for diagnostics).</summary>
+    private readonly List<(Button Button, List<Services.PluginCommandEntry> Commands)> _pluginMenuButtons = [];
+
+    /// <summary>The menu of a plugin toolbar button with several commands.</summary>
+    private MenuFlyout ShowPluginMenu(Control anchor, IEnumerable<Services.PluginCommandEntry> commands)
+    {
+        var menu = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedLeft };
+        foreach (var entry in commands)
+        {
+            var item = new MenuItem { Header = entry.Command.Header };
+            if (entry.Command.Description is { } d) ToolTip.SetTip(item, d);
+            if (!string.IsNullOrWhiteSpace(entry.Command.Icon))
+            {
+                try
+                {
+                    item.Icon = new Path
+                    {
+                        Data = Geometry.Parse(entry.Command.Icon), Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18,
+                        Stretch = Stretch.Uniform, StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
+                    };
+                }
+                catch (FormatException) { }
+            }
+            item.Click += (_, _) =>
+            {
+                _ = RunPluginCommand(entry);
+                View.Focus();
+            };
+            menu.Items.Add(item);
+        }
+        menu.ShowAt(anchor);
+        return menu;
+    }
+
     private MenuItem AlignSubmenu()
     {
         var sub = Sub("A_lign");
@@ -614,29 +648,47 @@ public partial class MainWindow
         p.Children.Add(ToolButton("IconPlasma", "Plasma", () => CreateOp(new PlasmaOp()), OperationIconBrush));
         p.Children.Add(ToolSeparator());
         // Toolbar buttons of plugin commands with an icon.
-        var pluginButtons = _plugins.Commands.Where(c => !string.IsNullOrWhiteSpace(c.Command.Icon)).ToList();
+        var pluginButtons = Services.PluginManager.ToolbarButtons(_plugins.Commands);
+        _pluginMenuButtons.Clear();
         if (pluginButtons.Count > 0)
         {
-            foreach (var entry in pluginButtons)
+            foreach (var commands in pluginButtons)
             {
                 Geometry geo;
-                try { geo = Geometry.Parse(entry.Command.Icon!); }
+                try { geo = Geometry.Parse(commands.First(c => !string.IsNullOrWhiteSpace(c.Command.Icon)).Command.Icon!); }
                 catch (FormatException) { continue; } // a broken icon must not break the toolbar
-                var b = new Button
+                var icon = new Path
                 {
-                    Content = new Path
+                    Data = geo, Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.Uniform,
+                    StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
+                };
+                var b = new Button();
+                var plugin = commands[0].Plugin.Name;
+                if (commands.Count == 1)
+                {
+                    var entry = commands[0];
+                    b.Content = icon;
+                    var tip = entry.Command.Header.Replace("_", "") + (entry.Command.Description is { } d ? "\n" + d : "");
+                    ToolTip.SetTip(b, $"{tip}\n({plugin})");
+                    b.Click += (_, _) =>
                     {
-                        Data = geo, Stroke = Brushes.Black, StrokeThickness = 1.4, Width = 18, Height = 18, Stretch = Stretch.Uniform,
-                        StrokeJoin = PenLineJoin.Round, StrokeLineCap = PenLineCap.Round,
-                    },
-                };
-                var tip = entry.Command.Header.Replace("_", "") + (entry.Command.Description is { } d ? "\n" + d : "");
-                ToolTip.SetTip(b, $"{tip}\n({entry.Plugin.Name})");
-                b.Click += (_, _) =>
+                        _ = RunPluginCommand(entry);
+                        View.Focus();
+                    };
+                }
+                else
                 {
-                    _ = RunPluginCommand(entry);
-                    View.Focus();
-                };
+                    // Several commands: a button with an arrow and a menu, like the align button.
+                    var arrowMark = new Path
+                    {
+                        Data = Geometry.Parse("M0,0 L6,0 L3,3.5 Z"), Fill = Brushes.Black, Width = 6, Height = 4,
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Thickness(2, 0, 0, 0),
+                    };
+                    b.Content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Children = { icon, arrowMark } };
+                    ToolTip.SetTip(b, string.Join("\n", commands.Select(c => c.Command.Header.Replace("_", ""))) + $"\n({plugin})");
+                    b.Click += (_, _) => ShowPluginMenu(b, commands);
+                    _pluginMenuButtons.Add((b, commands));
+                }
                 p.Children.Add(b);
             }
             p.Children.Add(ToolSeparator());

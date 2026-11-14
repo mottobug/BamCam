@@ -257,6 +257,104 @@ public partial class MainWindow
         Avalonia.Controls.ControlExtensions.BringIntoView(node);
     }
 
+    /// <summary>The two starting tables: written again when missing, so they are not renamed or deleted.</summary>
+    private static bool IsStartingTable(PlasmaCutTable table) =>
+        table.Name.Equals(PlasmaCutTable.TemplateName(Core.Model.DrawingUnits.Millimeters), StringComparison.OrdinalIgnoreCase) ||
+        table.Name.Equals(PlasmaCutTable.TemplateName(Core.Model.DrawingUnits.Inches), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Asks for the name of a cut data table; null when cancelled or not usable (with a message).</summary>
+    private async Task<string?> AskTableName(string title, string defaultName)
+    {
+        var name = (await Dialogs.Prompt(this, title, T("Name of the table:"), defaultName))?.Trim();
+        if (string.IsNullOrEmpty(name)) return null;
+        if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            Log(F("'{0}' cannot be used as a file name.", name));
+            return null;
+        }
+        if (CamLibraries.PlasmaTables.Any(t => t.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) ||
+            File.Exists(Path.Combine(SystemLibrary.PlasmaFolder, name + ".xml")))
+        {
+            Log(F("A cut data table '{0}' exists already.", name));
+            return null;
+        }
+        return name;
+    }
+
+    /// <summary>
+    /// Plasma Cut Data ▸ New Table / a table ▸ Duplicate Table: a new table file in the plasma folder, empty (in the
+    /// drawing's units, with a first entry) or as a copy of <paramref name="template"/>.
+    /// </summary>
+    private async void NewCutTable(PlasmaCutTable? template)
+    {
+        var name = await AskTableName(template == null ? T("New Table") : T("Duplicate Table"),
+            template == null ? $"My-Plasma-{UnitsSuffix}" : template.Name + " " + T("(copy)"));
+        if (name == null) return;
+        var table = new PlasmaCutTable
+        {
+            Name = name,
+            Units = template?.Units ?? (_session.Document.Units == Core.Model.DrawingUnits.Inches ? Core.Model.DrawingUnits.Inches : Core.Model.DrawingUnits.Millimeters),
+            SourcePath = Path.Combine(SystemLibrary.PlasmaFolder, name + ".xml"),
+        };
+        if (template != null) table.Entries.AddRange(template.Entries.Select(e => e.Clone()));
+        try
+        {
+            Directory.CreateDirectory(SystemLibrary.PlasmaFolder);
+            LibraryFiles.SaveCutData(table, table.SourcePath);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Could not save cut data table '{0}': {1}", name, ex.Message));
+            return;
+        }
+        CamLibraries.PlasmaTables.Add(table);
+        if (template == null) NewCutData(table, null);
+        else BuildSystemTree();
+        if (template != null)
+            Log(F("Cut data table '{0}' created. Entries with the same name in several tables: plasma operations use the first one found, so give the copied entries their own names.", name));
+        else Log(F("Cut data table '{0}' created.", name));
+    }
+
+    private async void RenameCutTable(PlasmaCutTable table)
+    {
+        var name = await AskTableName(T("Rename Table"), table.Name);
+        if (name == null) return;
+        var path = Path.Combine(SystemLibrary.PlasmaFolder, name + ".xml");
+        try
+        {
+            if (table.SourcePath != null && File.Exists(table.SourcePath)) File.Move(table.SourcePath, path);
+            else LibraryFiles.SaveCutData(table, path);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Could not rename cut data table '{0}': {1}", table.Name, ex.Message));
+            return;
+        }
+        table.Name = name;
+        table.SourcePath = path;
+        BuildSystemTree();
+    }
+
+    private async void DeleteCutTable(PlasmaCutTable table)
+    {
+        if (await Dialogs.Ask(this, T("Delete Table"),
+                F("Delete the cut data table '{0}' with {1} entries? The file is deleted and cannot be restored.", table.Name, table.Entries.Count),
+                withCancel: false) != true) return;
+        try
+        {
+            if (table.SourcePath != null && File.Exists(table.SourcePath)) File.Delete(table.SourcePath);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Could not delete cut data table '{0}': {1}", table.Name, ex.Message));
+            return;
+        }
+        CamLibraries.PlasmaTables.Remove(table);
+        BuildSystemTree();
+        Properties.SelectedObject = _session.Inspected ?? _session.Document;
+        ApplyCutDataToOperations();
+    }
+
     /// <summary>Adds a cut data entry, as a copy of <paramref name="template"/> when given.</summary>
     private void NewCutData(PlasmaCutTable table, PlasmaCutData? template)
     {

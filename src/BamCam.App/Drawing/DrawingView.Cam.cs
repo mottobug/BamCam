@@ -163,7 +163,7 @@ public sealed partial class DrawingView
     private void UpdateHoverCursor(Point screen)
     {
         var over = _tool is SelectTool && InspectedProfile != null && TabAt(screen) != null;
-        Cursor = over || _dragTab != null ? MoveCursor : Cursor.Default;
+        Cursor = over || _dragTab != null ? MoveCursor : _spaceHeld ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
     }
 
     // ----------------------------------------------------------------- nesting

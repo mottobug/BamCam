@@ -121,6 +121,8 @@ public partial class MainWindow : Window
         Closed += (_, _) => Core.Localization.Tr.Changed -= OnLanguageChanged;
 
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent, OnWindowKeyUp, RoutingStrategies.Tunnel);
+        Deactivated += (_, _) => View.SpaceReleased();
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
         Closing += OnClosing;
@@ -383,6 +385,17 @@ public partial class MainWindow : Window
                 var menu = ShowAlignMenu(_alignButton);
                 await Task.Delay(300);
                 Log($"--align-menu: open={menu.IsOpen}, items={menu.Items.Count}");
+            }
+            // --plugin-menu 1: opens the menu of the first plugin toolbar button with several commands and logs its entries.
+            if (options.ContainsKey("--plugin-menu"))
+            {
+                if (_pluginMenuButtons.FirstOrDefault() is { Button: { } pluginButton } entry)
+                {
+                    var menu = ShowPluginMenu(pluginButton, entry.Commands);
+                    await Task.Delay(300);
+                    Log($"--plugin-menu: open={menu.IsOpen}, items: {string.Join(" | ", menu.Items.OfType<MenuItem>().Select(i => i.Header))}");
+                }
+                else Log("--plugin-menu: no plugin button with a menu");
             }
             // --view XY|XZ|YZ|ISO: looks from this direction, with the whole drawing in the picture.
             if (options.TryGetValue("--view", out var standardView))
@@ -801,6 +814,14 @@ public partial class MainWindow : Window
         if (inText && e.KeyModifiers == KeyModifiers.None) return;
         if (inText && e.Key is Key.C or Key.V or Key.X or Key.Z or Key.Y or Key.A) return;
 
+        // Space over the drawing view: held, a left drag pans; a plain press reaches the tool when it is released.
+        if (!inText && e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && (View.IsPointerOver || View.IsFocused))
+        {
+            View.SpacePressed();
+            e.Handled = true;
+            return;
+        }
+
         if (!inText && e.KeyModifiers == KeyModifiers.None && View.Tool.WantsPlainKeys && View.ForwardKeyToTool(e.Key, e.KeyModifiers))
         {
             e.Handled = true;
@@ -815,5 +836,12 @@ public partial class MainWindow : Window
         if (FocusManager?.GetFocusedElement() is TreeView) return;
         if (View.ForwardKeyToTool(e.Key, e.KeyModifiers) || View.HandleNavigationKey(e.Key, e.KeyModifiers))
             e.Handled = true;
+    }
+
+    private void OnWindowKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Space || !View.SpaceHeld) return;
+        if (View.SpaceReleased()) View.ForwardKeyToTool(Key.Space, KeyModifiers.None);
+        e.Handled = true;
     }
 }

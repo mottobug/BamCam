@@ -65,6 +65,30 @@ public sealed class PluginManager
 
     public List<PluginInfo> Plugins { get; } = [];
     public List<PluginCommandEntry> Commands { get; } = [];
+
+    /// <summary>
+    /// The toolbar buttons of plugin commands, in order: a command with an icon gets its own button; the commands of one
+    /// plugin with the same <see cref="PluginCommand.ToolbarGroup"/> share one button (a menu), when one of them has an icon.
+    /// </summary>
+    public static List<List<PluginCommandEntry>> ToolbarButtons(IEnumerable<PluginCommandEntry> commands)
+    {
+        var all = commands.ToList();
+        var buttons = new List<List<PluginCommandEntry>>();
+        var groups = new HashSet<(PluginInfo, string)>();
+        foreach (var entry in all)
+        {
+            if (string.IsNullOrWhiteSpace(entry.Command.ToolbarGroup))
+            {
+                if (!string.IsNullOrWhiteSpace(entry.Command.Icon)) buttons.Add([entry]);
+                continue;
+            }
+            var key = (entry.Plugin, entry.Command.ToolbarGroup);
+            if (!groups.Add(key)) continue;
+            var members = all.Where(c => c.Plugin == entry.Plugin && c.Command.ToolbarGroup == key.Item2).ToList();
+            if (members.Any(c => !string.IsNullOrWhiteSpace(c.Command.Icon))) buttons.Add(members);
+        }
+        return buttons;
+    }
     public List<PluginOperationEntry> Operations { get; } = [];
     public List<PluginFileFormatEntry> Importers { get; } = [];
     public List<PluginFileFormatEntry> Exporters { get; } = [];

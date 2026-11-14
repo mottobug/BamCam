@@ -115,6 +115,32 @@ public class GCodeViewerPluginTests
         Assert.Equal(ViewerPlugin.Viewers.Count + 1, manager.Commands.Count);
         Assert.All(manager.Commands, c => Assert.Equal("Machining", c.Command.Menu));
         Assert.NotNull(manager.Commands[0].Command.Icon);
+        // One toolbar button (the eye) with a menu of all three.
+        var button = Assert.Single(BamCam.App.Services.PluginManager.ToolbarButtons(manager.Commands));
+        Assert.Equal(manager.Commands.Select(c => c.Command.Header), button.Select(c => c.Command.Header));
+    }
+
+    [Fact]
+    public void Toolbar_buttons_group_commands_of_one_plugin()
+    {
+        var a = new BamCam.App.Services.PluginInfo { Path = "a.dll", Name = "A", Vendor = "", Version = "1", Hash = "" };
+        var b = new BamCam.App.Services.PluginInfo { Path = "b.dll", Name = "B", Vendor = "", Version = "1", Hash = "" };
+        static BamCam.App.Services.PluginCommandEntry Entry(BamCam.App.Services.PluginInfo p, string header, string? icon, string? group) =>
+            new(p, new PluginCommand { Header = header, Icon = icon, ToolbarGroup = group, Execute = _ => Task.CompletedTask });
+        var commands = new[]
+        {
+            Entry(a, "single", "M0,0 L1,1", null),
+            Entry(a, "no icon", null, null),
+            Entry(a, "g1", null, "g"),
+            Entry(b, "other plugin, same group name", "M0,0 L1,1", "g"),
+            Entry(a, "g2", "M0,0 L1,1", "g"),
+            Entry(a, "group without icon", null, "h"),
+        };
+
+        var buttons = BamCam.App.Services.PluginManager.ToolbarButtons(commands);
+
+        Assert.Equal([["single"], ["g1", "g2"], ["other plugin, same group name"]],
+            buttons.Select(x => x.Select(c => c.Command.Header).ToArray()).ToArray());
     }
 
     // ------------------------------------------------------------------ CAMotics

@@ -99,7 +99,9 @@ public sealed class MyPlugin : IBamCamPlugin
 ```
 
 A command with an `Icon` (SVG path data in a 24 x 24 box, drawn as lines, e.g. `"M4,20 L12,4 L20,20 Z"`) also gets
-a toolbar button.
+a toolbar button. Commands with the same `ToolbarGroup` share one button with an arrow, which opens a menu of them (as
+the align button does); it shows the icon of the first one that has one. The G-code viewer plugin puts its three viewers
+behind one button this way.
 
 `host.Language` gives the active user interface language ("en", "de", ...) for the plugin's own texts.
 

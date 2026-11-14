@@ -1,7 +1,7 @@
 # BamCam G-Code Viewer plugin
 
-Adds **Machining ▸ Open in CutViewer** (with a toolbar button), **Open in NC Viewer** and **Open in CAMotics**, so you
-choose what simulates the G-code.
+Adds **Machining ▸ Open in CutViewer**, **Open in NC Viewer** and **Open in CAMotics**, so you choose what simulates
+the G-code. The eye in the toolbar opens a menu with all three.
 
 One click generates missing toolpaths and writes the G-code of the drawing to a temporary file with the post processor
 of the drawing.

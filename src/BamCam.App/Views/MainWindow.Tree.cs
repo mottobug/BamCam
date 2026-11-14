@@ -515,12 +515,20 @@ public partial class MainWindow
         }
         SystemTree.Items.Add(tools);
 
-        var plasma = new TreeViewItem { Header = T("Plasma Cut Data"), IsExpanded = false };
-        foreach (var table in CamLibraries.PlasmaTables)
+        var plasma = new TreeViewItem { Header = T("Plasma Cut Data"), IsExpanded = _plasmaExpanded };
+        plasma.PropertyChanged += (_, e) => { if (e.Property == TreeViewItem.IsExpandedProperty) _plasmaExpanded = plasma.IsExpanded; };
+        plasma.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Table...", () => NewCutTable(null)) } };
+        foreach (var table in CamLibraries.PlasmaTables.OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase))
         {
-            var ti = new TreeViewItem { Header = table.Name, Tag = table };
+            var ti = new TreeViewItem { Header = $"{table.Name}  ({(table.Units == Core.Model.DrawingUnits.Inches ? "in" : "mm")})", Tag = table };
             ToolTip.SetTip(ti, table.SourcePath);
-            ti.ContextMenu = new ContextMenu { ItemsSource = new[] { Item("New Entry", () => NewCutData(table, null)) } };
+            var tableItems = new List<object> { Item("New Entry", () => NewCutData(table, null)), Item("Duplicate Table...", () => NewCutTable(table)) };
+            if (!IsStartingTable(table))
+            {
+                tableItems.Add(Item("Rename Table...", () => RenameCutTable(table)));
+                tableItems.Add(Item("Delete Table", () => DeleteCutTable(table)));
+            }
+            ti.ContextMenu = new ContextMenu { ItemsSource = tableItems };
             foreach (var entry in table.Entries)
             {
                 ti.Items.Add(new TreeViewItem
@@ -536,6 +544,9 @@ public partial class MainWindow
         }
         SystemTree.Items.Add(plasma);
     }
+
+    /// <summary>Whether Plasma Cut Data is expanded (kept when the tree is rebuilt).</summary>
+    private bool _plasmaExpanded;
 
     private void OnSystemTreeSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {

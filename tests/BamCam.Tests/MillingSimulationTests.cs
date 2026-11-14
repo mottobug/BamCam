@@ -65,6 +65,35 @@ public class MillingSimulationTests
     }
 
     [Fact]
+    public void Plasma_cuts_through_the_sheet_as_wide_as_the_kerf()
+    {
+        var doc = new CadDocument();
+        var outline = new PolylineEntity(Path2.FromPoints([new(0, 0), new(40, 0), new(40, 40), new(0, 40)], closed: true));
+        var hole = new PolylineEntity(Path2.FromPoints([new(15, 15), new(25, 15), new(25, 25), new(15, 25)], closed: true));
+        doc.AddEntity(outline);
+        doc.AddEntity(hole);
+        doc.Machining.Stock = new Stock { PMin = new Point3(-10, -10, -3), PMax = new Point3(50, 50, 0) };
+        var op = new PlasmaOp { Name = "plasma" };
+        op.PrimitiveIds.Add(outline.Id);
+        op.PrimitiveIds.Add(hole.Id);
+        op.KerfWidth.Set(2);
+        doc.ActivePart.Operations.Add(op);
+        Assert.True(MillingSimulation.CanSimulate(op));
+        var tp = ToolpathGenerator.Generate(doc, op);
+        var jobs = new List<(MachineOp, Toolpath)> { (op, tp) };
+        var f = MillingSimulation.Create(doc, jobs, 0.1);
+        foreach (var m in MillingSimulation.Moves(doc, jobs, 0.05)) MillingSimulation.Cut(f, m);
+
+        // The torch runs above the sheet, but cuts through it: outside the outline, inside the hole.
+        Assert.Equal(-3, At(f, -1, 20), 3);
+        Assert.Equal(-3, At(f, 16, 20), 3);
+        // Only the kerf: the part and the scrap keep their material.
+        Assert.Equal(0, At(f, 8, 20), 3);
+        Assert.Equal(0, At(f, 20, 20), 3);
+        Assert.Equal(0, At(f, -5, 20), 3);
+    }
+
+    [Fact]
     public void V_bit_tool_follows_the_cone()
     {
         var v = new SimTool(5, ToolProfile.VCutter, veeAngle: 90);

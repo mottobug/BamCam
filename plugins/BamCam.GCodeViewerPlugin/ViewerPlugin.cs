@@ -13,7 +13,7 @@ public sealed record GCodeViewer(string Name, string Url, string AccessKeyName);
 /// </summary>
 public sealed class ViewerPlugin : IBamCamPlugin
 {
-    /// <summary>The viewers offered. The first one also gets a toolbar button.</summary>
+    /// <summary>The viewers offered. They and CAMotics share one toolbar button (the eye) with a menu.</summary>
     public static readonly IReadOnlyList<GCodeViewer> Viewers =
     [
         new("CutViewer", "https://cutviewer.com/app/", "_CutViewer"),
@@ -21,6 +21,9 @@ public sealed class ViewerPlugin : IBamCamPlugin
     ];
 
     private const string EyeIcon = "M2,12 C6,5 18,5 22,12 C18,19 6,19 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9 Z";
+
+    /// <summary>All commands of the plugin are in the menu of one toolbar button.</summary>
+    private const string ToolbarGroup = "viewers";
 
     public void Initialize(IPluginHost host)
     {
@@ -34,6 +37,7 @@ public sealed class ViewerPlugin : IBamCamPlugin
                     ? $"G-Code in {viewer.Name} im Browser ansehen; die Datei wird im Explorer gezeigt und ins Browserfenster gezogen. Geht nicht an die Maschine."
                     : $"View the G-code in {viewer.Name} in the browser; the file is shown in the file manager, to be dragged into the browser window. Nothing goes to the machine.",
                 Icon = viewer == Viewers[0] ? EyeIcon : null,
+                ToolbarGroup = ToolbarGroup,
                 Execute = ctx => Open(ctx, viewer, german),
             });
         host.AddCommand(new PluginCommand
@@ -43,6 +47,7 @@ public sealed class ViewerPlugin : IBamCamPlugin
             Description = german
                 ? "G-Code mit Werkzeugen und Rohteil in CAMotics simulieren (eigenes Programm, von camotics.org zu installieren). Geht nicht an die Maschine."
                 : "Simulate the G-code with its tools and stock in CAMotics (a separate program, install it from camotics.org). Nothing goes to the machine.",
+            ToolbarGroup = ToolbarGroup,
             Execute = ctx => Camotics.Open(ctx, german),
         });
     }

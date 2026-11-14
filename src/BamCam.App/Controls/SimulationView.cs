@@ -250,6 +250,9 @@ public sealed class SimulationView : Control
         for (var i = 0; i + 1 < nx; i++)
         {
             int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
+            // Cut through to the bottom (a plasma kerf, a cut-out profile): no material, the background shows.
+            var through = (float)(f.Bottom + 1e-4);
+            if (z[a] <= through && z[b] <= through && z[c] <= through && z[d] <= through) continue;
             var dzdx = (z[b] + z[d] - z[a] - z[c]) / (2 * cell);
             var dzdy = (z[c] + z[d] - z[a] - z[b]) / (2 * cell);
             var color = Shade(-dzdx, -dzdy, 1, ColorOf(Deviation(a, b, c, d), f));

@@ -92,6 +92,13 @@ public sealed class PluginCommand
     /// </summary>
     public string? Icon { get; init; }
 
+    /// <summary>
+    /// Optional: commands of the plugin with the same group name share one toolbar button with a small arrow, which
+    /// opens a menu of them (as the align button does). The button shows the icon of the first command of the group
+    /// that has one; commands of the group without an icon are in the menu too.
+    /// </summary>
+    public string? ToolbarGroup { get; init; }
+
     /// <summary>The action. Changes to the drawing must go through <see cref="ICommandContext.Change"/> to be undoable.</summary>
     public required Func<ICommandContext, Task> Execute { get; init; }
 }

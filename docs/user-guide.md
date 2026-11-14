@@ -35,7 +35,7 @@ commands and plugins.
 | **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
 | **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (D = inherited). A style holds values for every kind of operation; *Show values for* only chooses which are shown, and the next style opens with the same kind. Each style opens in one window. |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
-| Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms; Alt + left drag rotates (Tools ▸ Options ▸ Rotation Mode also allows holding the middle or right button and dragging with the left one, as in CamBam); right button opens the context menu. 3D meshes appear as shaded surfaces; View ▸ Shade Surfaces switches to wireframes. Lines and toolpaths always lie over a surface, even when they run behind it. |
+| Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms (without a middle button, as on a notebook: hold Space and drag with the left button, or use the arrow keys); Alt + left drag rotates (Tools ▸ Options ▸ Rotation Mode also allows holding the middle or right button and dragging with the left one, as in CamBam); right button opens the context menu. 3D meshes appear as shaded surfaces; View ▸ Shade Surfaces switches to wireframes. Lines and toolpaths always lie over a surface, even when they run behind it. |
 | Messages (bottom) | What BamCam did, warnings and errors. |
 | Prompt bar (above the drawing) | What the active command expects next. |
 
@@ -198,10 +198,11 @@ simulation itself; by default it is half a cell. **Add to Drawing** puts the mat
 new layer as a surface (a closed mesh through the centres of the cells, with sides and bottom), for example for a 3D
 profile; **Save STL...** writes the same mesh as a binary STL file. Fields with more than a million triangles are
 thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis
-(no undercuts); plasma and drag knife are not shown.
+(no undercuts). Plasma cuts through the stock as wide as its kerf (without stock the sheet is as thick as in the
+cut data, else 1); the drag knife is not shown.
 
-**Other simulators** (Machining ▸ Open in CutViewer / NC Viewer / CAMotics, from the G-Code Viewer plugin that comes
-with BamCam): they simulate the G-code the post processor writes, an independent check. CutViewer and NC Viewer run in
+**Other simulators** (Machining ▸ Open in CutViewer / NC Viewer / CAMotics, or the eye in the toolbar, from the G-Code
+Viewer plugin that comes with BamCam): they simulate the G-code the post processor writes, an independent check. CutViewer and NC Viewer run in
 the browser; drag the file shown in the file manager into the browser window. CAMotics ([camotics.org](https://camotics.org),
 install it first) opens directly with the tools of the operations and the stock; if it is not in its usual place,
 BamCam asks once for the program.
@@ -284,7 +285,11 @@ Special operations:
   folder of the system folder): material, thickness, current, nozzle, kerf width, feedrate, pierce height, pierce
   delay and cut height. The operation takes these values wherever it keeps the default (italic) value, also after
   the table changes; a value typed into the operation wins. The tables start with a few rough values for 30 to 45
-  A cutters: replace them with the cut chart of your plasma cutter (right-click: new, duplicate, delete entry).
+  A cutters: replace them with the cut chart of your plasma cutter (right-click an entry: duplicate, delete; a table: new
+  entry, duplicate, rename, delete table; Plasma Cut Data: new table). Each table is one file; the two starting tables
+  are written again when missing, so they cannot be renamed or deleted (duplicate them instead). Operations remember
+  the entry by its name only: give entries names that are unique across tables, otherwise the first one found is used
+  (tables in the drawing's units first).
   The toolbar button with the torch inserts a plasma operation.
 
   *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
@@ -330,7 +335,7 @@ display, drawing, files, post processor and update settings.
 | `Ctrl+B` | Break at intersections | `Ctrl+L` | Align |
 | `Ctrl+1` / `2` / `3` / `4` | View XY / XZ / YZ / isometric | `Home` | Reset view (XY, zoom to fit) |
 | `Ctrl+Shift+T` | 3D simulation | `F5` | Run script objects again |
-| `F1` | User guide | | |
+| `F1` | User guide | `Space` + left drag | Pan the view |
 
 ## 8. Files
 

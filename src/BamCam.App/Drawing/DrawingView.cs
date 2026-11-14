@@ -177,6 +177,13 @@ public sealed partial class DrawingView : Control, IToolHost
             return;
         }
         if (TryBeginButtonRotation(e, props, pos)) return;
+        // Space held + left drag pans, for notebooks without a middle button.
+        if (props.IsLeftButtonPressed && _spaceHeld)
+        {
+            _spacePanned = true;
+            BeginDrag(DragMode.Pan, pos, e, MouseButton.Left);
+            return;
+        }
         if (props.IsMiddleButtonPressed)
         {
             BeginDrag(DragMode.Pan, pos, e, MouseButton.Middle);
@@ -338,7 +345,7 @@ public sealed partial class DrawingView : Control, IToolHost
             var wasPan = _drag == DragMode.Pan;
             _drag = DragMode.None;
             // A middle click without movement is a "finish" command for tools.
-            if (wasPan && !_dragMoved)
+            if (wasPan && !_dragMoved && e.InitialPressMouseButton == MouseButton.Middle)
                 _tool.PointerReleased(pos, Snap(_view.ToWorld(pos), pos), MouseButton.Middle, e.KeyModifiers);
             return;
         }
@@ -376,6 +383,35 @@ public sealed partial class DrawingView : Control, IToolHost
             return;
         }
         if (HandleNavigationKey(e.Key, e.KeyModifiers)) e.Handled = true;
+    }
+
+    private bool _spaceHeld;
+    private bool _spacePanned;
+
+    /// <summary>Whether the space bar is held for panning.</summary>
+    public bool SpaceHeld => _spaceHeld;
+
+    /// <summary>
+    /// The space bar went down (key repeats included): while it is held, a left drag pans the view.
+    /// </summary>
+    public void SpacePressed()
+    {
+        if (_spaceHeld) return;
+        _spaceHeld = true;
+        _spacePanned = false;
+        Cursor = new Cursor(StandardCursorType.Hand);
+    }
+
+    /// <summary>
+    /// The space bar was released (or the window lost focus). True when it was not used for panning: then it was a
+    /// plain key press, which the active tool gets now.
+    /// </summary>
+    public bool SpaceReleased()
+    {
+        if (!_spaceHeld) return false;
+        _spaceHeld = false;
+        Cursor = Cursor.Default;
+        return !_spacePanned;
     }
 
     /// <summary>Keyboard navigation; public so the main window can forward keys.</summary>

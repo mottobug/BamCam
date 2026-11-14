@@ -60,6 +60,9 @@ public sealed class SimTool
     public ToolProfile Profile { get; }
     public double CornerRadius { get; }
     public double TipRadius { get; }
+
+    /// <summary>Cuts through the whole stock wherever it moves (a plasma torch, its radius is half the kerf).</summary>
+    public bool Through { get; init; }
     private double VeeTan { get; }
 
     public double HeightAt(double d) => Profile switch
@@ -77,8 +80,8 @@ public sealed class SimTool
 /// <summary>Milling simulation on a height field (3-axis: no undercuts).</summary>
 public static class MillingSimulation
 {
-    /// <summary>Operations the simulation shows (milling; not turning, plasma or drag knife).</summary>
-    public static bool IsMilling(MachineOp op) => op is not (TurningOp or PlasmaOp or DragKnifeOp);
+    /// <summary>Operations the simulation shows on a block (milling, and plasma as a cut through it; not turning or drag knife).</summary>
+    public static bool IsMilling(MachineOp op) => op is not (TurningOp or DragKnifeOp);
 
     /// <summary>Operations the 3D simulation shows: milling on a block, or turning (see <see cref="Cam.TurningSimulation"/>).</summary>
     public static bool CanSimulate(MachineOp op) => IsMilling(op) || op is TurningOp;
@@ -93,6 +96,8 @@ public static class MillingSimulation
             VEngraveOp v => new SimTool(v.TipDiameter.Value / 2 + (Math.Abs(v.StockSurface.Value - v.TargetDepth.Value) + 0.5)
                 * Math.Tan(Angles.ToRadians(Math.Clamp(v.VAngle.Value, 1, 179) / 2)), ToolProfile.VCutter, veeAngle: v.VAngle.Value, tipRadius: v.TipDiameter.Value / 2),
             Profile3DOp p3 => new SimTool(radius, p3.ToolProfile.Value, p3.CornerRadius.Value),
+            // Plasma: every cut goes through the sheet, as wide as the kerf.
+            PlasmaOp plasma => new SimTool(Math.Max(plasma.KerfWidth.Value, 0.01) / 2, ToolProfile.EndMill) { Through = true },
             _ => new SimTool(radius, op.ToolProfile.Value, veeAngle: ToolVeeAngle(doc, op)),
         };
     }
@@ -135,7 +140,10 @@ public static class MillingSimulation
                 y1 = cuts.Max(s => Math.Max(s.From.Y, s.To.Y)) + margin;
             }
             top = jobs.Select(j => j.Op.StockSurface.Value).DefaultIfEmpty(0).Max();
-            bottom = Math.Min(lowest, top) - 1;
+            // Plasma cuts above the sheet: its thickness comes from the cut data (1 without).
+            var sheet = jobs.Select(j => j.Op).OfType<PlasmaOp>()
+                .Select(p => CamLibraries.FindCutData(doc, p.CutData.Value)?.Thickness ?? 0).DefaultIfEmpty(0).Max();
+            bottom = Math.Min(Math.Min(lowest, top) - 1, top - sheet);
         }
         var widest = Math.Max(x1 - x0, y1 - y0);
         if (cell <= 0) cell = Math.Max(widest / 600, 0.01);
@@ -265,10 +273,11 @@ public static class MillingSimulation
     {
         var tool = step.Tool;
         var r = tool.Radius;
-        if (Math.Abs(step.From.Z - step.To.Z) < 1e-9)
+        if (tool.Through || Math.Abs(step.From.Z - step.To.Z) < 1e-9)
         {
-            // Level move: every cell is cut by the tool at its nearest point of the move (exact and fast).
-            var z0 = step.From.Z;
+            // Level move: every cell is cut by the tool at its nearest point of the move (exact and fast). A torch cuts
+            // through to the bottom, whatever its height above the sheet.
+            var z0 = tool.Through ? f.Bottom : step.From.Z;
             if (z0 >= f.Top) return;
             Point2 a = step.From.XY, b = step.To.XY;
             int i0 = Math.Max(0, (int)Math.Floor((Math.Min(a.X, b.X) - r - f.X0) / f.Cell));
