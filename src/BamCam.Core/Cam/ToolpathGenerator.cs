@@ -15,11 +15,25 @@ public static class ToolpathGenerator
     /// </summary>
     public const double ChordTolerance = 1e-4;
 
+    /// <summary>
+    /// One message per value of the operation that BamCam does not know (see <see cref="MachineOp.UnknownValues"/>); such
+    /// an operation gets no toolpath.
+    /// </summary>
+    public static List<string> UnknownValueWarnings(MachineOp op) =>
+        op.UnknownValues().Select(u => Tr.F("{0}: {1} '{2}' is not known to BamCam, so no toolpath is generated. Choose a value for {1} in the properties.",
+            op.Name, Tr.T(System.Text.RegularExpressions.Regex.Replace(u.Name, "(?<=[a-z0-9])(?=[A-Z])", " ")), u.Text)).ToList();
+
     /// <param name="cancel">Stops long calculations early: the result is then incomplete and is to be dropped.</param>
     public static Toolpath Generate(CadDocument doc, MachineOp op, CancellationToken cancel = default)
     {
         var ctx = new GenContext(doc, op) { Cancel = cancel };
         var tp = new Toolpath();
+        if (UnknownValueWarnings(op) is { Count: > 0 } unknown)
+        {
+            // A stand-in value could cut somewhere else than intended (issue 14: Start Corner Top became BottomLeft).
+            tp.Warnings.AddRange(unknown);
+            return tp;
+        }
         if (!CheckTool(ctx, op, tp)) return tp;
         try
         {

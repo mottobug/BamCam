@@ -147,6 +147,10 @@ public sealed partial class PropertyGrid : DockPanel
     /// <summary>"StepOver" → "Step Over": display text (and translation key) of property and enum names.</summary>
     public static string Humanize(string name) => WordBoundary().Replace(name.Replace('_', ' '), " ").Replace("  ", " ");
 
+    /// <summary>English text of an enum member: its [Description] (e.g. "Bottom + Left" as CamBam shows it), else the humanized name.</summary>
+    public static string EnumText(Type type, string name) =>
+        type.GetField(name)?.GetCustomAttribute<System.ComponentModel.DescriptionAttribute>()?.Description ?? Humanize(name);
+
     /// <summary>English display name of a property (the translation key).</summary>
     public static string DisplayNameOf(PropertyInfo prop) =>
         prop.GetCustomAttribute<DisplayNameAttribute>()?.DisplayName ?? Humanize(prop.GetCustomAttribute<ParamAttribute>()?.XmlName ?? prop.Name);
@@ -533,16 +537,23 @@ public sealed partial class PropertyGrid : DockPanel
         {
             // (value, display text): enum members are shown humanized and translated ("DepthFirst" → "Depth First").
             var choices = node.Choices ?? Enum.GetNames(t)
-                .Select(n => new KeyValuePair<string, string>(n, Tr.T(Humanize(n)))).ToList();
+                .Select(n => new KeyValuePair<string, string>(n, Tr.T(EnumText(t, n)))).ToList();
             var current = value?.ToString() ?? "";
             if (node.Choices != null) choices = ChoicesWithCurrent(choices, current);
+            // A value from the file that BamCam does not know (issue 14): shown as it is, not as the stand-in default.
+            var unknown = node.Param?.UnknownText;
+            if (unknown != null)
+            {
+                current = "\0unknown";
+                choices = choices.Prepend(new KeyValuePair<string, string>(current, Tr.F("{0} (unknown to BamCam)", unknown))).ToList();
+            }
             var combo = new ComboBox
             {
                 ItemsSource = choices.Select(c => c.Value).ToList(),
                 SelectedIndex = choices.ToList().FindIndex(c => c.Key == current), IsEnabled = !readOnly,
                 HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 20, Padding = new Thickness(4, 0),
                 BorderThickness = new Thickness(0), FontStyle = isDefault ? FontStyle.Italic : FontStyle.Normal,
-                Foreground = isDefault ? Brushes.Gray : Brushes.Black,
+                Foreground = unknown != null ? Brushes.Red : isDefault ? Brushes.Gray : Brushes.Black,
             };
             combo.SelectionChanged += (_, _) =>
             {

@@ -76,6 +76,7 @@ internal static class CbParams
                 // (RawXml) so the file stays as that CamBam wrote it until the value is edited.
                 if (type.IsEnum && CbFormat.TryParseLocalizedEnum(type, el.Value, out var localized))
                     param.BoxedValue = localized;
+                else param.UnknownText = el.Value.Trim(); // a value BamCam does not know: the default stands in for it
                 param.RawXml = new XElement(el);
             }
             else

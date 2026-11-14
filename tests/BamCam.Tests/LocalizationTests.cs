@@ -64,7 +64,7 @@ public partial class LocalizationTests(ITestOutputHelper output)
         }
         foreach (var e in enums)
             foreach (var name in Enum.GetNames(e))
-                keys.Add(e == typeof(ParamState) ? name : PropertyGrid.Humanize(name));
+                keys.Add(e == typeof(ParamState) ? name : PropertyGrid.EnumText(e, name));
         return keys;
     }
 

@@ -337,6 +337,13 @@ public abstract class MachineOp
             .Select(x => (x.Info!.XmlName ?? x.Prop.Name, (ICamParam)x.Prop.GetValue(this)!, x.Info!));
     }
 
+    /// <summary>
+    /// Parameters whose value in the drawing (or its style) BamCam does not know, e.g. a CamBam option BamCam lacks:
+    /// the file element name and the text. Their value is only a stand-in, so no toolpath is generated.
+    /// </summary>
+    public List<(string Name, string Text)> UnknownValues() =>
+        Parameters().Where(p => p.Param.UnknownText != null).Select(p => (p.Name, p.Param.UnknownText!)).ToList();
+
     public ICamParam? FindParameter(string name) =>
         Parameters().Where(p => p.Name == name).Select(p => p.Param).FirstOrDefault();
 

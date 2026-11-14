@@ -32,7 +32,7 @@ commands and plugins.
 | Area | What it is for |
 |---|---|
 | Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code). |
-| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
+| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Several operations or parts selected with Ctrl or Shift are enabled or disabled together: Space, right-click ▸ Disable, or *Enabled* in the properties. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
 | **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (D = inherited). A style holds values for every kind of operation; *Show values for* only chooses which are shown, and the next style opens with the same kind. Each style opens in one window. |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
 | Drawing view | Left button selects (click, window from left to right, crossing window from right to left); middle button or wheel pans and zooms (without a middle button, as on a notebook: hold Space and drag with the left button, or use the arrow keys); Alt + left drag rotates (Tools ▸ Options ▸ Rotation Mode also allows holding the middle or right button and dragging with the left one, as in CamBam); right button opens the context menu. 3D meshes appear as shaded surfaces; View ▸ Shade Surfaces switches to wireframes. Lines and toolpaths always lie over a surface, even when they run behind it. |
@@ -356,6 +356,16 @@ fills do not matter: the outline of each path is imported, not the width of its 
 Grooving, Threading and Lathe Drilling are saved in the `.cb` file, but CamBam does not know them. It opens such a
 drawing without them and without a message, and if you save it in CamBam they are gone. When you save such a drawing,
 BamCam says so in the message window. Keep a copy, or generate the G-code in BamCam.
+
+**Values BamCam does not know:** a drawing or style from CamBam can hold an option BamCam does not have (for example
+an option of a newer CamBam). BamCam keeps it in the file, shows it in red in the properties with
+*(unknown to BamCam)* and reports it when the drawing is opened. The operation gets no toolpath until you choose a
+value BamCam knows, so that it never cuts with a stand-in value.
+
+**Start Corner of the 3D profile:** BamCam has CamBam's ten values and starts like CamBam: *Horizontal* starts at the top
+for every value with *Top* (its first row from right to left), else at the bottom (left to right); *Vertical* starts at
+the right for every value with *Right* (its first column upwards), else at the left (downwards). The other half of the
+value does not count, as in CamBam. Compared with CamBam in `examples_to_test/Vergleich Startecke.cb`.
 
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 

@@ -81,6 +81,8 @@ public partial class MainWindow : Window
             else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
             else
             {
+                // Enabled of an operation or part: the same for the others selected with it in the tree (one undo step).
+                if (key == nameof(Core.Cam.MachineOp.Enabled)) ApplyEnabledToTreeSelection(Properties.SelectedObject);
                 var toolEdit = key is nameof(Core.Cam.MachineOp.ToolNumber) or nameof(Core.Cam.MachineOp.ToolDiameter) && Properties.SelectedObject is Core.Cam.MachineOp;
                 OnPropertyEdited(quietTool: toolEdit);
                 // The number of an operation: which tool it is (a diameter typed against it is asked about instead).
@@ -620,8 +622,11 @@ public partial class MainWindow : Window
         foreach (var op in inserted.Operations.OfType<Core.Cam.UnsupportedOp>())
             Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
         if (withOperations)
+        {
             foreach (var style in LibraryFiles.MissingStyles(doc))
                 Log(F("Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.", style));
+            foreach (var warning in inserted.Operations.SelectMany(Core.Cam.ToolpathGenerator.UnknownValueWarnings)) Log(warning);
+        }
         _ = AskForScripts(doc);
     }
 
@@ -693,6 +698,7 @@ public partial class MainWindow : Window
                 Log(F("Note: operation '{0}' ({1}) is kept in the file but cannot be machined by this version.", op.Name, op.XmlName));
             foreach (var style in BamCam.IO.Cb.LibraryFiles.MissingStyles(doc))
                 Log(F("Warning: CAM style '{0}' is not installed on this computer. Operations using it keep the values stored in the drawing.", style));
+            foreach (var warning in doc.Parts.SelectMany(p => p.Operations).SelectMany(Core.Cam.ToolpathGenerator.UnknownValueWarnings)) Log(warning);
             _ = AskForScripts(doc);
         }
         catch (Exception ex)

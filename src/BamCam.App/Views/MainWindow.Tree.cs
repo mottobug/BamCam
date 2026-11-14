@@ -122,6 +122,25 @@ public partial class MainWindow
         View.Invalidate();
     }
 
+    /// <summary>
+    /// Enabled was changed in the properties of an operation or part: the other operations or parts selected with it in the
+    /// drawing tree get the same state (the properties show only one of them).
+    /// </summary>
+    private void ApplyEnabledToTreeSelection(object? edited)
+    {
+        var tags = SelectedTags().ToList();
+        if (edited == null || !tags.Contains(edited)) return;
+        switch (edited)
+        {
+            case MachineOp op:
+                foreach (var o in tags.OfType<MachineOp>()) o.Enabled = op.Enabled;
+                break;
+            case Part part:
+                foreach (var p in tags.OfType<Part>()) p.Enabled = part.Enabled;
+                break;
+        }
+    }
+
     private IEnumerable<object> SelectedTags() =>
         DrawingTree.SelectedItems.OfType<TreeViewItem>().Select(i => i.Tag).Where(t => t != null)!;
 
@@ -282,6 +301,36 @@ public partial class MainWindow
             menu.Items.Add(mi);
         }
         void Sep() => menu.Items.Add(new Separator());
+        // Enable / Disable: with several parts or operations selected in the tree, this one among them, all of them get the
+        // state this one gets. The selection is read when the menu opens (the menu is built with the tree).
+        void ToggleEnabled<TItem>(TItem clicked, Func<bool> enabled, string enable1, string disable1, string enableN, string disableN, string undo)
+            where TItem : class
+        {
+            var item = new MenuItem();
+            List<TItem> Targets() => SelectedTags().OfType<TItem>().Contains(clicked) ? SelectedTags().OfType<TItem>().ToList() : [clicked];
+            void Update()
+            {
+                var n = Targets().Count;
+                item.Header = n > 1 ? F(enabled() ? disableN : enableN, n) : T(enabled() ? disable1 : enable1);
+            }
+            Update();
+            menu.Opening += (_, _) => Update();
+            item.Click += (_, _) =>
+            {
+                var targets = Targets();
+                var value = !enabled();
+                _session.Execute(undo, () =>
+                {
+                    foreach (var t in targets)
+                        switch (t)
+                        {
+                            case Part p: p.Enabled = value; break;
+                            case MachineOp o: o.Enabled = value; break;
+                        }
+                });
+            };
+            menu.Items.Add(item);
+        }
 
         switch (tag)
         {
@@ -326,7 +375,7 @@ public partial class MainWindow
                 Add(T("Generate Toolpaths"), () => GenerateToolpaths(new PostScope(part)));
                 Add(T("Produce Gcode"), () => _ = ProduceGCode(new PostScope(part)));
                 Sep();
-                Add(part.Enabled ? T("Disable") : T("Enable"), () => _session.Execute(T("Toggle part"), () => part.Enabled = !part.Enabled));
+                ToggleEnabled(part, () => part.Enabled, "Enable", "Disable", "Enable {0} Parts", "Disable {0} Parts", T("Toggle part"));
                 Add(T("Set As Active Part"), () => { doc.ActivePartName = part.Name; _session.NotifyChanged(); });
                 Add(T("Rename"), () => _ = RenameSelected());
                 Add(T("Delete"), () => _session.Execute(T("Delete part"), () => doc.Parts.Remove(part)));
@@ -336,7 +385,7 @@ public partial class MainWindow
                 Add(T("Generate Toolpaths"), () => GenerateToolpaths(new PostScope(Operation: op)));
                 Add(T("Produce Gcode"), () => _ = ProduceGCode(new PostScope(doc.Parts.FirstOrDefault(p => p.Operations.Contains(op)), op)));
                 Sep();
-                Add(op.Enabled ? T("Disable MOP") : T("Enable MOP"), () => _session.Execute(T("Toggle MOP"), () => op.Enabled = !op.Enabled));
+                ToggleEnabled(op, () => op.Enabled, "Enable MOP", "Disable MOP", "Enable {0} MOPs", "Disable {0} MOPs", T("Toggle MOP"));
                 Add(T("Select Drawing Objects"), () => PickOperationObjects(op));
                 Add(T("Set Start Point"), () => View.SetTool(new PickPointTool(T("Select start point"),
                     p => _session.Execute(T("Set start point"), () => op.StartPoint.Set(new OptionalPoint(p.ToPoint3()))))));

@@ -15,6 +15,12 @@ public interface ICamParam
     object? BoxedValue { get; set; }
     /// <summary>Complex values (e.g. lead moves, holding tabs) stored as XML when not modelled.</summary>
     XElement? RawXml { get; set; }
+    /// <summary>
+    /// The text of a value in a drawing or style that BamCam does not know (such as a CamBam option BamCam lacks); null
+    /// otherwise. The value then is a stand-in, so operations with such a value generate no toolpath. Setting a value
+    /// clears it.
+    /// </summary>
+    string? UnknownText { get => null; set { } }
     ICamParam CloneParam();
 }
 
@@ -27,9 +33,21 @@ public sealed class CamParam<T> : ICamParam
         State = state;
     }
 
-    public T Value { get; set; }
+    private T _value = default!;
+
+    public T Value
+    {
+        get => _value;
+        set
+        {
+            _value = value;
+            UnknownText = null;
+        }
+    }
+
     public ParamState State { get; set; }
     public XElement? RawXml { get; set; }
+    [System.ComponentModel.Browsable(false)] public string? UnknownText { get; set; }
 
     public bool IsDefault => State == ParamState.Default;
 
@@ -54,7 +72,8 @@ public sealed class CamParam<T> : ICamParam
         if (State == ParamState.Default) Value = value;
     }
 
-    public ICamParam CloneParam() => new CamParam<T>(Value, State) { RawXml = RawXml == null ? null : new XElement(RawXml) };
+    public ICamParam CloneParam() =>
+        new CamParam<T>(Value, State) { RawXml = RawXml == null ? null : new XElement(RawXml), UnknownText = UnknownText };
 
     public static implicit operator T(CamParam<T> p) => p.Value;
 

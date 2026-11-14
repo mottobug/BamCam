@@ -691,7 +691,7 @@ Drill primitives in corpus: 11 `points`, 6 `circle`.
 |---|---|---|
 | `Resolution` | `0.2` | scanline sample spacing (fraction of tool dia) |
 | `ClipAreaMin`, `ClipAreaMax` | `0,0` | 2D clip box (both 0 ⇒ no clip) |
-| `StartCorner` | `BottomLeft` | scanline start corner |
+| `StartCorner` | `BottomLeft` | scanline start corner: `Bottom`, `Top`, `TopBottom`, `Left`, `BottomLeft`, `TopLeft`, `Right`, `BottomRight`, `TopRight`, `LeftRight`. Horizontal starts at the top for values with Top, Vertical at the right for values with Right |
 | `Profile3DMethod` | `WaterlineRough`, `Horizontal` | help: also Vertical, Waterline Finish (`Vertical`, `WaterlineFinish` UNVERIFIED) |
 | `BackFaceCulling` | `True` | |
 | `PlaneSliceOnly` | `False` | |

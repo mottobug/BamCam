@@ -173,10 +173,13 @@ internal static class Profile3DGenerator
         var (u0, u1) = (U(bb.Min.XY), U(bb.Max.XY));
         var (v0, v1) = (V(bb.Min.XY), V(bb.Max.XY));
 
+        // As CamBam (compared in examples_to_test/Vergleich Startecke): Horizontal starts at the top for every value with
+        // Top and then cuts its first row from right to left, else at the bottom from left to right; Vertical starts at the
+        // right for every value with Right and cuts its first column upwards, else at the left downwards.
         var corner = op.StartCorner.Value;
-        var vAscending = corner is StartCorner.BottomLeft or StartCorner.BottomRight;
-        var uAscending = corner is StartCorner.BottomLeft or StartCorner.TopLeft;
-        if (vertical) (vAscending, uAscending) = (uAscending, vAscending);
+        var top = corner is StartCorner.Top or StartCorner.TopBottom or StartCorner.TopLeft or StartCorner.TopRight;
+        var right = corner is StartCorner.Right or StartCorner.LeftRight or StartCorner.BottomRight or StartCorner.TopRight;
+        var (vAscending, uAscending) = vertical ? (!right, right) : (!top, !top);
 
         var rows = new List<double>();
         for (var v = v0 + step / 2; v <= v1 + 1e-9; v += step) rows.Add(v);

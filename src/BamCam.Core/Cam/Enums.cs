@@ -72,7 +72,24 @@ public enum NestMethod { None, Grid, IsoGrid, Manual, PointList }
 
 public enum Profile3DMethod { Horizontal, Vertical, WaterlineRough, WaterlineFinish }
 
-public enum StartCorner { BottomLeft, BottomRight, TopLeft, TopRight }
+/// <summary>
+/// Where the scanline 3D profile starts, with CamBam's ten values (issue 14). As in CamBam only one half counts: the
+/// Horizontal method starts at the top for every value with Top, else at the bottom; the Vertical method starts at the
+/// right for every value with Right, else at the left.
+/// </summary>
+public enum StartCorner
+{
+    [System.ComponentModel.Description("Bottom + Left")] BottomLeft,
+    [System.ComponentModel.Description("Bottom + Right")] BottomRight,
+    [System.ComponentModel.Description("Top + Left")] TopLeft,
+    [System.ComponentModel.Description("Top + Right")] TopRight,
+    Bottom,
+    Top,
+    [System.ComponentModel.Description("Top + Bottom")] TopBottom,
+    Left,
+    Right,
+    [System.ComponentModel.Description("Left + Right")] LeftRight,
+}
 
 public enum FlipAxis { X, Y }
 
