@@ -179,7 +179,13 @@ internal static class Profile3DGenerator
         var corner = op.StartCorner.Value;
         var top = corner is StartCorner.Top or StartCorner.TopBottom or StartCorner.TopLeft or StartCorner.TopRight;
         var right = corner is StartCorner.Right or StartCorner.LeftRight or StartCorner.BottomRight or StartCorner.TopRight;
-        var (vAscending, uAscending) = vertical ? (!right, right) : (!top, !top);
+        var vAscending = vertical ? !right : !top;
+        // Row direction as CamBam (examples_to_test/Vergleich Zickzack): Conventional cuts every row the same way, Climb the
+        // other way, with a retract between rows; Mixed goes back and forth, its first row always left to right (Horizontal)
+        // or downwards (Vertical), whatever the start corner.
+        var climb = op.MillingDirection.Value == MillingDirection.Climb;
+        var mixed = op.MillingDirection.Value == MillingDirection.Mixed;
+        var uAscending = mixed ? !vertical : (vertical ? !vAscending : vAscending) ^ climb;
 
         var rows = new List<double>();
         for (var v = v0 + step / 2; v <= v1 + 1e-9; v += step) rows.Add(v);
@@ -193,7 +199,7 @@ internal static class Profile3DGenerator
         Parallel.For(0, rows.Count, new ParallelOptions { CancellationToken = ctx.Cancel }, row =>
         {
             var v = rows[row];
-            var forward = uAscending ^ (row % 2 == 1);
+            var forward = mixed ? uAscending ^ (row % 2 == 1) : uAscending;
             var segments = new List<List<Point3>>();
             List<Point3>? current = null;
             var n = Math.Max(1, (int)Math.Ceiling((u1 - u0) / res));
@@ -226,7 +232,9 @@ internal static class Profile3DGenerator
         var levels = op.RoughingFinishing.Value == RoughingFinishing.Roughing && op.DepthIncrement.Value > 1e-9
             ? ctx.Levels(op)
             : [double.NegativeInfinity];
-        var linkDist = step * 1.5 + res;
+        // Mixed links the next row without a retract when it starts within the crossover distance, as CamBam: up first if
+        // it starts higher, across at the plunge feed, then down. Conventional and Climb always retract.
+        var linkDist = mixed ? Math.Max(op.MaxCrossoverDistance.Value, 0) * dia : -1;
         var prev = ctx.StockSurface;
         // 2 µm in the units of the drawing (in inches the same length, not 0.002 inches).
         var tolerance = ctx.Doc.Units == DrawingUnits.Inches ? 0.002 / 25.4 : 0.002;
@@ -236,9 +244,12 @@ internal static class Profile3DGenerator
             foreach (var seg in segments)
             {
                 var pts = Simplify(seg.Select(p => p with { Z = Math.Max(p.Z, level) }).ToList(), tolerance);
-                if (mb.Position is { } pos && Point2.Distance(pos.XY, pts[0].XY) <= linkDist && Math.Abs(pos.Z - pts[0].Z) < dia)
+                if (mb.Position is { } pos && Point2.Distance(pos.XY, pts[0].XY) <= linkDist + 1e-9)
                 {
-                    mb.Line(pts[0], ctx.CutFeed);
+                    var across = Math.Max(pos.Z, pts[0].Z);
+                    if (across > pos.Z) mb.Rapid(pos with { Z = across });
+                    mb.Line(pts[0] with { Z = across }, ctx.PlungeFeed);
+                    if (pts[0].Z < across) mb.Line(pts[0], ctx.PlungeFeed);
                 }
                 else
                 {

@@ -367,6 +367,12 @@ for every value with *Top* (its first row from right to left), else at the botto
 the right for every value with *Right* (its first column upwards), else at the left (downwards). The other half of the
 value does not count, as in CamBam. Compared with CamBam in `examples_to_test/Vergleich Startecke.cb`.
 
+**Milling Direction of the scanline 3D profile:** as in CamBam, *Conventional* (the default) cuts every row the same
+way and goes up to the clearance plane between rows; *Climb* cuts every row the other way. *Mixed* goes back and forth
+(Horizontal starting left to right, Vertical downwards); it goes over to the next row at the plunge feed when that
+starts within *Max Crossover Distance* × tool diameter, otherwise it goes up. Compared with CamBam in
+`examples_to_test/Vergleich Zickzack.cb`.
+
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 
 - **`.cb`, `.dxf` and `.svg`:** the objects stay at their original position and are selected afterwards, so they can be moved
