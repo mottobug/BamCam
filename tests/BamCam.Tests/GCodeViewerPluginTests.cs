@@ -147,7 +147,7 @@ public class GCodeViewerPluginTests
     [Fact]
     public void The_CAMotics_project_has_the_tools_the_workpiece_and_the_gcode_file()
     {
-        var json = System.Text.Json.JsonDocument.Parse(Camotics.Project(CamoticsDrawing(), @"C:\temp\Sign.nc")).RootElement;
+        var json = System.Text.Json.JsonDocument.Parse(Camotics.Project(CamoticsDrawing(), Path.Combine(Path.GetTempPath(), "Sign.nc"))).RootElement;
 
         Assert.Equal("metric", json.GetProperty("units").GetString());
         var ball = json.GetProperty("tools").GetProperty("3");
