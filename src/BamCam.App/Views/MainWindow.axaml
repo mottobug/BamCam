@@ -96,9 +96,9 @@
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
         <DockPanel Grid.Row="3">
           <Border DockPanel.Dock="Top" Classes="panelHeader"><TextBlock Text="Messages" x:Name="MessagesHeader" /></Border>
-          <TextBox x:Name="Messages" IsReadOnly="True" AcceptsReturn="True" TextWrapping="NoWrap"
+          <TextBox x:Name="Messages" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
                    FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="11" BorderThickness="0"
-                   ScrollViewer.VerticalScrollBarVisibility="Auto" />
+                   ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
         </DockPanel>
       </Grid>
     </Grid>
