@@ -603,7 +603,7 @@ public sealed partial class PropertyGrid : DockPanel
             Point3 p => $"{F(p.X)},{F(p.Y)},{F(p.Z)}",
             Point2 p => $"{F(p.X)},{F(p.Y)}",
             OptionalPoint op => op.Point is { } pp ? $"{F(pp.X)},{F(pp.Y)},{F(pp.Z)}" : "",
-            Matrix4 m => m.IsIdentity ? Tr.T("Identity") : string.Join(" ", m.ToArray().Select(F)),
+            Matrix4 m => DescribeTransform(m),
             _ => Convert.ToString(value, Inv) ?? "",
         };
 
@@ -656,6 +656,23 @@ public sealed partial class PropertyGrid : DockPanel
         withPick.Children.Add(pick);
         withPick.Children.Add(editor);
         return withPick;
+    }
+
+    /// <summary>
+    /// A transform in words: "Mirror Y", "Scale 2, 2, 1; Rotate 30°; Move 5, 0, 0". Matrices that also turn about X or Y
+    /// are shown as their 16 numbers.
+    /// </summary>
+    public static string DescribeTransform(Matrix4 m)
+    {
+        if (m.IsIdentity) return Tr.T("Identity");
+        if (TransformParts.From(m) is not { } p) return string.Join(" ", m.ToArray().Select(F));
+        var parts = new List<string>();
+        if (p is { ScaleX: 1, ScaleY: -1, ScaleZ: 1 }) parts.Add(Tr.T("Mirror Y"));
+        else if (p is { ScaleX: -1, ScaleY: 1, ScaleZ: 1 }) parts.Add(Tr.T("Mirror X"));
+        else if (p is not { ScaleX: 1, ScaleY: 1, ScaleZ: 1 }) parts.Add(Tr.F("Scale {0}, {1}, {2}", F(p.ScaleX), F(p.ScaleY), F(p.ScaleZ)));
+        if (p.RotateZ != 0) parts.Add(Tr.F("Rotate {0}°", F(p.RotateZ)));
+        if (p is not { MoveX: 0, MoveY: 0, MoveZ: 0 }) parts.Add(Tr.F("Move {0}, {1}, {2}", F(p.MoveX), F(p.MoveY), F(p.MoveZ)));
+        return string.Join("; ", parts);
     }
 
     private static List<string>? _fontNames;

@@ -172,7 +172,8 @@ Everything can be undone with `Ctrl+Z`.
    **Mirrored and moved copies of an operation:** copy and paste it, then set its *Transform* (Options, button [...]):
    scale X/Y/Z and rotate about Z around the drawing origin, then move. *Mirror Y* (scale Y -1) gives the other half
    of a mold. BamCam transforms the drawing objects before it computes the toolpath, so the milling direction stays
-   as set; the 3D simulation compares the cut with the transformed surface.
+   as set. Boundary shapes and the clip area of a 3D profile and the start point move with them; the 3D simulation
+   compares the cut with the transformed surface. The properties show the transform in words, e.g. "Mirror Y".
 4. **Generate toolpaths** (`Ctrl+T`) and check them in the drawing; View ▸ Toolpath View Filter (`Ctrl+F`) steps
    through them.
 5. **Choose the post processor** (Machining ▸ Post Processor, or the list *Post Processor* of the machining options

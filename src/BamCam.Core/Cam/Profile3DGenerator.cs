@@ -106,9 +106,11 @@ internal static class Profile3DGenerator
                 var tris = CollectTriangles(ctx, op, op.BoundaryShapes).ToList();
                 if (tris.Count > 0) tris = TransformForSide(op, tris);
                 var shapes = new List<Path2>(Silhouette(tris, ctx.Cancel));
+                // The boundary moves with the surface: the transform of the operation applies to both (issue 13).
+                var mt = op.MOPTransform.Value;
                 foreach (var id in op.BoundaryShapes)
                     if (ctx.Doc.FindEntity(id) is { } e and not SurfaceEntity)
-                        shapes.AddRange(e.ToPaths().Where(p => p.Closed));
+                        shapes.AddRange(e.ToPaths().Where(p => p.Closed).Select(p => mt.IsIdentity ? p : Polygons.EnsureOrientation(p.Transformed(mt), ccw: true)));
                 region = Polygons.Union(shapes);
                 break;
             }
@@ -121,7 +123,12 @@ internal static class Profile3DGenerator
         var min = op.ClipAreaMin.Value;
         var max = op.ClipAreaMax.Value;
         if (!min.AlmostEquals(max) && max.X > min.X && max.Y > min.Y)
-            region = Polygons.Intersection(region, [Path2.FromPoints([min, new(max.X, min.Y), max, new(min.X, max.Y)], true)]);
+        {
+            // The clip area is drawn around the untransformed surface: it moves with it.
+            var clip = Path2.FromPoints([min, new(max.X, min.Y), max, new(min.X, max.Y)], true);
+            if (!op.MOPTransform.Value.IsIdentity) clip = Polygons.EnsureOrientation(clip.Transformed(op.MOPTransform.Value), ccw: true);
+            region = Polygons.Intersection(region, [clip]);
+        }
         return region;
     }
 

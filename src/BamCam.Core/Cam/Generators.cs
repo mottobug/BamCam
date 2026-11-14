@@ -52,7 +52,7 @@ internal static class ProfileGenerator
             {
                 var (entity, src) = sources[si];
                 if (src.Count < 2) continue;
-                var startTarget = op.StartPoint.Value.Point?.XY
+                var startTarget = op.StartXY
                                   ?? (src.Closed ? DefaultStart(src, ccw, sign * (baseOffset + extra)) : src.StartPoint.XY);
                 if (!src.Closed)
                 {
@@ -125,7 +125,7 @@ internal static class ProfileGenerator
             return;
         }
 
-        var startPos = op.StartPoint.Value.Point?.XY ?? loops[0].Start;
+        var startPos = op.StartXY ?? loops[0].Start;
         var ordered = LoopTools.OrderLoops(loops, startPos, op.OptimisationMode.Value);
         if (passes > 1)
         {
@@ -579,7 +579,7 @@ internal static class PocketGenerator
         var stepFeed = op.StepoverFeedrate.Value == StepoverFeedrate.CutFeedrate ? ctx.CutFeed : ctx.PlungeFeed;
         var mixed = op.MillingDirection.Value == MillingDirection.Mixed;
 
-        var firstPoint = op.StartPoint.Value.Point?.XY ?? closed[0].StartPoint.XY;
+        var firstPoint = op.StartXY ?? closed[0].StartPoint.XY;
 
         List<Loop> SequenceFor((List<Loop> Normal, List<Loop> Finish) region, int levelIndex)
         {
@@ -796,7 +796,7 @@ internal static class EngraveGenerator
         var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
         var levels = ctx.Levels(op);
         var paths = ctx.SourcePaths().Select(s => s.Path).Where(p => p.Count >= 2).ToList();
-        var start = op.StartPoint.Value.Point?.XY ?? (paths.Count > 0 ? paths[0].StartPoint.XY : Point2.Zero);
+        var start = op.StartXY ?? (paths.Count > 0 ? paths[0].StartPoint.XY : Point2.Zero);
         var remaining = new List<Path2>(paths);
         var pos = start;
         while (remaining.Count > 0)
@@ -914,7 +914,7 @@ internal static class DrillGenerator
 
         // Nearest-neighbour ordering.
         var ordered = new List<(Point2 P, double Diameter, double Z)>();
-        var pos = op.StartPoint.Value.Point?.XY ?? (holes.Count > 0 ? holes[0].P : Point2.Zero);
+        var pos = op.StartXY ?? (holes.Count > 0 ? holes[0].P : Point2.Zero);
         while (holes.Count > 0)
         {
             var next = op.OptimisationMode.Value == OptimisationMode.None ? holes[0] : holes.OrderBy(h => Point2.Distance(h.P, pos)).First();

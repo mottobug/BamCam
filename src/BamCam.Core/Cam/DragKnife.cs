@@ -51,7 +51,7 @@ internal static class DragKnifeGenerator
         var overcut = Math.Max(0, op.Overcut.Value);
         var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
         var paths = ctx.SourcePaths().Select(s => s.Path).Where(p => p.SegmentCount > 0).ToList();
-        var pos = op.StartPoint.Value.Point?.XY ?? (paths.Count > 0 ? paths[0].StartPoint.XY : Point2.Zero);
+        var pos = op.StartXY ?? (paths.Count > 0 ? paths[0].StartPoint.XY : Point2.Zero);
         while (paths.Count > 0)
         {
             var next = paths.OrderBy(p => Point2.Distance(p.StartPoint.XY, pos)).First();

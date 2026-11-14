@@ -75,7 +75,7 @@ internal static class VEngraveGenerator
 
         var levels = ctx.Levels(op).Select(z => top - z).ToList(); // depths below the surface
         var mb = new MoveBuilder(tp, ctx.Clearance, ctx.FastPlunge);
-        var pos = op.StartPoint.Value.Point?.XY ?? Point2.Zero;
+        var pos = op.StartXY ?? Point2.Zero;
         var previous = 0.0;
         foreach (var depth in levels)
         {

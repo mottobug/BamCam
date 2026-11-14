@@ -34,6 +34,60 @@ public class MirroredOperationTests
         Assert.True(float.IsNaN(At(15, 5)));
     }
 
+    /// <summary>
+    /// Issue 13 (Bob's test file): a trough cut with its outline as boundary shape, the copy mirrored with scale Y -1.
+    /// The boundary moves with the surface, so the copy cuts the mirrored trough, not a flat pocket in the old place.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void The_boundary_shapes_and_the_clip_area_move_with_the_transform(bool clipArea)
+    {
+        var doc = CadDocument.CreateNew();
+        // Trough along Y: Z 0 at X 10 and 20, -2 in the middle, from Y 2 to Y 8.
+        var trough = doc.AddEntity(new SurfaceEntity
+        {
+            Vertices = { new Point3(10, 2, 0), new Point3(15, 2, -2), new Point3(20, 2, 0), new Point3(10, 8, 0), new Point3(15, 8, -2), new Point3(20, 8, 0) },
+            Faces = { 0, 4, 3, 0, 1, 4, 1, 5, 4, 1, 2, 5 },
+        });
+        var outline = doc.AddEntity(RectEntity.FromCorners(new Point2(10, 2), new Point2(20, 8)));
+        var op = new Profile3DOp { Name = "half 2" };
+        op.PrimitiveIds.Add(trough.Id);
+        op.BoundaryMethod.Set(BoundaryMethod.SelectedShapes);
+        op.BoundaryShapes.Add(outline.Id);
+        if (clipArea)
+        {
+            op.ClipAreaMin.Set(new Point2(12, 0));
+            op.ClipAreaMax.Set(new Point2(30, 10));
+        }
+        op.ToolProfile.Set(ToolProfile.BallNose);
+        op.ToolDiameter.Set(2);
+        op.StockSurface.Set(0);
+        op.TargetDepth.Set(-3);
+        op.ClearancePlane.Set(2);
+        op.MOPTransform.Set(Matrix4.Scale(1, -1));
+        doc.ActivePart.Operations.Add(op);
+
+        var cuts = ToolpathGenerator.Generate(doc, op).Moves.Where(m => m.Kind == MoveKind.Feed).Select(m => m.To).ToList();
+
+        Assert.NotEmpty(cuts);
+        Assert.All(cuts, p => Assert.InRange(p.Y, -8.001, -1.999));
+        Assert.All(cuts, p => Assert.InRange(p.X, clipArea ? 11.999 : 9.999, 20.001));
+        // Following the trough: deepest in its middle, not a flat bottom at target depth.
+        Assert.True(cuts.Min(p => p.Z) > -2.6, $"lowest cut {cuts.Min(p => p.Z)}");
+        Assert.True(cuts.Max(p => p.Z) > -1, $"highest cut {cuts.Max(p => p.Z)}");
+    }
+
+    [Fact]
+    public void The_start_point_moves_with_the_transform()
+    {
+        var op = new PocketOp();
+        op.StartPoint.Set(new OptionalPoint(new Point3(3, 4, 0)));
+        op.MOPTransform.Set(Matrix4.Scale(1, -1));
+
+        Assert.Equal(new Point2(3, -4), op.StartXY);
+    }
+
     [Theory]
     [InlineData(1, -1, 1, 0, 0, 0, 0)]
     [InlineData(-1, 1, 1, 0, 0, 0, 0)]

@@ -289,6 +289,13 @@ public abstract class MachineOp
     public CamParam<Matrix4> MOPTransform { get; set; } = new(Matrix4.Identity);
 
     /// <summary>
+    /// The start point where the toolpath is computed: moved with the transform of the operation, like its drawing
+    /// objects (it was set beside them). Null when none is set.
+    /// </summary>
+    [Browsable(false)]
+    public Point2? StartXY => StartPoint.Value.Point is { } p ? MOPTransform.Value.Transform(p.XY) : null;
+
+    /// <summary>
     /// Set while the tool values in the Default state came from the part or the machining options, so that they go
     /// away again with the setting they came from. Not saved.
     /// </summary>

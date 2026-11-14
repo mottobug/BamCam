@@ -167,7 +167,7 @@ internal static class TrochoGenerator
 
     private static double Tolerance(ToolpathContext ctx) => ctx.Document.Units == DrawingUnits.Inches ? 0.001 / 25.4 : 0.001;
 
-    private static Point2 StartPoint(MachineOp op) => op.StartPoint.Value.Point is { } p ? p.XY : Pt.Undefined;
+    private static Point2 StartPoint(MachineOp op) => op.StartXY ?? Pt.Undefined;
 
     /// <summary>
     /// Direction of the slices. Their material lies outside the arc, as at the wall of a pocket: with a clockwise

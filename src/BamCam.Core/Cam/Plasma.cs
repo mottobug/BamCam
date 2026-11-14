@@ -216,14 +216,14 @@ internal static class PlasmaGenerator
                 o.Inside.Add(c);
 
         var mb = new MoveBuilder(tp, ctx.Clearance, 0);
-        var pos = op.StartPoint.Value.Point?.XY ?? cuts[0].Path.StartPoint.XY;
+        var pos = op.StartXY ?? cuts[0].Path.StartPoint.XY;
         var done = new HashSet<Cut>();
         while (done.Count < cuts.Count)
         {
             var next = cuts.Where(c => !done.Contains(c) && c.Inside.All(done.Contains))
                 .OrderBy(c => c.Closed ? c.Path.DistanceTo(pos) : Point2.Distance(c.Path.StartPoint.XY, pos)).First();
             done.Add(next);
-            var path = next.Closed ? StartPath(next.Path, op.StartPoint.Value.Point?.XY) : next.Path;
+            var path = next.Closed ? StartPath(next.Path, op.StartXY) : next.Path;
             CutShape(ctx, op, mb, next, path, surface);
             pos = mb.Position?.XY ?? pos;
         }
