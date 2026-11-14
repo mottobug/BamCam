@@ -36,6 +36,15 @@ public sealed class ViewerPlugin : IBamCamPlugin
                 Icon = viewer == Viewers[0] ? EyeIcon : null,
                 Execute = ctx => Open(ctx, viewer, german),
             });
+        host.AddCommand(new PluginCommand
+        {
+            Header = german ? "In CAM_otics öffnen" : "Open in CAM_otics",
+            Menu = "Machining",
+            Description = german
+                ? "G-Code mit Werkzeugen und Rohteil in CAMotics simulieren (eigenes Programm, von camotics.org zu installieren). Geht nicht an die Maschine."
+                : "Simulate the G-code with its tools and stock in CAMotics (a separate program, install it from camotics.org). Nothing goes to the machine.",
+            Execute = ctx => Camotics.Open(ctx, german),
+        });
     }
 
     /// <summary>Folder of the temporary G-code files.</summary>

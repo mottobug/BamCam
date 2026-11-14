@@ -47,7 +47,8 @@ $bundledPlugins = @(
     @{ Folder = "CentreLines"; Name = "BamCam.CentreLinesPlugin" },
     @{ Folder = "Squircle"; Name = "BamCam.SquirclePlugin" },
     @{ Folder = "InvoluteGear"; Name = "BamCam.GearPlugin" },
-    @{ Folder = "Matmill"; Name = "BamCam.MatmillPlugin" }
+    @{ Folder = "Matmill"; Name = "BamCam.MatmillPlugin" },
+    @{ Folder = "GCodeViewer"; Name = "BamCam.GCodeViewerPlugin" }
 )
 $pluginHashes = @()
 foreach ($plugin in $bundledPlugins) {

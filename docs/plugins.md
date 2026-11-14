@@ -16,7 +16,8 @@ replacing CamBam's API calls with the interfaces described here; see
 [Porting CamBam plugins](porting-cambam-plugins.md) for a step-by-step guide.
 
 [`plugins/BamCam.GCodeViewerPlugin`](../plugins/BamCam.GCodeViewerPlugin) is a small real plugin: it gets the G-code
-with `await context.PostGCode()`, without writing a file or running the post-build command, and opens it in a viewer.
+with `await context.PostGCode()`, without writing a file or running the post-build command, and opens it in a viewer
+(CutViewer, NC Viewer or CAMotics). It comes with BamCam.
 
 The complete example is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin): a *Regular Polygon*
 command, a *Star* tool (two clicks), a *Facing* operation, an *XYZ point list* file format and the macro

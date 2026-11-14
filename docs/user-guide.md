@@ -200,6 +200,12 @@ profile; **Save STL...** writes the same mesh as a binary STL file. Fields with 
 thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis
 (no undercuts); plasma and drag knife are not shown.
 
+**Other simulators** (Machining ▸ Open in CutViewer / NC Viewer / CAMotics, from the G-Code Viewer plugin that comes
+with BamCam): they simulate the G-code the post processor writes, an independent check. CutViewer and NC Viewer run in
+the browser; drag the file shown in the file manager into the browser window. CAMotics ([camotics.org](https://camotics.org),
+install it first) opens directly with the tools of the operations and the stock; if it is not in its usual place,
+BamCam asks once for the program.
+
 Turning operations are simulated in the same window: the stock section is cut move by move by the tool (the nose
 radius of turning and facing tools, the grooving blade, the drill, 60° thread grooves) and shown turned about the
 spindle axis, with the tool at its position and the same buttons to step and play. It needs a stock in the machining
