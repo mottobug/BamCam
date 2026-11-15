@@ -373,6 +373,11 @@ way and goes up to the clearance plane between rows; *Climb* cuts every row the 
 starts within *Max Crossover Distance* × tool diameter, otherwise it goes up. Compared with CamBam in
 `examples_to_test/Vergleich Zickzack.cb`.
 
+**Scan Angle** (only in BamCam, issue 15) turns the rows of *Horizontal* and *Vertical* by an angle (degrees,
+counter-clockwise about the origin), for example to cut along a slanted part without turning the drawing. Start Corner
+and Milling Direction apply to the turned rows: *Top* is then the side the turned grid calls top. CamBam does not know
+the parameter and cuts such a drawing with unturned rows.
+
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 
 - **`.cb`, `.dxf` and `.svg`:** the objects stay at their original position and are selected afterwards, so they can be moved

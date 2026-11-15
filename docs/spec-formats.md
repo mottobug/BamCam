@@ -696,6 +696,7 @@ Drill primitives in corpus: 11 `points`, 6 `circle`.
 | `BackFaceCulling` | `True` | |
 | `PlaneSliceOnly` | `False` | |
 | `ScanlineGradientThreshold` | `90` | degrees |
+| `ScanAngle` | `0` | BamCam only: degrees the Horizontal / Vertical rows are turned about the origin (CamBam ignores it) |
 | `Mold` | `True`/`False` | negative mould |
 | `Additive` | `True`/`False` | experimental extrusion |
 | `BackFace` | `True`/`False` | machine back face |

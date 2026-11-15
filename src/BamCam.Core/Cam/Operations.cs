@@ -126,6 +126,9 @@ public sealed class Profile3DOp : AreaOp
     [Param(77, "3D"), DisplayName("Corner Radius"),
      Description("Corner radius of a bull nose cutter (Tool Profile Bull Nose); 0 = computed like a ball nose (as CamBam).")]
     public CamParam<double> CornerRadius { get; set; } = new(0);
+    [Param(78, "3D"), DisplayName("Scan Angle"),
+     Description("Horizontal and Vertical: turns the rows by this angle (degrees, counter-clockwise about the origin), e.g. to cut along a slanted part. Start Corner and Milling Direction apply to the turned rows. Only BamCam has it: CamBam cuts the rows unturned.")]
+    public CamParam<double> ScanAngle { get; set; } = new(0);
     [Param(76, "Cutting")] public CamParam<RegionFillStyle> RegionFillStyle { get; set; } = new(Cam.RegionFillStyle.InsideOutsideOffsets);
 
     /// <summary>Entity ids used as boundary when <see cref="BoundaryMethod"/> is SelectedShapes (no state attribute).</summary>

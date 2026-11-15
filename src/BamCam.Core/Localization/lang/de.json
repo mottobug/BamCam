@@ -995,6 +995,8 @@
   "Centers": "Mittelpunkte",
   "Base Point": "Basispunkt",
   "Start Corner": "Startecke",
+  "Scan Angle": "Bahnwinkel",
+  "Horizontal and Vertical: turns the rows by this angle (degrees, counter-clockwise about the origin), e.g. to cut along a slanted part. Start Corner and Milling Direction apply to the turned rows. Only BamCam has it: CamBam cuts the rows unturned.": "Horizontal und Vertikal: dreht die Bahnen um diesen Winkel (Grad, gegen den Uhrzeigersinn um den Nullpunkt), z. B. um entlang eines schrägen Teils zu fräsen. Startecke und Fräsrichtung gelten für die gedrehten Bahnen. Nur BamCam kennt ihn: CamBam fräst die Bahnen ungedreht.",
   "Automatic Inner": "Automatisch innen",
   "Automatic Outer": "Automatisch außen",
 

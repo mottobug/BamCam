@@ -163,8 +163,15 @@ internal static class Profile3DGenerator
         var cornerRadius = shape == CutterShape.Bull ? CornerRadius(ctx, op) + Math.Max(op.RoughingClearance.Value, 0) : 0;
         var step = Math.Max(op.StepOver.Value, 0.01) * dia;
         var res = Math.Max(op.Resolution.Value, 0.01) * dia;
-        var bb = boundary.Aggregate(BoundingBox.Empty, (b, p) => b.Union(p.Bounds()));
-        var flat = boundary.Select(p => p.Flatten()).ToList();
+        // Scan Angle (issue 15): the rows are laid out in a grid turned by this angle about the origin; boundary and limits
+        // are taken in the turned grid, the surface is sampled at the real points.
+        var angle = Angles.ToRadians(op.ScanAngle.Value);
+        var (cosA, sinA) = (Math.Cos(angle), Math.Sin(angle));
+        Point2 ToGrid(Point2 p) => new(p.X * cosA + p.Y * sinA, -p.X * sinA + p.Y * cosA);
+        Point2 ToWorld(Point2 p) => new(p.X * cosA - p.Y * sinA, p.X * sinA + p.Y * cosA);
+        var flat = boundary.Select(p => p.Flatten().Select(ToGrid).ToList()).ToList();
+        var bb = angle == 0 ? boundary.Aggregate(BoundingBox.Empty, (b, p) => b.Union(p.Bounds()))
+            : BoundingBox.FromPoints(flat.SelectMany(p => p).Select(p => p.ToPoint3(0)));
 
         // Axis mapping: rows run along "u", stepping along "v".
         double U(Point2 p) => vertical ? p.Y : p.X;
@@ -187,9 +194,11 @@ internal static class Profile3DGenerator
         var mixed = op.MillingDirection.Value == MillingDirection.Mixed;
         var uAscending = mixed ? !vertical : (vertical ? !vAscending : vAscending) ^ climb;
 
-        var rows = new List<double>();
-        for (var v = v0 + step / 2; v <= v1 + 1e-9; v += step) rows.Add(v);
-        if (rows.Count == 0) rows.Add((v0 + v1) / 2);
+        // Rows a stepover apart, centred, so that at most half a stepover is left on either side (before, they went on from
+        // the near side and could stop up to a stepover short of the far side).
+        var rowCount = Math.Max(1, (int)Math.Ceiling((v1 - v0) / step - 1e-9));
+        var firstRow = (v0 + v1) / 2 - (rowCount - 1) * step / 2;
+        var rows = Enumerable.Range(0, rowCount).Select(k => firstRow + k * step).ToList();
         if (!vAscending) rows.Reverse();
 
         var maxSlope = op.ScanlineGradientThreshold.Value is > 0 and < 90 ? Math.Tan(Angles.ToRadians(op.ScanlineGradientThreshold.Value)) : double.PositiveInfinity;
@@ -201,30 +210,46 @@ internal static class Profile3DGenerator
             var v = rows[row];
             var forward = mixed ? uAscending ^ (row % 2 == 1) : uAscending;
             var segments = new List<List<Point3>>();
-            List<Point3>? current = null;
-            var n = Math.Max(1, (int)Math.Ceiling((u1 - u0) / res));
-            for (var i = 0; i <= n; i++)
+            // The row runs inside the boundary between its crossings with it (even-odd, as Inside): sampled evenly from
+            // crossing to crossing, so that it reaches the boundary also where the grid is turned or the boundary is curved.
+            var crossings = new List<double>();
+            foreach (var pts in flat)
+                for (int i = 0, j = pts.Count - 1; i < pts.Count; j = i++)
+                {
+                    double va = V(pts[i]), vb = V(pts[j]);
+                    if ((va > v) != (vb > v)) crossings.Add(U(pts[i]) + (v - va) * (U(pts[j]) - U(pts[i])) / (vb - va));
+                }
+            crossings.Sort();
+            var spans = new List<(double From, double To)>();
+            for (var k = 0; k + 1 < crossings.Count; k += 2)
+                if (crossings[k + 1] - crossings[k] > 1e-9) spans.Add((crossings[k], crossings[k + 1]));
+            if (!forward)
             {
-                var u = forward ? u0 + (u1 - u0) * i / n : u1 - (u1 - u0) * i / n;
-                var p = P(u, v);
-                if (!Inside(flat, p))
+                spans.Reverse();
+                spans = spans.Select(s => (s.To, s.From)).ToList();
+            }
+            foreach (var (from, to) in spans)
+            {
+                List<Point3>? current = null;
+                var n = Math.Max(1, (int)Math.Ceiling(Math.Abs(to - from) / res));
+                var spacing = Math.Abs(to - from) / n;
+                for (var i = 0; i <= n; i++)
                 {
-                    current = null;
-                    continue;
+                    var p = ToWorld(P(from + (to - from) * i / n, v));
+                    var z = mesh.DropCutter(p.X, p.Y, r, shape, cornerRadius) is { } dz ? dz + clearance : double.NegativeInfinity;
+                    z = Math.Max(z, ctx.TargetDepth);
+                    if (current is { Count: > 0 } && Math.Abs(z - current[^1].Z) / spacing > maxSlope)
+                    {
+                        current = null;
+                        continue;
+                    }
+                    if (current == null)
+                    {
+                        current = [];
+                        segments.Add(current);
+                    }
+                    current.Add(p.ToPoint3(z));
                 }
-                var z = mesh.DropCutter(p.X, p.Y, r, shape, cornerRadius) is { } dz ? dz + clearance : double.NegativeInfinity;
-                z = Math.Max(z, ctx.TargetDepth);
-                if (current is { Count: > 0 } && Math.Abs(z - current[^1].Z) / res > maxSlope)
-                {
-                    current = null;
-                    continue;
-                }
-                if (current == null)
-                {
-                    current = [];
-                    segments.Add(current);
-                }
-                current.Add(p.ToPoint3(z));
             }
             rowSegments[row] = segments.Where(s => s.Count > 1).ToList();
         });
