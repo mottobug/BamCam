@@ -769,6 +769,40 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// File ▸ Export ▸ To STL: the selected surfaces (meshes), or all visible ones when none is selected, as one binary STL
+    /// in drawing units.
+    /// </summary>
+    private async void ExportStl()
+    {
+        var doc = _session.Document;
+        var selected = _session.Selection.OfType<SurfaceEntity>().ToList();
+        var surfaces = selected.Count > 0 ? selected
+            : doc.Layers.Where(l => l.Visible).SelectMany(l => l.Entities).OfType<SurfaceEntity>().Where(s => !s.Hidden).ToList();
+        if (surfaces.Count == 0)
+        {
+            Log(T("There are no surfaces to export as STL. Make one with Draw > Surface (for example Extrude Solid) or open an STL file."));
+            return;
+        }
+        var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = T("Export STL"),
+            SuggestedFileName = doc.Name + ".stl",
+            DefaultExtension = "stl",
+            FileTypeChoices = [new FilePickerFileType(T("STL mesh")) { Patterns = ["*.stl"] }],
+        });
+        if (file?.TryGetLocalPath() is not { } path) return;
+        try
+        {
+            IO.Stl.StlWriter.Save(surfaces, path);
+            Log(F("Exported {0}: {1} surface(s), {2} triangles.", path, surfaces.Count, surfaces.Sum(s => s.Faces.Count / 3)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log(F("STL export failed: {0}", ex.Message));
+        }
+    }
+
     /// <summary>File ▸ Export with a file format of a plugin.</summary>
     private async void ExportWithPlugin(PluginFileFormatEntry exporter)
     {

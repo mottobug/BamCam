@@ -130,7 +130,7 @@ public partial class MainWindow
             Sub("_Import Image",
                 Item("As _Height Map...", ImportHeightMap),
                 Item("_Trace Outlines...", TraceImage)),
-            Sub("_Export", [Item("To _DXF...", ExportDxf), Item("To _PDF...", () => PrintPdf(export: true)),
+            Sub("_Export", [Item("To _DXF...", ExportDxf), Item("To _STL...", ExportStl), Item("To _PDF...", () => PrintPdf(export: true)),
                 .. _plugins.Exporters.Select(x => (object)Item(F("To {0}...", x.Format.Name), () => ExportWithPlugin(x)))]),
             "-",
             Item("_Print...", () => PrintPdf(export: false), "Ctrl+Shift+P"),
