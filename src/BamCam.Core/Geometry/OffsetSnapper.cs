@@ -141,12 +141,18 @@ public static class OffsetSnapper
         }
         if (drop.Count == 0) return path;
         var result = new List<Vertex>();
+        // On a closed path the micro line can end at vertex 0: its start vertex is then the last one (issue 19, which
+        // failed with an index out of range here for a plasma kerf of 0.059 in).
+        double? firstBulge = null;
         for (var i = 0; i < n; i++)
         {
             if (!drop.Contains(i)) { result.Add(v[i]); continue; }
             // The micro line's start vertex takes over the bulge of the element that followed it.
-            result[^1] = result[^1] with { Bulge = v[i].Bulge };
+            if (result.Count == 0) firstBulge = v[i].Bulge;
+            else result[^1] = result[^1] with { Bulge = v[i].Bulge };
         }
+        if (result.Count < 2) return path;
+        if (firstBulge is { } bulge) result[^1] = result[^1] with { Bulge = bulge };
         return new Path2(result, path.Closed);
     }
 
