@@ -1,4 +1,4 @@
-﻿using BamCam.Core.Cam;
+using BamCam.Core.Cam;
 using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 using BamCam.IO.Cb;
