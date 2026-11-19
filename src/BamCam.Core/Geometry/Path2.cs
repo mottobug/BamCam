@@ -184,6 +184,78 @@ public sealed class Path2
         return Point2.Distance(p, a + ab * t);
     }
 
+    /// <summary>
+    /// A closed path that starts at the point of its outline nearest <paramref name="p"/>, also in the middle of a line or
+    /// arc (which is split there; the shape does not change). Open paths come back unchanged.
+    /// </summary>
+    public Path2 StartAt(Point2 p)
+    {
+        if (!Closed || Vertices.Count < 2) return Clone();
+        var segments = Segments().ToList();
+        int best = 0;
+        double bestDistance = double.PositiveInfinity, bestT = 0;
+        for (var i = 0; i < segments.Count; i++)
+        {
+            var s = segments[i];
+            double d, t;
+            if (s.IsArc)
+            {
+                var arc = s.ToArc();
+                var ang = (p - arc.Center).Angle;
+                if (arc.ContainsAngle(ang))
+                {
+                    var delta = ang - arc.StartAngle;
+                    if (arc.Sweep > 0) { while (delta < 0) delta += 2 * Math.PI; while (delta > 2 * Math.PI) delta -= 2 * Math.PI; }
+                    else { while (delta > 0) delta -= 2 * Math.PI; while (delta < -2 * Math.PI) delta += 2 * Math.PI; }
+                    t = Math.Clamp(delta / arc.Sweep, 0, 1);
+                    d = Math.Abs(Point2.Distance(p, arc.Center) - arc.Radius);
+                }
+                else
+                {
+                    var ds = Point2.Distance(p, arc.Start);
+                    var de = Point2.Distance(p, arc.End);
+                    (d, t) = ds <= de ? (ds, 0.0) : (de, 1.0);
+                }
+            }
+            else
+            {
+                var ab = s.End.XY - s.Start.XY;
+                var len2 = ab.LengthSquared;
+                t = len2 < Tolerance.Epsilon ? 0 : Math.Clamp(Point2.Dot(p - s.Start.XY, ab) / len2, 0, 1);
+                d = Point2.Distance(p, s.Start.XY + ab * t);
+            }
+            if (d < bestDistance) (best, bestDistance, bestT) = (i, d, t);
+        }
+        var vertices = Vertices.ToList();
+        var n = vertices.Count;
+        var seg = segments[best];
+        var index = best;
+        if (bestT > 1e-9 && bestT < 1 - 1e-9)
+        {
+            // Split the segment at the point: a new vertex, and for an arc the bulges of its two parts.
+            Point3 at;
+            if (seg.IsArc)
+            {
+                var arc = seg.ToArc();
+                var sweep = arc.Sweep;
+                at = arc.PointAt(bestT).ToPoint3(seg.Start.Z + (seg.End.Z - seg.Start.Z) * bestT);
+                vertices[best] = vertices[best] with { Bulge = Math.Tan(sweep * bestT / 4) };
+                vertices.Insert(best + 1, new Vertex(at, Math.Tan(sweep * (1 - bestT) / 4)));
+            }
+            else
+            {
+                at = seg.Start + (seg.End - seg.Start) * bestT;
+                vertices.Insert(best + 1, new Vertex(at, 0));
+            }
+            index = best + 1;
+        }
+        else if (bestT >= 1 - 1e-9)
+        {
+            index = (best + 1) % n;
+        }
+        return new Path2(vertices.Skip(index).Concat(vertices.Take(index)), true);
+    }
+
     /// <summary>Rotates the start of a closed path to the vertex nearest <paramref name="p"/>.</summary>
     public Path2 StartNearest(Point2 p)
     {

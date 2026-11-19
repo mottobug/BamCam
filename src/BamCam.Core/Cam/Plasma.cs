@@ -168,6 +168,34 @@ public sealed class PlasmaOp : MachineOp
     [Param(78, "Small Holes"), DisplayName("Small Hole Feedrate"),
      Description("Feedrate in small holes, in percent of the cut feedrate.")]
     public CamParam<double> SmallHoleFeedrate { get; set; } = new(60);
+
+    /// <summary>
+    /// Start points chosen per shape (issue 27), as "object id:x,y;..." in drawing coordinates on the outline of the
+    /// object. Set with the right-click menu of the operation (Set Start Points); a shape without one starts at the
+    /// operation's Start Point or in the middle of its longest edge.
+    /// </summary>
+    [Param(79, "Lead Moves"), Browsable(false)]
+    public CamParam<string> ShapeStarts { get; set; } = new("");
+
+    /// <summary>The start points of <see cref="ShapeStarts"/> by object id (several per object, e.g. for the outlines of a text).</summary>
+    public List<(int Id, Point2 Point)> ReadShapeStarts()
+    {
+        var list = new List<(int, Point2)>();
+        foreach (var item in (ShapeStarts.Value ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = item.Split(':');
+            if (parts.Length != 2 || !int.TryParse(parts[0], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var id)) continue;
+            var xy = parts[1].Split(',');
+            if (xy.Length == 2
+                && double.TryParse(xy[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var x)
+                && double.TryParse(xy[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var y))
+                list.Add((id, new Point2(x, y)));
+        }
+        return list;
+    }
+
+    public void WriteShapeStarts(IEnumerable<(int Id, Point2 Point)> starts) =>
+        ShapeStarts.Set(string.Join(";", starts.Select(s => FormattableString.Invariant($"{s.Id}:{s.Point.X:0.######},{s.Point.Y:0.######}"))));
 }
 
 internal static class PlasmaGenerator
@@ -176,11 +204,26 @@ internal static class PlasmaGenerator
     {
         public required Path2 Path;
         public required Path2 Source;
+        /// <summary>Start point chosen for this shape (ShapeStarts), null when none.</summary>
+        public Point2? Start;
         public bool Closed => Path.Closed;
         /// <summary>Number of closed source shapes around this one: odd = hole.</summary>
         public int Depth;
         public bool SmallHole;
         public readonly List<Cut> Inside = [];
+    }
+
+    /// <summary>
+    /// The start point chosen for the outline <paramref name="src"/> of <paramref name="entity"/>: the one of its points on that
+    /// outline (an object such as a text has several outlines). A point no longer on it (the object was changed) is ignored.
+    /// </summary>
+    private static Point2? ShapeStart(List<(int Id, Point2 Point)> starts, Entity entity, Path2 src)
+    {
+        if (!src.Closed) return null;
+        var b = src.Bounds();
+        var tolerance = 1e-4 + 1e-6 * Math.Max(b.Width, b.Height);
+        return starts.Where(s => s.Id == entity.Id).Select(s => (s.Point, D: src.DistanceTo(s.Point)))
+            .Where(s => s.D <= tolerance).OrderBy(s => s.D).Select(s => (Point2?)s.Point).FirstOrDefault();
     }
 
     private static string Fmt(double v) => v.ToString("0.####", Localization.Tr.Culture);
@@ -193,6 +236,7 @@ internal static class PlasmaGenerator
         var sources = sourcesWithEntity.Select(s => s.Path).ToList();
         var closed = sources.Where(p => p.Closed).ToList();
 
+        var starts = op.ReadShapeStarts();
         var cuts = new List<Cut>();
         foreach (var (entity, src) in sourcesWithEntity)
         {
@@ -206,7 +250,7 @@ internal static class PlasmaGenerator
                 // Part on the right: outlines clockwise, holes counter-clockwise (reversed for Part On Left).
                 var ccw = hole ^ (op.CutDirection.Value == PlasmaDirection.PartOnLeft);
                 var oriented = path.Closed ? Polygons.EnsureOrientation(path, ccw) : path;
-                cuts.Add(new Cut { Path = oriented, Source = src, Depth = depth, SmallHole = small });
+                cuts.Add(new Cut { Path = oriented, Source = src, Depth = depth, SmallHole = small, Start = ShapeStart(starts, entity, src) });
             }
             // A hole (or an inside cut) narrower than the kerf has no room for the torch: say so instead of leaving it out
             // silently (issue 30).
@@ -236,7 +280,7 @@ internal static class PlasmaGenerator
             var next = cuts.Where(c => !done.Contains(c) && c.Inside.All(done.Contains))
                 .OrderBy(c => c.Closed ? c.Path.DistanceTo(pos) : Point2.Distance(c.Path.StartPoint.XY, pos)).First();
             done.Add(next);
-            var path = next.Closed ? StartPath(next.Path, op.StartXY) : next.Path;
+            var path = !next.Closed ? next.Path : next.Start is { } chosen ? next.Path.StartAt(chosen) : StartPath(next.Path, op.StartXY);
             CutShape(ctx, op, mb, next, path, surface);
             pos = mb.Position?.XY ?? pos;
         }

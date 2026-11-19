@@ -299,6 +299,13 @@ Special operations:
   (tables in the drawing's units first).
   The toolbar button with the torch inserts a plasma operation.
 
+  **Where each cut starts:** by default in the middle of the longest edge of the shape (or, with a *Start Point* of the
+  operation, at the corner nearest to it). To choose it per shape, right-click the operation ▸ *Set Start Points of the
+  Shapes* and click each outline where its cut (with the lead-in) should start, anywhere on the outline; the toolpath is
+  generated again after each click. Del over an outline gives it the automatic start again, Esc ends. The points are
+  saved with the drawing (CamBam ignores them); a point no longer on its outline, after the object was changed, is
+  ignored. *Clear Start Points of the Shapes* removes them all.
+
   *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
   Size*, which are also cut slower). Use the post processor *GRBL Plasma* (torch `M3 S1000` / `M5`, pierce delay
   `G4 P…`, probing `G38.2` and `G92`) or set the *Plasma* templates of your own post: Torch On, Torch Off, Pierce

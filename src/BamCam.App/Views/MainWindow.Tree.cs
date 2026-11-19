@@ -407,6 +407,20 @@ public partial class MainWindow
                 Add(T("Select Drawing Objects"), () => PickOperationObjects(op));
                 Add(T("Set Start Point"), () => View.SetTool(new PickPointTool(T("Select start point"),
                     p => _session.Execute(T("Set start point"), () => op.StartPoint.Set(new OptionalPoint(p.ToPoint3()))))));
+                if (op is PlasmaOp plasma)
+                {
+                    // Start point per shape (issue 27): the toolpath is generated again after each click, to show the lead-in.
+                    Add(T("Set Start Points of the Shapes"), () =>
+                    {
+                        _session.Inspect(plasma);
+                        View.SetTool(new ShapeStartTool(plasma, () => GenerateToolpaths(new PostScope(Operation: plasma))));
+                    });
+                    Add(T("Clear Start Points of the Shapes"), () =>
+                    {
+                        _session.Execute(T("Clear start points"), () => plasma.ShapeStarts.Set(""));
+                        GenerateToolpaths(new PostScope(Operation: plasma));
+                    });
+                }
                 Add(T("Copy"), () => _clipboardOp = op.CloneOp());
                 Add(T("Paste Format"), () => { _session.Inspect(op); PasteFormat(); });
                 Add(T("Duplicate"), () =>
