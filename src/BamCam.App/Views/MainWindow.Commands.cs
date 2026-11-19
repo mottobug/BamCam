@@ -327,30 +327,18 @@ public partial class MainWindow
         _session.Execute(T("Clean"), () => plines.ForEach(p => CadOps.Clean(p)));
     }
 
+    /// <summary>Edit ▸ Transform ▸ Resize: the resize dialog (sizes, percentages, mm ⇄ inch), see <see cref="ResizeDialog"/>.</summary>
     private async void Resize()
     {
         if (!RequireSelection()) return;
-        var b = CadOps.Bounds(Selected);
-        var text = await Dialogs.Prompt(this, T("Resize"),
-            F("Current size {0:0.###} x {1:0.###}.\nScale in percent (e.g. 50), or new size \"width,height\":", b.Width, b.Height), "100");
-        if (text == null) return;
-        double sx, sy;
-        var parts = text.Split(',');
-        if (parts.Length == 2 && double.TryParse(parts[0], NumberStyles.Float, Inv, out var w) && double.TryParse(parts[1], NumberStyles.Float, Inv, out var h))
-        {
-            sx = b.Width > 0 ? w / b.Width : 1;
-            sy = b.Height > 0 ? h / b.Height : 1;
-        }
-        else if (double.TryParse(text.TrimEnd('%'), NumberStyles.Float, Inv, out var pct))
-        {
-            sx = sy = pct / 100;
-        }
-        else return;
-        var c = b.Center.XY;
-        var m = Matrix4.Translation(-c.X, -c.Y) * Matrix4.Scale(sx, sy) * Matrix4.Translation(c.X, c.Y);
         var sel = Selected;
+        var b = CadOps.Bounds(sel);
+        if (await ResizeDialog.Ask(this, b) is not { } r) return;
+        var c = r.AboutOrigin ? new Point3(0, 0, 0) : b.Center;
+        var m = Matrix4.Translation(-c.X, -c.Y, -c.Z) * Matrix4.Scale(r.X, r.Y, r.Z) * Matrix4.Translation(c.X, c.Y, c.Z);
         _session.Execute(T("Resize"), () => CadOps.Transform(sel, m));
         foreach (var t in sel.OfType<TextEntity>()) t.InvalidateOutlines();
+        Log(F("Resized {0} object(s) by {1} x {2} x {3} %.", sel.Count, (r.X * 100).ToString("0.###", Inv), (r.Y * 100).ToString("0.###", Inv), (r.Z * 100).ToString("0.###", Inv)));
     }
 
     private async void ArrayCopy()

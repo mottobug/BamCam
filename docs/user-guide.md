@@ -64,6 +64,9 @@ quadrants (diamond) and intersections (cross).
 - move (`Ctrl+M`), rotate (`Ctrl+R`), resize (`Ctrl+E`), mirror, array copies, align (toolbar button with the
   arrow: left / centre / right / top / middle / bottom, to the last or first selected object, the selection, the
   drawing, the origin or the stock);
+- **resize** (`Ctrl+E`): per axis X, Y, Z the current size, the new size and the percentage; with *Preserve Aspect
+  Ratio* the switched-on axes scale alike. *mm → inch* and *inch → mm* scale by 1 / 25.4 or 25.4 in one click, for
+  drawings in the other units. It scales about the centre of the selection or the drawing origin;
 - offset, join (`Ctrl+J`), union / subtract / intersection, explode, convert to polyline (`Ctrl+P`) or region;
 - **fillet / chamfer** (Edit ▸ Polyline): select a polyline or rectangle, type the radius, click corners;
   Space switches fillet / chamfer / corner overcut, `-` gives an inverted fillet, Esc ends;

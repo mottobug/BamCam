@@ -451,6 +451,7 @@ public partial class MainWindow : Window
                     "script" => new ScriptEditorWindow(Core.Model.ScriptEntity.DefaultScript.Replace("Add(Circle(0, 0, 40));", "Add(Circle(0, 0, ));"),
                         t => (null, Core.Model.ScriptEntity.Runner!(t).Error)),
                     "transform" => CreateNumericTransformWindow(),
+                    "resize" => ResizeDialog.Preview(Core.Cad.CadOps.Bounds(_session.Document.AllEntities())),
                     "scriptfile" => new ScriptEditorWindow("var a = 1 +;\nAdd(Circel(0, 0, 1));\nLog(Document.Name);\n", null, new ScriptFileActions((_, _) => Task.FromResult<string?>(null), _ => { })),
                     _ => null,
                 };
