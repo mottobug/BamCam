@@ -423,6 +423,8 @@ internal static class PlasmaGenerator
     private static bool LeadFits(Path2 path, Point2 at, Point2 dir, bool scrapLeft, PlasmaLead kind, double length, bool entering)
     {
         var other = Lead(at, dir, scrapLeft, kind, length, entering, out var arc);
+        // The outline once as a polygon, with the usual chord tolerance (0 would not split its arcs into chords).
+        var polygon = new Path2(path.Flatten().Select(p => new Vertex(p.ToPoint3())), true);
         for (var k = 0; k < 20; k++)
         {
             var t = k / 20.0; // from the far end (pierce or exit) towards the cut; the cut point itself lies on the path
@@ -441,7 +443,8 @@ internal static class PlasmaGenerator
             {
                 p = other + (at - other) * t;
             }
-            if (!path.Contains(p, 0)) return false;
+            // Close to where the lead meets the cut it runs along the outline: a point between an arc and its chords is on it.
+            if (!polygon.Contains(p) && path.DistanceTo(p) > 2 * Tolerance.Chord) return false;
         }
         return true;
     }

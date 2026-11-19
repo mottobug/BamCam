@@ -91,6 +91,32 @@ public class ShapeStartTests
         Assert.Contains(warnings, w => w.Contains("did not fit into the hole"));
     }
 
+    [Theory]
+    [InlineData(PlasmaLead.Arc, 20)]
+    [InlineData(PlasmaLead.Line, 20)]
+    [InlineData(PlasmaLead.Arc, 8)]
+    [InlineData(PlasmaLead.Line, 8)]
+    public void Lead_moves_that_fit_into_a_round_hole_are_kept(PlasmaLead lead, double diameter)
+    {
+        // Holes of diameter 20 and 8, as in examples_to_test/Plasma (bracket).cb: the lead moves are shortened to a
+        // quarter of the diameter, and an arc of that radius fits inside.
+        var doc = new CadDocument();
+        var plate = doc.AddEntity(new PolylineEntity(Path2.FromPoints([new(0, 0), new(60, 0), new(60, 40), new(0, 40)], closed: true)));
+        var hole = doc.AddEntity(new CircleEntity { Center = new Point3(30, 20, 0), Diameter = diameter });
+        var op = new PlasmaOp { Name = "Plasma1" };
+        op.PrimitiveIds.AddRange([plate.Id, hole.Id]);
+        op.KerfWidth.Set(1.5);
+        op.LeadIn.Set(lead);
+        op.LeadInLength.Set(4);
+        op.LeadOut.Set(lead);
+        op.LeadOutLength.Set(2);
+        doc.ActivePart.Operations.Add(op);
+
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        Assert.Empty(tp.Warnings);
+    }
+
     private static List<string> SlotWarnings(double startX)
     {
         // Issue 28: a slot 40 x 4 in a plate, the cut started near one end. The lead-in arc must not reach out of the slot.
