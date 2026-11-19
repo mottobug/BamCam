@@ -36,6 +36,15 @@ public class PlasmaCutDataTests
             doc.ActivePart.Operations.Add(op);
             LibraryFiles.ApplyStyle(doc, op);
 
+            // Issue 20: the values arrive in the units of the drawing, also from a table in the other units.
+            var data = PlasmaCutTable.Template(inchesTable).Find(entry)!;
+            var scale = inchesTable == inchesDrawing ? 1 : inchesTable ? 25.4 : 1 / 25.4;
+            Assert.Equal(data.KerfWidth * scale, op.KerfWidth.Value, 9);
+            Assert.Equal(data.CutFeedrate * scale, op.CutFeedrate.Value, 9);
+            Assert.Equal(data.PierceHeight * scale, op.PierceHeight.Value, 9);
+            Assert.Equal(data.CutHeight * scale, op.CutHeight.Value, 9);
+            Assert.Equal(data.PierceDelay, op.PierceDelay.Value, 9);
+
             var tp = ToolpathGenerator.Generate(doc, op);
 
             Assert.True(tp.Moves.Count > 0, $"{entry} ({(inchesTable ? "in" : "mm")} table, {(inchesDrawing ? "in" : "mm")} drawing): {string.Join(" | ", tp.Warnings)}");

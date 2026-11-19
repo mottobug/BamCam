@@ -142,7 +142,7 @@ public static class MillingSimulation
             top = jobs.Select(j => j.Op.StockSurface.Value).DefaultIfEmpty(0).Max();
             // Plasma cuts above the sheet: its thickness comes from the cut data (1 without).
             var sheet = jobs.Select(j => j.Op).OfType<PlasmaOp>()
-                .Select(p => CamLibraries.FindCutData(doc, p.CutData.Value)?.Thickness ?? 0).DefaultIfEmpty(0).Max();
+                .Select(p => CamLibraries.FindCutData(doc, p.CutData.Value) is { } data ? data.Thickness * CamLibraries.CutDataScale(doc, data) : 0).DefaultIfEmpty(0).Max();
             bottom = Math.Min(Math.Min(lowest, top) - 1, top - sheet);
         }
         var widest = Math.Max(x1 - x0, y1 - y0);

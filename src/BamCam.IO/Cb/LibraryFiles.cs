@@ -239,7 +239,7 @@ public static class LibraryFiles
     {
         var changed = ApplyStyleValues(doc, op);
         if (op is PlasmaOp plasma && CamLibraries.FindCutData(doc, plasma.CutData.Value) is { } data)
-            changed.AddRange(data.ApplyTo(plasma).Except(changed));
+            changed.AddRange(data.ApplyTo(plasma, CamLibraries.CutDataScale(doc, data)).Except(changed));
         return changed;
     }
 

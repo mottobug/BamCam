@@ -284,7 +284,8 @@ Special operations:
   *Cut Data* picks a row of the plasma cut data tables (System tab ▸ Plasma Cut Data, files in the `plasma`
   folder of the system folder): material, thickness, current, nozzle, kerf width, feedrate, pierce height, pierce
   delay and cut height. The operation takes these values wherever it keeps the default (italic) value, also after
-  the table changes; a value typed into the operation wins. The tables start with a few rough values for 30 to 45
+  the table changes; a value typed into the operation wins. A table in other units than the drawing is converted
+  (kerf width, feedrate and heights; the pierce delay is in seconds). The tables start with a few rough values for 30 to 45
   A cutters: replace them with the cut chart of your plasma cutter (right-click an entry: duplicate, delete; a table: new
   entry, duplicate, rename, delete table; Plasma Cut Data: new table). Each table is one file; the two starting tables
   are written again when missing, so they cannot be renamed or deleted (duplicate them instead). Operations remember

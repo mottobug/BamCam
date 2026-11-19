@@ -37,9 +37,11 @@ public sealed class PlasmaCutData
 
     /// <summary>
     /// Writes the values into the parameters of <paramref name="op"/> that are in the Default state (values > 0
-    /// only). Returns the names of the parameters that changed.
+    /// only). Lengths and the feed rate are multiplied by <paramref name="scale"/>, from the units of the table to those
+    /// of the drawing (see <see cref="CamLibraries.CutDataScale"/>); the pierce delay is in seconds. Returns the names of
+    /// the parameters that changed.
     /// </summary>
-    public List<string> ApplyTo(PlasmaOp op)
+    public List<string> ApplyTo(PlasmaOp op, double scale = 1)
     {
         var changed = new List<string>();
         void Set(CamParam<double> p, double value, string name)
@@ -49,11 +51,11 @@ public sealed class PlasmaCutData
             p.RawXml = null;
             changed.Add(name);
         }
-        Set(op.KerfWidth, KerfWidth, nameof(op.KerfWidth));
-        Set(op.CutFeedrate, CutFeedrate, nameof(op.CutFeedrate));
-        Set(op.PierceHeight, PierceHeight, nameof(op.PierceHeight));
+        Set(op.KerfWidth, KerfWidth * scale, nameof(op.KerfWidth));
+        Set(op.CutFeedrate, CutFeedrate * scale, nameof(op.CutFeedrate));
+        Set(op.PierceHeight, PierceHeight * scale, nameof(op.PierceHeight));
         Set(op.PierceDelay, PierceDelay, nameof(op.PierceDelay));
-        Set(op.CutHeight, CutHeight, nameof(op.CutHeight));
+        Set(op.CutHeight, CutHeight * scale, nameof(op.CutHeight));
         return changed;
     }
 }

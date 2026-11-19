@@ -213,6 +213,19 @@ public static class CamLibraries
     }
 
     /// <summary>
+    /// Factor from the units of the table that holds <paramref name="entry"/> to the units of the drawing: 25.4 for an inch
+    /// table in a millimetre drawing, 1 / 25.4 the other way round, else 1 (issue 20).
+    /// </summary>
+    public static double CutDataScale(Model.CadDocument doc, PlasmaCutData entry)
+    {
+        var table = PlasmaTables.FirstOrDefault(t => t.Entries.Contains(entry));
+        if (table == null) return 1;
+        var tableInches = table.Units == Model.DrawingUnits.Inches;
+        var drawingInches = doc.Units == Model.DrawingUnits.Inches;
+        return tableInches == drawingInches ? 1 : tableInches ? 25.4 : 1 / 25.4;
+    }
+
+    /// <summary>
     /// Tool lookup: Part tool library → Machining tool library → (turning operations) BamCam-Lathe-{units} →
     /// Default-{units}.
     /// </summary>
