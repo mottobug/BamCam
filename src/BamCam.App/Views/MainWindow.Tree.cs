@@ -98,13 +98,31 @@ public partial class MainWindow
         SyncTreeSelection();
     }
 
+    /// <summary>An operation just created: selected in the tree until the selection in the drawing changes (issue 26).</summary>
+    private object? _treeFocus;
+
+    /// <summary>Selects <paramref name="tag"/> in the drawing tree, scrolls to it and gives it the keyboard focus.</summary>
+    private void ShowInTree(object tag)
+    {
+        _treeFocus = tag;
+        SyncTreeSelection();
+        if (_treeItems.TryGetValue(tag, out var item))
+        {
+            LeftTabs.SelectedIndex = 0;
+            item.BringIntoView();
+            item.Focus();
+        }
+    }
+
     private void SyncTreeSelection()
     {
         if (_syncingTree) return;
         _syncingTree = true;
         try
         {
-            var wanted = _session.Selection.Count > 0
+            // A new operation is shown in the tree (as in CamBam, issue 26) while its objects stay selected in the drawing.
+            var wanted = _treeFocus != null && ReferenceEquals(_session.Inspected, _treeFocus) ? [_treeFocus]
+                : _session.Selection.Count > 0
                 ? _session.Selection.Cast<object>().ToList()
                 : _session.Inspected != null ? [_session.Inspected] : [];
             DrawingTree.SelectedItems.Clear();

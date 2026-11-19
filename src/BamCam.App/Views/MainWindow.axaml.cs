@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using BamCam.App.Drawing;
 using BamCam.App.Services;
 using BamCam.Core.Model;
@@ -39,6 +40,7 @@ public partial class MainWindow : Window
         _session.DocumentReplaced += (_, _) => OnDocumentReplaced();
         _session.SelectionChanged += (_, _) =>
         {
+            _treeFocus = null; // a new selection in the drawing shows in the tree again
             SyncTreeSelection();
             _numericTransform?.SelectionChanged();
         };
@@ -853,6 +855,8 @@ public partial class MainWindow : Window
         var inText = FocusManager?.GetFocusedElement() is TextBox;
         if (inText && e.KeyModifiers == KeyModifiers.None) return;
         if (inText && e.Key is Key.C or Key.V or Key.X or Key.Z or Key.Y or Key.A) return;
+        // Arrow and page keys in the trees or the properties belong to them, also with Shift (no nudging of objects there).
+        if (e.Key is Key.Up or Key.Down or Key.Left or Key.Right or Key.PageUp or Key.PageDown or Key.Home or Key.End && FocusInSidePanel()) return;
 
         // Space over the drawing view: held, a left drag pans; a plain press reaches the tool when it is released.
         if (!inText && e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None && (View.IsPointerOver || View.IsFocused))
@@ -872,11 +876,18 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
-        // Keys for the drawing view (tools, navigation) when focus is elsewhere.
-        if (FocusManager?.GetFocusedElement() is TreeView) return;
+        // Keys for the drawing view (tools, navigation) when focus is elsewhere, but not when it is in the drawing or system
+        // tree or the properties: there the arrow keys move through the items, as in CamBam (issue 23). The focus is on an item
+        // of the tree, not the tree itself, so its ancestors count.
+        if (FocusInSidePanel()) return;
         if (View.ForwardKeyToTool(e.Key, e.KeyModifiers) || View.HandleNavigationKey(e.Key, e.KeyModifiers))
             e.Handled = true;
     }
+
+    /// <summary>Whether the keyboard focus is in the drawing tree, the system tree or the properties.</summary>
+    private bool FocusInSidePanel() =>
+        FocusManager?.GetFocusedElement() is Avalonia.Visual focused
+        && new Avalonia.Visual[] { DrawingTree, SystemTree, Properties }.Any(p => p == focused || p.IsVisualAncestorOf(focused));
 
     private void OnWindowKeyUp(object? sender, KeyEventArgs e)
     {

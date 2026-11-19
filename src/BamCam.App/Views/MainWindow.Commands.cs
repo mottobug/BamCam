@@ -627,6 +627,7 @@ public partial class MainWindow
                 depth.TargetDepth.Set(doc.Units == DrawingUnits.Inches ? -0.04 : -1);
         });
         _session.Inspect(op);
+        ShowInTree(op);
         Log(F("{0} added to {1} ({2} object(s)). Set Target Depth and tool, then generate toolpaths.", op.Name, part.Name, sel.Count));
     }
 
