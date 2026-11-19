@@ -141,7 +141,10 @@ public partial class MainWindow
         MainMenu.Items.Add(Sub("_Edit", EditMenuItems()));
         MainMenu.Items.Add(Sub("_View", ViewMenuItems()));
         MainMenu.Items.Add(Sub("_Draw", DrawMenuItems()));
+        // Filled now (an empty submenu has no arrow and never opens, issue 29) and again when it opens, for the current
+        // drawing and post processors.
         _postMenu = Sub("Post Processor");
+        FillPostMenu();
         _postMenu.SubmenuOpened += (_, _) => FillPostMenu();
         MainMenu.Items.Add(Sub("_Machining", MachiningMenuItems().Concat(["-", _postMenu,
             Item("Machining Options", () => _session.Inspect(_session.Document.Machining))]).ToArray()));
