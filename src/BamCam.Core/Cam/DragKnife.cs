@@ -136,8 +136,14 @@ internal static class DragKnifeGenerator
         return new Path2(vertices, false);
     }
 
-    /// <summary>The first <paramref name="length"/> of the closed shape again (to cut beyond the start).</summary>
-    internal static IEnumerable<Segment> Overcut(List<Segment> segments, double length)
+    /// <summary>
+    /// The first <paramref name="length"/> of the closed shape again (to cut beyond the start), as a list of its own: the
+    /// callers append it to <paramref name="segments"/>, which must not change while it is read (issue 30, which failed
+    /// with "Collection was modified" whenever the first segment was shorter than the overcut).
+    /// </summary>
+    internal static List<Segment> Overcut(List<Segment> segments, double length) => OvercutSegments(segments, length).ToList();
+
+    private static IEnumerable<Segment> OvercutSegments(List<Segment> segments, double length)
     {
         foreach (var s in segments)
         {

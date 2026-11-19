@@ -183,25 +183,38 @@ internal static class PlasmaGenerator
         public readonly List<Cut> Inside = [];
     }
 
+    private static string Fmt(double v) => v.ToString("0.####", Localization.Tr.Culture);
+
     public static void Generate(GenContext ctx, PlasmaOp op, Toolpath tp)
     {
         var surface = ctx.StockSurface;
         var halfKerf = Math.Max(0, op.KerfWidth.Value) / 2;
-        var sources = ctx.SourcePaths().Select(s => s.Path).Where(p => p.SegmentCount > 0).ToList();
+        var sourcesWithEntity = ctx.SourcePaths().Where(s => s.Path.SegmentCount > 0).ToList();
+        var sources = sourcesWithEntity.Select(s => s.Path).ToList();
         var closed = sources.Where(p => p.Closed).ToList();
 
         var cuts = new List<Cut>();
-        foreach (var src in sources)
+        foreach (var (entity, src) in sourcesWithEntity)
         {
             var depth = src.Closed ? closed.Count(o => !ReferenceEquals(o, src) && Encloses(o, src)) : 0;
             var hole = depth % 2 == 1;
             var small = hole && op.SmallHoleSize.Value > 0 && Math.Max(src.Bounds().Width, src.Bounds().Height) <= op.SmallHoleSize.Value + 1e-9;
+            var made = 0;
             foreach (var path in KerfPaths(src, hole, halfKerf, op.KerfSide.Value))
             {
+                made++;
                 // Part on the right: outlines clockwise, holes counter-clockwise (reversed for Part On Left).
                 var ccw = hole ^ (op.CutDirection.Value == PlasmaDirection.PartOnLeft);
                 var oriented = path.Closed ? Polygons.EnsureOrientation(path, ccw) : path;
                 cuts.Add(new Cut { Path = oriented, Source = src, Depth = depth, SmallHole = small });
+            }
+            // A hole (or an inside cut) narrower than the kerf has no room for the torch: say so instead of leaving it out
+            // silently (issue 30).
+            if (made == 0 && src.Closed)
+            {
+                var b = src.Bounds();
+                tp.Warnings.Add(Localization.Tr.F("{0}: object {1} ({2} x {3}) is too small for the kerf width {4} and is not cut.",
+                    op.Name, entity.Id, Fmt(b.Width), Fmt(b.Height), Fmt(op.KerfWidth.Value)));
             }
         }
         if (cuts.Count == 0)

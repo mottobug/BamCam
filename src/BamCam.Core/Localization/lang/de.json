@@ -1764,6 +1764,7 @@
   "Duplicate Entry": "Eintrag duplizieren",
   "Delete Entry": "Eintrag löschen",
   "(copy)": "(Kopie)",
+  "{0}: object {1} ({2} x {3}) is too small for the kerf width {4} and is not cut.": "{0}: Objekt {1} ({2} x {3}) ist zu klein für die Schnittbreite {4} und wird nicht geschnitten.",
   "Bottom + Left": "Unten + Links",
   "Bottom + Right": "Unten + Rechts",
   "Top + Left": "Oben + Links",
