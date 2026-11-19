@@ -1166,7 +1166,7 @@
   "Chip Load Factor": "Zahnvorschub-Faktor",
   "Cutting Speed": "Schnittgeschwindigkeit",
   "Enter a tool diameter.": "Werkzeugdurchmesser eingeben.",
-  "Limited by the spindle speed range: effective cutting speed {0:0} m/min.": "Durch den Drehzahlbereich begrenzt: tatsächliche Schnittgeschwindigkeit {0:0} m/min.",
+  "Limited by the spindle speed range: effective cutting speed {0:0} {1}.": "Durch den Drehzahlbereich begrenzt: tatsächliche Schnittgeschwindigkeit {0:0} {1}.",
   "Max Rpm": "Max. Drehzahl",
   "Maximum Spindle Speed": "Maximale Drehzahl",
   "Min Rpm": "Min. Drehzahl",

@@ -158,7 +158,8 @@ Everything can be undone with `Ctrl+Z`.
 2. **Add an operation** (Machining menu or toolbar): profile, pocket, drill, engrave, 3D profile, drag knife, plasma, or a
    lathe operation (Machining ▸ Lathe).
 3. **Set it up** in the properties: tool diameter (or a tool number from the library), depths, feeds, spindle
-   speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation.
+   speed. Tools ▸ Speeds and Feeds suggests spindle speed and feeds and applies them to the selected operation. The cutting
+   speed is in m/min, in inch drawings in ft/min (SFM).
    The ▾ button beside *Tool Number* lists the tools of the library that applies (typing a number works too), and
    *Style*, *Style Library* and *Tool Library* are drop-down lists. A tool number brings the tool's diameter and
    profile; a style brings its values. Where a choice disagrees with values set elsewhere, BamCam asks instead of

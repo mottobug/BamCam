@@ -78,7 +78,7 @@ public sealed class SpeedsFeedsWindow : Window
         Row(T("Material"), _material);
         Row(T("Tool Diameter"), _diameter, unit);
         Row(T("Flutes"), _flutes);
-        Row(T("Cutting Speed"), _speed, "m/min");
+        Row(T("Cutting Speed"), _speed, SpeedUnit);
         Row(T("Chip Load"), _chipLoad, F("{0}/tooth", unit));
         Row(T("Minimum Spindle Speed"), _minRpm, T("rpm"));
         Row(T("Maximum Spindle Speed"), _maxRpm, T("rpm"));
@@ -167,13 +167,21 @@ public sealed class SpeedsFeedsWindow : Window
 
     private static double D(NumericUpDown n) => (double)(n.Value ?? 0);
 
+    /// <summary>
+    /// Cutting speed as shown: surface feet per minute in inch drawings (issue 25), else metres per minute. The materials
+    /// and the calculation use m/min.
+    /// </summary>
+    private bool Imperial => _units is DrawingUnits.Inches or DrawingUnits.Thousandths;
+    private string SpeedUnit => Imperial ? "ft/min" : "m/min";
+    private double SpeedFactor => Imperial ? 1000 / 304.8 : 1;
+
     private CuttingMaterial Material => _materials[Math.Clamp(_material.SelectedIndex, 0, _materials.Count - 1)];
 
     /// <summary>Cutting speed and chip load from the material table (fz scales with the diameter).</summary>
     private void FromMaterial()
     {
         _updating = true;
-        _speed.Value = (decimal)Material.CuttingSpeed;
+        _speed.Value = (decimal)Math.Round(Material.CuttingSpeed * SpeedFactor);
         _chipLoad.Value = (decimal)Math.Round(Material.ChipLoadFactor * D(_diameter), 4);
         _updating = false;
         Update();
@@ -182,7 +190,7 @@ public sealed class SpeedsFeedsWindow : Window
     private CuttingResult? Calculate()
     {
         if (D(_diameter) <= 0) return null;
-        return CuttingData.Calculate(D(_diameter), (int)D(_flutes), D(_speed), D(_chipLoad), _units, D(_minRpm), D(_maxRpm), D(_plunge));
+        return CuttingData.Calculate(D(_diameter), (int)D(_flutes), D(_speed) / SpeedFactor, D(_chipLoad), _units, D(_minRpm), D(_maxRpm), D(_plunge));
     }
 
     private void Update()
@@ -196,8 +204,8 @@ public sealed class SpeedsFeedsWindow : Window
         }
         var unit = _units == DrawingUnits.Inches ? "in/min" : _units == DrawingUnits.Millimeters ? "mm/min" : T("units/min");
         _result.Text = F("Spindle speed: {0:0} rpm\nCut feedrate: {1:0.#} {3}\nPlunge feedrate: {2:0.#} {3}", r.SpindleSpeed, r.CutFeedrate, r.PlungeFeedrate, unit);
-        _note.Text = Math.Abs(r.CuttingSpeed - D(_speed)) > 0.5
-            ? F("Limited by the spindle speed range: effective cutting speed {0:0} m/min.", r.CuttingSpeed)
+        _note.Text = Math.Abs(r.CuttingSpeed * SpeedFactor - D(_speed)) > 0.5
+            ? F("Limited by the spindle speed range: effective cutting speed {0:0} {1}.", r.CuttingSpeed * SpeedFactor, SpeedUnit)
             : T("Starting values for carbide end mills: check them against the tool maker's data.");
     }
 
