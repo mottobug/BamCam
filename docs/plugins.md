@@ -261,3 +261,44 @@ At the next start BamCam asks once per new or changed plugin file whether it may
 company and version. Plugins run with the same rights as BamCam; the approval is bound to the file's SHA-256,
 so a changed file is asked about again. **Tools ▸ Plugins** lists the plugins with their state and switches them
 on or off (after a restart). Discovery only reads the DLL's metadata; plugin code runs only after approval.
+
+## Sharing a plugin
+
+Plugins written by users can live in [`plugins/community`](../plugins/community), one folder each. Every BamCam
+release then has a ZIP file per community plugin, which users unpack into their plugin folder. The steps below need
+only a GitHub account and the GitHub website; no Git program is needed.
+
+### Adding a plugin
+
+1. **Fork** the repository: on [github.com/mottobug/BamCam](https://github.com/mottobug/BamCam) click **Fork** (top
+   right), then **Create fork**. You now have your own copy, `github.com/<your account>/BamCam`, which you may change
+   freely.
+2. In your fork, open `plugins/community`. Click **Add file ▸ Upload files** and drag the **folder** of your plugin into
+   the page. Name the folder `<Author>.<Name>`, e.g. `GeoffRoy.Revolve`, and start from a copy of
+   [`_Template`](../plugins/community/_Template): its `.csproj` already references BamCam correctly. Upload the source
+   files (`.cs`, `.csproj`), not the `bin` and `obj` folders and no DLLs: the build makes the plugin from the source.
+3. Still in that folder, **Add file ▸ Create new file**, name it `README.md` and describe the plugin: what it does,
+   how to use it, author, version, licence (the template's `README.md` shows the parts). Markdown is plain text with
+   a few marks: `#` for a heading, `-` for a list item, `**bold**`, `` `code` ``. The **Preview** tab shows how it will
+   look.
+4. Add a line for your plugin to the table in [`plugins/community/README.md`](../plugins/community/README.md): open
+   it, click the pencil (**Edit**), add the line, **Commit changes**.
+5. Open the pull request: on the start page of your fork click **Contribute ▸ Open pull request**, write a few words
+   about the plugin and click **Create pull request**.
+
+The build then checks that the plugin builds (you see a green tick or a red cross in the pull request). The maintainer
+reviews it, may ask questions in the pull request, and merges it. From the next release on it is downloadable.
+
+### Changing a plugin
+
+1. In your fork, first click **Sync fork ▸ Update branch**, so that it has the current BamCam.
+2. Open the file, click the pencil to edit it (or **Add file ▸ Upload files** to replace files), raise `<Version>` in
+   the `.csproj` and add a line to *Changes* in your `README.md`, then **Commit changes**.
+3. **Contribute ▸ Open pull request** as before.
+
+### Building and trying it locally
+
+With the [.NET 10 SDK](https://dotnet.microsoft.com/download) and a copy of the repository (**Code ▸ Download ZIP** is
+enough): `dotnet build plugins/community/<Author>.<Name> -c Release`, then copy the DLL and `.deps.json` from
+`bin/Release/net10.0` into a folder below your plugin folder (**Tools ▸ Plugins ▸ Open Plugin Folder**) and restart
+BamCam.

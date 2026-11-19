@@ -261,6 +261,9 @@ of the system folder; BamCam asks once before loading a new plugin, and **Tools 
 or off. See [docs/plugins.md](docs/plugins.md) for writing a plugin and
 [samples/BamCam.SamplePlugin](samples/BamCam.SamplePlugin) for a complete example.
 
+**Community plugins** written by users are in [plugins/community](plugins/community): each release has a ZIP per
+plugin. To share your own, see [Sharing a plugin](docs/plugins.md#sharing-a-plugin).
+
 **Porting CamBam plugins:** CamBam plugins do not run unchanged, but their logic can be kept; the
 [porting guide](docs/porting-cambam-plugins.md) maps CamBam's plugin concepts to BamCam's and explains how
 drawings saved with a CamBam plugin operation keep opening with the port.
