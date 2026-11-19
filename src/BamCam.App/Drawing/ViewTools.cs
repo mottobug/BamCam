@@ -72,23 +72,47 @@ public abstract class ViewTool
     }
 }
 
-/// <summary>Default tool: click / window selection.</summary>
+/// <summary>
+/// Default tool: click / window selection. Shift + left drag starting on a selected object moves the selection, as in
+/// CamBam (issue 21); a Shift click without moving still adds to the selection.
+/// </summary>
 public class SelectTool : ViewTool
 {
     private Point? _dragStart;
     private Point _dragCurrent;
+
+    // Shift + drag of the selection: where it was grabbed (snapped), the cursor, and whether it has moved yet.
+    private Point? _movePress;
+    private Point2 _moveFrom, _moveTo;
+    private bool _moving;
+    private List<Entity> _moveTargets = [];
 
     public override string Prompt => "";
 
     public override void PointerPressed(Point screen, Point2 world, PointerPointProperties props, KeyModifiers mods)
     {
         if (!props.IsLeftButtonPressed) return;
+        if (mods.HasFlag(KeyModifiers.Shift) && Host.HitTest(screen).Any(Host.Session.Selection.Contains))
+        {
+            _movePress = screen;
+            _moveFrom = _moveTo = world;
+            _moving = false;
+            _moveTargets = Host.Session.Selection.ToList();
+            return;
+        }
         _dragStart = screen;
         _dragCurrent = screen;
     }
 
     public override void PointerMoved(Point screen, Point2 world, KeyModifiers mods)
     {
+        if (_movePress is { } press)
+        {
+            _moveTo = world;
+            if (Math.Abs(screen.X - press.X) + Math.Abs(screen.Y - press.Y) >= 4) _moving = true;
+            Host.Invalidate();
+            return;
+        }
         if (_dragStart == null) return;
         _dragCurrent = screen;
         Host.Invalidate();
@@ -96,6 +120,20 @@ public class SelectTool : ViewTool
 
     public override void PointerReleased(Point screen, Point2 world, MouseButton button, KeyModifiers mods)
     {
+        if (button == MouseButton.Left && _movePress != null)
+        {
+            var moved = _moving;
+            _movePress = null;
+            _moving = false;
+            var d = world - _moveFrom;
+            if (moved && (Math.Abs(d.X) > 1e-12 || Math.Abs(d.Y) > 1e-12))
+            {
+                var targets = _moveTargets;
+                Host.Session.Execute(Core.Localization.Tr.T("Move"), () => Core.Cad.CadOps.Transform(targets, Matrix4.Translation(d.X, d.Y)));
+            }
+            Host.Invalidate();
+            return;
+        }
         if (button != MouseButton.Left || _dragStart is not { } start) return;
         _dragStart = null;
         var toggle = mods.HasFlag(KeyModifiers.Control);
@@ -124,6 +162,14 @@ public class SelectTool : ViewTool
 
     public override bool KeyDown(Key key, KeyModifiers mods)
     {
+        if (key == Key.Escape && _movePress != null)
+        {
+            // Esc while dragging the selection: it stays where it was.
+            _movePress = null;
+            _moving = false;
+            Host.Invalidate();
+            return true;
+        }
         if (key == Key.Escape)
         {
             _dragStart = null;
@@ -136,6 +182,21 @@ public class SelectTool : ViewTool
 
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
+        if (_moving)
+        {
+            var m = Matrix4.Translation(_moveTo.X - _moveFrom.X, _moveTo.Y - _moveFrom.Y);
+            foreach (var t in _moveTargets)
+            {
+                // A large mesh follows the cursor as its outer box: every triangle would take seconds per mouse move.
+                var b = t.Bounds();
+                var paths = t is SurfaceEntity { IsLarge: true }
+                    ? [Path2.FromPoints([new(b.Min.X, b.Min.Y), new(b.Max.X, b.Min.Y), new(b.Max.X, b.Max.Y), new(b.Min.X, b.Max.Y)], closed: true, b.Max.Z)]
+                    : t.ToPaths();
+                foreach (var p in paths) DrawPath(dc, view, p.Transformed(m), PreviewPen);
+            }
+            dc.DrawLine(PreviewPen, view.ToScreen(_moveFrom), view.ToScreen(_moveTo));
+            return;
+        }
         if (_dragStart is not { } s) return;
         var rect = new Rect(s, _dragCurrent).Normalize();
         var crossing = _dragCurrent.X < s.X;
