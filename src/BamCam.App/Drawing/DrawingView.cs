@@ -102,6 +102,9 @@ public sealed partial class DrawingView : Control, IToolHost
         _tool.Attach(this);
         // Typed values and keys of the tool must reach it, also when it was started from the tree or a menu.
         if (tool != null) Focus();
+        // Cursor and point square follow the new tool at once, not only at the next mouse move.
+        UpdateHoverCursor(_cursorScreen);
+        _pointCursor = _tool.PicksPoints && IsPointerOver ? Snap(_view.ToWorld(_cursorScreen), _cursorScreen) : null;
         InvalidateVisual();
         ToolChanged?.Invoke(this, EventArgs.Empty);
     }
@@ -222,6 +225,7 @@ public sealed partial class DrawingView : Control, IToolHost
         var pos = _view.ToScreen(worldPoint);
         _cursorScreen = pos;
         _tool.PointerMoved(pos, Snap(_view.ToWorld(pos), pos), KeyModifiers.None);
+        _pointCursor = _tool.PicksPoints ? Snap(_view.ToWorld(pos), pos) : null;
         InvalidateVisual();
     }
 
@@ -318,7 +322,19 @@ public sealed partial class DrawingView : Control, IToolHost
         var world = Snap(_view.ToWorld(pos), pos);
         CursorMoved?.Invoke(this, world);
         _tool.PointerMoved(pos, world, e.KeyModifiers);
-        if (_snapMarker != null || Settings.SnapToObjects) InvalidateVisual();
+        _pointCursor = _tool.PicksPoints ? world : null;
+        if (_snapMarker != null || Settings.SnapToObjects || _pointCursor != null) InvalidateVisual();
+    }
+
+    /// <summary>The snapped point a click of a point-taking tool would give (drawn as a small square), null otherwise.</summary>
+    private Point2? _pointCursor;
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        if (_pointCursor == null) return;
+        _pointCursor = null;
+        InvalidateVisual();
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -599,6 +615,7 @@ public sealed partial class DrawingView : Control, IToolHost
             RenderTabs(dc);
             _tool.RenderOverlay(dc, _view);
             RenderSnapMarker(dc);
+            RenderPointCursor(dc);
             if (TransformPreview is { } preview)
             {
                 var previewPen = new Pen(Brushes.Orange, 1, DashStyle.Dash);
@@ -946,6 +963,29 @@ public sealed partial class DrawingView : Control, IToolHost
             dc.DrawLine(pen, tip, new Point(tip.X - ux * 6 + uy * 4, tip.Y - uy * 6 - ux * 4));
             return;
         }
+    }
+
+    /// <summary>
+    /// Point-taking tools: a cross cursor with a small filled square on the snapped point (the system cursor is hidden, see
+    /// PointCursor), as CamBam shows in draw mode (issue 22). It jumps to the grid or object point the next click will
+    /// take; an object snap also gets its own marker.
+    /// </summary>
+    private void RenderPointCursor(DrawingContext dc)
+    {
+        if (_pointCursor is not { } p || !_tool.PicksPoints) return;
+        // The cross sits on the snapped point too, as in CamBam and AutoCAD: with snapping it moves in grid steps or jumps to
+        // the object point, so that cross and square never stand apart (beside the mouse they looked unsteady).
+        var c = _view.ToScreen(p);
+        const double arm = 12;
+        var dark = new Pen(new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)), 3);
+        var light = new Pen(Brushes.White, 1);
+        foreach (var pen in new[] { dark, light })
+        {
+            dc.DrawLine(pen, new Point(c.X - arm, c.Y), new Point(c.X + arm, c.Y));
+            dc.DrawLine(pen, new Point(c.X, c.Y - arm), new Point(c.X, c.Y + arm));
+        }
+        var s = _view.ToScreen(p);
+        dc.DrawRectangle(Brushes.White, new Pen(Brushes.Black, 1), new Rect(s.X - 2.5, s.Y - 2.5, 5, 5));
     }
 
     private void RenderSnapMarker(DrawingContext dc)

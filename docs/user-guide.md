@@ -43,7 +43,9 @@ commands and plugins.
 
 **Tools** (Draw menu, toolbar, keys): line, polyline (`P`), arc (`A`), spline, circle (`C`), rectangle (`R`),
 point list (`D`), text (`T`). Left click sets points, Enter or a middle click finishes, Esc cancels.
-The active tool is highlighted in the toolbar.
+The active tool is highlighted in the toolbar. While a tool takes points (drawing, move, rotate, picking a point) the cursor
+is a cross with a small white square on the snapped point the next click gives: with snapping it moves in grid steps or
+jumps to the object point. Selecting has the normal arrow.
 
 **Exact sizes:** after the first point, simply type a value; the label at the cursor shows it:
 

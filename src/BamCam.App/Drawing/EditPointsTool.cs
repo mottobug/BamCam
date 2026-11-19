@@ -16,6 +16,8 @@ namespace BamCam.App.Drawing;
 /// </summary>
 public sealed class EditPointsTool(Entity entity) : ViewTool
 {
+    public override bool PicksPoints => true;
+
     private int _dragIndex = -1;
     private bool _recorded;
 

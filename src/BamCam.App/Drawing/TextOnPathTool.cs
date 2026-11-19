@@ -15,6 +15,8 @@ namespace BamCam.App.Drawing;
 /// </summary>
 public sealed class TextOnPathTool(TextEntity text, Entity guide) : ViewTool
 {
+    public override bool PicksPoints => true;
+
     private readonly int _textId = text.Id;
     private readonly int _guideId = guide.Id;
     // Starts with the direction in which the text reads left to right.

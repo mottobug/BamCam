@@ -11,6 +11,8 @@ namespace BamCam.App.Drawing;
 /// <summary>Base for commands that transform the current selection with point picks.</summary>
 public abstract class SelectionTransformTool : ViewTool
 {
+    public override bool PicksPoints => true;
+
     protected Point2 Cursor;
     protected readonly List<Point2> Picks = [];
     protected List<Entity> Targets = [];
@@ -155,6 +157,8 @@ public sealed class MirrorTool : SelectionTransformTool
 /// <summary>Picks a single point and reports it (e.g. MOP start point, machining origin).</summary>
 public sealed class PickPointTool(string prompt, Action<Point2> picked) : ViewTool
 {
+    public override bool PicksPoints => true;
+
     public override string Prompt => prompt;
 
     public override void PointerPressed(Point screen, Point2 world, PointerPointProperties props, KeyModifiers mods)

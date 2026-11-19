@@ -133,6 +133,8 @@ public partial class MainWindow
     /// </summary>
     private sealed class PluginToolAdapter(MainWindow window, PluginTool tool) : ViewTool, IToolContext
     {
+        public override bool PicksPoints => true;
+
         private readonly CommandContext _commands = new(window);
         private bool _ended;
 

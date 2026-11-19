@@ -10,6 +10,8 @@ namespace BamCam.App.Drawing;
 /// <summary>Common behaviour of drawing commands: Esc cancels, optional repeat after finishing.</summary>
 public abstract class DrawTool : ViewTool
 {
+    public override bool PicksPoints => true;
+
     protected Point2 Cursor;
 
     /// <summary>Restart the command after an entity is finished (config "Repeat Commands").</summary>

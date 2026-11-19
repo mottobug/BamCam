@@ -29,6 +29,12 @@ public abstract class ViewTool
 
     public virtual string Prompt => "";
 
+    /// <summary>
+    /// Whether the tool takes points (drawing, moving, picking a point): the view then shows a cross cursor and a small
+    /// square at the snapped point, so that the mode and the point a click will give are visible (issue 22).
+    /// </summary>
+    public virtual bool PicksPoints => false;
+
     public void Attach(IToolHost host)
     {
         Host = host;

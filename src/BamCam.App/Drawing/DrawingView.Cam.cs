@@ -16,6 +16,11 @@ public sealed partial class DrawingView
     private Path2? _dragTabShape;
     private ProfileOp? _dragTabOp;
     private static readonly Cursor MoveCursor = new(StandardCursorType.SizeAll);
+    /// <summary>
+    /// No system cursor while a tool takes points (issue 22): the view draws its own cross with the snapped point, so that
+    /// both come in the same frame. A system cursor is shown at once, a drawn square a frame or two later, and lags behind it.
+    /// </summary>
+    private static readonly Cursor PointCursor = new(StandardCursorType.None);
 
     // ----------------------------------------------------------------- holding tabs
 
@@ -163,7 +168,8 @@ public sealed partial class DrawingView
     private void UpdateHoverCursor(Point screen)
     {
         var over = _tool is SelectTool && InspectedProfile != null && TabAt(screen) != null;
-        Cursor = over || _dragTab != null ? MoveCursor : _spaceHeld ? new Cursor(StandardCursorType.Hand) : Cursor.Default;
+        Cursor = over || _dragTab != null ? MoveCursor : _spaceHeld ? new Cursor(StandardCursorType.Hand)
+            : _tool.PicksPoints ? PointCursor : Cursor.Default;
     }
 
     // ----------------------------------------------------------------- nesting
