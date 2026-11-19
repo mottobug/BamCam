@@ -306,6 +306,10 @@ Special operations:
   saved with the drawing (CamBam ignores them); a point no longer on its outline, after the object was changed, is
   ignored. *Clear Start Points of the Shapes* removes them all.
 
+  In a hole the lead-in and lead-out must stay inside it, or they would cut into the part: where one does not fit, it
+  is shortened (halved until it fits) and the message window names the object; if none fits, the hole is cut without
+  one. A start point at a straight, roomy place of the hole avoids that.
+
   *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
   Size*, which are also cut slower). Use the post processor *GRBL Plasma* (torch `M3 S1000` / `M5`, pierce delay
   `G4 P…`, probing `G38.2` and `G92`) or set the *Plasma* templates of your own post: Torch On, Torch Off, Pierce

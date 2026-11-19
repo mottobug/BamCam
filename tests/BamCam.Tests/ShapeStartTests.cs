@@ -82,6 +82,53 @@ public class ShapeStartTests
     }
 
     [Fact]
+    public void Lead_moves_in_a_hole_are_shortened_to_stay_inside_it()
+    {
+        // Started close to either end of the slot: the arc lead-in runs back along the edge and, on one of them, would
+        // reach past the end of the slot.
+        var warnings = new List<string>();
+        foreach (var startX in new[] { 10.8, 49.2 }) warnings.AddRange(SlotWarnings(startX));
+        Assert.Contains(warnings, w => w.Contains("did not fit into the hole"));
+    }
+
+    private static List<string> SlotWarnings(double startX)
+    {
+        // Issue 28: a slot 40 x 4 in a plate, the cut started near one end. The lead-in arc must not reach out of the slot.
+        var doc = new CadDocument();
+        var plate = doc.AddEntity(new PolylineEntity(Path2.FromPoints([new(0, 0), new(60, 0), new(60, 24), new(0, 24)], closed: true)));
+        var slot = doc.AddEntity(new PolylineEntity(Path2.FromPoints([new(10, 10), new(50, 10), new(50, 14), new(10, 14)], closed: true)));
+        var op = new PlasmaOp { Name = "Plasma1" };
+        op.PrimitiveIds.AddRange([plate.Id, slot.Id]);
+        op.KerfWidth.Set(1.2);
+        op.LeadIn.Set(PlasmaLead.Arc);
+        op.LeadInLength.Set(5);
+        op.LeadOut.Set(PlasmaLead.Arc);
+        op.LeadOutLength.Set(5);
+        op.Overcut.Set(0);
+        op.WriteShapeStarts([(slot.Id, new Point2(startX, 10))]);
+        doc.ActivePart.Operations.Add(op);
+
+        var tp = ToolpathGenerator.Generate(doc, op);
+
+        // Every move of the slot's cut (from piercing to switching off) keeps the torch inside the slot's kerf path.
+        var inSlot = false;
+        Point3 last = default;
+        foreach (var m in tp.Moves)
+        {
+            if (m.IsMotion && !inSlot) last = m.To;
+            if (m is { Kind: MoveKind.Torch, Torch: TorchAction.On }) inSlot = last.Y is > 9 and < 15; // pierced in the slot
+            else if (m is { Kind: MoveKind.Torch, Torch: TorchAction.Off }) inSlot = false;
+            else if (inSlot && m.IsMotion)
+            {
+                Assert.InRange(m.To.X, 10.6 - 1e-6, 49.4 + 1e-6);
+                Assert.InRange(m.To.Y, 10.6 - 1e-6, 13.4 + 1e-6);
+            }
+        }
+        Assert.All(tp.Warnings, w => Assert.Contains($"object {slot.Id}", w));
+        return tp.Warnings;
+    }
+
+    [Fact]
     public void Start_points_are_saved_with_the_drawing()
     {
         var (doc, op, plate) = Plate();

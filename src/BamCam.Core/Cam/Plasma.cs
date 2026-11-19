@@ -204,6 +204,7 @@ internal static class PlasmaGenerator
     {
         public required Path2 Path;
         public required Path2 Source;
+        public Entity? Entity;
         /// <summary>Start point chosen for this shape (ShapeStarts), null when none.</summary>
         public Point2? Start;
         public bool Closed => Path.Closed;
@@ -250,7 +251,7 @@ internal static class PlasmaGenerator
                 // Part on the right: outlines clockwise, holes counter-clockwise (reversed for Part On Left).
                 var ccw = hole ^ (op.CutDirection.Value == PlasmaDirection.PartOnLeft);
                 var oriented = path.Closed ? Polygons.EnsureOrientation(path, ccw) : path;
-                cuts.Add(new Cut { Path = oriented, Source = src, Depth = depth, SmallHole = small, Start = ShapeStart(starts, entity, src) });
+                cuts.Add(new Cut { Path = oriented, Source = src, Entity = entity, Depth = depth, SmallHole = small, Start = ShapeStart(starts, entity, src) });
             }
             // A hole (or an inside cut) narrower than the kerf has no room for the torch: say so instead of leaving it out
             // silently (issue 30).
@@ -355,6 +356,9 @@ internal static class PlasmaGenerator
 
         var start = segments[0].Start.XY;
         var startDir = DragKnifeGenerator.StartTangent(segments[0]);
+        var hole = cut.Closed && cut.Depth % 2 == 1;
+        // In a hole the lead moves must stay inside it, or they would cut into the part (issue 28): shortened until they fit.
+        inLength = FitLead(mb.Toolpath, op, cut, path, start, startDir, left, leadIn, inLength, entering: true, hole, "lead-in");
         var pierce = Lead(start, startDir, left, leadIn, inLength, entering: true, out var inArc);
 
         var cutZ = surface + op.CutHeight.Value;
@@ -382,6 +386,7 @@ internal static class PlasmaGenerator
 
         var end = segments[^1].End.XY;
         var endDir = DragKnifeGenerator.EndTangent(segments[^1]);
+        outLength = FitLead(mb.Toolpath, op, cut, path, end, endDir, left, leadOut, outLength, entering: false, hole, "lead-out");
         var exit = Lead(end, endDir, left, leadOut, outLength, entering: false, out var outArc);
         if (outArc is { } b) mb.Arc(exit.ToPoint3(cutZ), b.Center, b.Clockwise, feed);
         else mb.Line(exit.ToPoint3(cutZ), feed);
@@ -389,6 +394,56 @@ internal static class PlasmaGenerator
         if (thc) mb.Toolpath.Add(Move.TorchSwitch(TorchAction.ThcOff));
         mb.Toolpath.Add(Move.TorchSwitch(TorchAction.Off));
         mb.Retract();
+    }
+
+    /// <summary>
+    /// Length of a lead move in a hole that stays inside the cut path (the torch centre; its kerf then stays in the hole):
+    /// the given length, else halved up to six times, else 0 (pierced on the cut line). A shortened or dropped lead move
+    /// is reported with the object (issue 28). Outlines (scrap outside) keep their length.
+    /// </summary>
+    private static double FitLead(Toolpath tp, PlasmaOp op, Cut cut, Path2 path, Point2 at, Point2 dir, bool scrapLeft,
+        PlasmaLead kind, double length, bool entering, bool hole, string what)
+    {
+        if (!hole || kind == PlasmaLead.None || length <= 1e-9) return length;
+        var tried = length;
+        for (var i = 0; i <= 6; i++, tried /= 2)
+        {
+            if (!LeadFits(path, at, dir, scrapLeft, kind, tried, entering)) continue;
+            if (i > 0)
+                tp.Warnings.Add(Localization.Tr.F("{0}: the {1} of object {2} did not fit into the hole and was shortened to {3}.",
+                    op.Name, Localization.Tr.T(what), cut.Entity?.Id ?? 0, Fmt(tried)));
+            return tried;
+        }
+        tp.Warnings.Add(Localization.Tr.F("{0}: no {1} fits into the hole of object {2}: it is cut without one. Choose another start point or a smaller length.",
+            op.Name, Localization.Tr.T(what), cut.Entity?.Id ?? 0));
+        return 0;
+    }
+
+    /// <summary>Whether the lead move lies inside the closed cut path (sampled, up to the point where it meets the cut).</summary>
+    private static bool LeadFits(Path2 path, Point2 at, Point2 dir, bool scrapLeft, PlasmaLead kind, double length, bool entering)
+    {
+        var other = Lead(at, dir, scrapLeft, kind, length, entering, out var arc);
+        for (var k = 0; k < 20; k++)
+        {
+            var t = k / 20.0; // from the far end (pierce or exit) towards the cut; the cut point itself lies on the path
+            Point2 p;
+            if (arc is { } a)
+            {
+                var r = Point2.Distance(a.Center, at);
+                var a0 = (other - a.Center).Angle;
+                var a1 = (at - a.Center).Angle;
+                var sweep = a1 - a0;
+                while (sweep > Math.PI) sweep -= 2 * Math.PI;
+                while (sweep < -Math.PI) sweep += 2 * Math.PI;
+                p = a.Center + Point2.FromAngle(a0 + sweep * t, r);
+            }
+            else
+            {
+                p = other + (at - other) * t;
+            }
+            if (!path.Contains(p, 0)) return false;
+        }
+        return true;
     }
 
     /// <summary>
