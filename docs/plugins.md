@@ -264,9 +264,30 @@ on or off (after a restart). Discovery only reads the DLL's metadata; plugin cod
 
 ## Sharing a plugin
 
-Plugins written by users can live in [`plugins/community`](../plugins/community), one folder each. Every BamCam
-release then has a ZIP file per community plugin, which users unpack into their plugin folder. The steps below need
-only a GitHub account and the GitHub website; no Git program is needed.
+Plugins written by users can live in [`plugins/community`](../plugins/community), one folder each, as source code.
+The release build makes the DLLs: every BamCam release has a ready-made ZIP file per community plugin.
+
+### Using a community plugin (nothing to build)
+
+1. Open the [releases](https://github.com/mottobug/BamCam/releases) and, under **Assets** of the latest one,
+   download `community-<Author>.<Name>-<version>.zip`.
+2. In BamCam, **Tools ▸ Plugins ▸ Open Plugin Folder**. Make a folder there, e.g. `<Author>.<Name>`, and unpack the
+   ZIP into it.
+3. Restart BamCam and allow the plugin when it asks.
+
+No Visual Studio, .NET SDK or GitHub account is needed for this.
+
+### For plugin authors
+
+The steps below need only a GitHub account and the GitHub website; no Git program is needed.
+
+**Where to develop:** wherever you like, e.g. in your own projects folder on any drive. Copy
+[`_Template`](../plugins/community/_Template) there and rename it to `<Author>.<Name>`. Its `.csproj` builds against
+your installed BamCam: BamCam installed in its default folder is found by itself; otherwise build once with
+`-p:BamCamDir="folder of BamCam.exe\"` or set `BamCamDir` in the `.csproj`. Inside the BamCam repository the same
+`.csproj` builds against BamCam's source code, which is what the release build does. So keep the template's `.csproj`
+(only rename it and change Product, Company and Version): a `.csproj` with paths of your own computer would not build
+there.
 
 ### Adding a plugin
 
@@ -296,9 +317,9 @@ reviews it, may ask questions in the pull request, and merges it. From the next 
    the `.csproj` and add a line to *Changes* in your `README.md`, then **Commit changes**.
 3. **Contribute ▸ Open pull request** as before.
 
-### Building and trying it locally
+### Trying your plugin before sharing it (authors only)
 
-With the [.NET 10 SDK](https://dotnet.microsoft.com/download) and a copy of the repository (**Code ▸ Download ZIP** is
-enough): `dotnet build plugins/community/<Author>.<Name> -c Release`, then copy the DLL and `.deps.json` from
+Build it in Visual Studio (open the `.csproj`) or with the [.NET 10 SDK](https://dotnet.microsoft.com/download):
+`dotnet build -c Release` in its folder. Copy `<Author>.<Name>.dll` and `<Author>.<Name>.deps.json` from
 `bin/Release/net10.0` into a folder below your plugin folder (**Tools ▸ Plugins ▸ Open Plugin Folder**) and restart
 BamCam.
