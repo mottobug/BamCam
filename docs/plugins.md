@@ -252,6 +252,18 @@ Copy the build output (the plugin DLL, its `.deps.json` and its own dependencies
 
 This is the folder that **Open Plugin Folder** in **Tools ▸ Plugins** opens, and the place for your own plugins.
 
+A plugin delivered as a ZIP file (such as a [community plugin](#sharing-a-plugin) from a release) is installed with
+**Tools ▸ Plugins ▸ Install from ZIP...**:
+
+- The ZIP is unpacked into a folder of its own in that folder, named after the file without its version:
+  `community-GeoffRoy.Revolve-1.2.0.zip` goes to `GeoffRoy.Revolve`. A ZIP holding a single folder is unpacked without
+  it.
+- If that folder exists (an older version), BamCam asks before replacing it. A plugin that is loaded keeps its files
+  open: it is then left as it is, and BamCam says to switch it off, restart and install again.
+- A ZIP without a `.dll`, or with paths that would leave the folder (`../`), is refused.
+
+BamCam asks at the next start whether the plugin may be loaded, as for a plugin copied by hand.
+
 BamCam also loads plugins from a `plugins` folder next to the program, which is meant for plugins bundled with
 BamCam. Those run without asking, because the program contains their SHA-256; a changed file is asked about like any
 other. If the same plugin (same file name, product and company) is in several places, the one in your own folder is
