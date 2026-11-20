@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Layout;
+using Avalonia.Platform.Storage;
 using BamCam.App.Services;
 using static BamCam.Core.Localization.Tr;
 
@@ -100,11 +101,17 @@ public sealed class PluginManagerWindow : Window
             Directory.CreateDirectory(PluginManager.UserFolder);
             MainWindow.OpenFolder(PluginManager.UserFolder);
         };
+        var install = new Button { Content = T("Install from ZIP...") };
+        ToolTip.SetTip(install, T("Unpacks a plugin ZIP file (e.g. a community plugin from a BamCam release) into the plugin folder."));
+        install.Click += async (_, _) => await InstallFromZip();
         var close = new Button { Content = T("Close"), IsDefault = true, IsCancel = true, MinWidth = 80 };
         close.Click += (_, _) => Close();
         var buttons = new DockPanel { Margin = new Thickness(6) };
         DockPanel.SetDock(open, Dock.Left);
         buttons.Children.Add(open);
+        install.Margin = new Thickness(6, 0, 0, 0);
+        DockPanel.SetDock(install, Dock.Left);
+        buttons.Children.Add(install);
         buttons.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Children = { close } });
 
         var root = new DockPanel();
@@ -115,6 +122,37 @@ public sealed class PluginManagerWindow : Window
         root.Children.Add(empty);
         root.Children.Add(grid);
         Content = root;
+    }
+
+    /// <summary>Install from ZIP: choose the file, unpack it into the plugin folder (asking before replacing a plugin).</summary>
+    private async Task InstallFromZip()
+    {
+        var files = await StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = T("Install Plugin from ZIP"),
+            AllowMultiple = false,
+            FileTypeFilter = [new Avalonia.Platform.Storage.FilePickerFileType(T("Plugin ZIP file")) { Patterns = ["*.zip"] }],
+        });
+        if (files.Count == 0 || files[0].TryGetLocalPath() is not { } zip) return;
+        try
+        {
+            Directory.CreateDirectory(PluginManager.UserFolder);
+            var (outcome, folder) = PluginInstaller.Install(zip, PluginManager.UserFolder, replace: false);
+            if (outcome == PluginInstaller.Outcome.Exists)
+            {
+                if (await Dialogs.Ask(this, T("Install Plugin from ZIP"),
+                        F("The plugin folder {0} exists already. Replace it with the content of the ZIP file?", folder), withCancel: false) != true)
+                    return;
+                (outcome, folder) = PluginInstaller.Install(zip, PluginManager.UserFolder, replace: true);
+            }
+            await Dialogs.Message(this, T("Install Plugin from ZIP"), outcome == PluginInstaller.Outcome.InUse
+                ? F("The plugin in {0} is in use. Switch it off in this window, restart BamCam and install it again.", folder)
+                : F("Installed into {0}.\n\nRestart BamCam: it then asks whether the plugin may be loaded.", folder));
+        }
+        catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException)
+        {
+            await Dialogs.Message(this, T("Install Plugin from ZIP"), F("The plugin could not be installed: {0}", ex.Message));
+        }
     }
 
     private void Apply(PluginRow row)

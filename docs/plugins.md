@@ -271,8 +271,8 @@ The release build makes the DLLs: every BamCam release has a ready-made ZIP file
 
 1. Open the [releases](https://github.com/mottobug/BamCam/releases) and, under **Assets** of the latest one,
    download `community-<Author>.<Name>-<version>.zip`.
-2. In BamCam, **Tools ▸ Plugins ▸ Open Plugin Folder**. Make a folder there, e.g. `<Author>.<Name>`, and unpack the
-   ZIP into it.
+2. In BamCam, **Tools ▸ Plugins ▸ Install from ZIP...** and choose the downloaded file. It is unpacked into a folder
+   of its own in the plugin folder; a newer version replaces the older one.
 3. Restart BamCam and allow the plugin when it asks.
 
 No Visual Studio, .NET SDK or GitHub account is needed for this.

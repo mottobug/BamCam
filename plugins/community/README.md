@@ -9,8 +9,8 @@ as an [issue](https://github.com/mottobug/BamCam/issues) with the plugin's name 
 ## Using a plugin
 
 Every [BamCam release](https://github.com/mottobug/BamCam/releases) has a ZIP file per community plugin, named
-`community-<Author>.<Name>-<version>.zip`. Unpack it into a folder of its own below the plugin folder
-(**Tools ▸ Plugins ▸ Open Plugin Folder**) and restart BamCam.
+`community-<Author>.<Name>-<version>.zip`. Install it with **Tools ▸ Plugins ▸ Install from ZIP...** and restart
+BamCam.
 
 ## The plugins
 

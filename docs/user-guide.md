@@ -334,7 +334,8 @@ large drawings at 1:1 are split over several pages. File ▸ Export writes DXF (
 ## 6. Plugins and settings
 
 Plugins from other vendors go into the `plugins` folder of the system folder (`%APPDATA%\BamCam\plugins`,
-`~/.config/BamCam/plugins`); BamCam asks once before loading one, Tools ▸ Plugins lists them. Tools ▸ Options holds
+`~/.config/BamCam/plugins`); BamCam asks once before loading one, Tools ▸ Plugins lists them, and its
+*Install from ZIP...* puts a plugin ZIP (e.g. a community plugin from a release) into the plugin folder. Tools ▸ Options holds
 display, drawing, files, post processor and update settings.
 
 ## 7. Keyboard shortcuts
