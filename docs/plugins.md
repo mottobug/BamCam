@@ -301,6 +301,12 @@ your installed BamCam: BamCam installed in its default folder is found by itself
 (only rename it and change Product, Company and Version): a `.csproj` with paths of your own computer would not build
 there.
 
+**Own windows or controls (Avalonia):** BamCam's user interface library is [Avalonia](https://avaloniaui.net). A plugin
+that opens its own window uses BamCam's Avalonia: in the template's `.csproj`, remove the two comment lines around the
+`ItemGroup` with `<PackageReference Include="Avalonia" ... ExcludeAssets="runtime" />`. That is all: no references to
+Avalonia files or projects. `ExcludeAssets="runtime"` keeps the Avalonia DLLs out of the plugin's output, because
+BamCam brings them. For simple questions `AskNumber` and `AskText` need no Avalonia at all.
+
 ### Adding a plugin
 
 1. **Fork** the repository: on [github.com/mottobug/BamCam](https://github.com/mottobug/BamCam) click **Fork** (top
@@ -319,8 +325,14 @@ there.
 5. Open the pull request: on the start page of your fork click **Contribute ▸ Open pull request**, write a few words
    about the plugin and click **Create pull request**.
 
-The build then checks that the plugin builds (you see a green tick or a red cross in the pull request). The maintainer
-reviews it, may ask questions in the pull request, and merges it. From the next release on it is downloadable.
+**Leave the pull request open.** It is your request to take the plugin into BamCam; closing it withdraws it. The
+build then checks that the plugin builds (you see a green tick or a red cross in the pull request; for your first pull
+request the maintainer starts the build by hand, so it may wait a while). The maintainer reviews it, may ask questions
+in the pull request, and merges it. You can still change files in your fork while the pull request is open: the pull
+request takes the changes and the build runs again.
+
+Your fork holds only the source files, never a DLL: the plugin's ZIP with the DLL is made by the release build after
+the merge and appears under **Assets** of the next BamCam release.
 
 ### Changing a plugin
 
