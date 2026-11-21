@@ -25,6 +25,7 @@ public class SmallShapeTests
         // On the line, so that the short segments stay (an offset would fit them with long arcs).
         op.KerfSide.Set(PlasmaKerfSide.OnLine);
         op.Overcut.Set(3); // each segment is about 0.5 long
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
 
         var tp = ToolpathGenerator.Generate(doc, op);
@@ -59,6 +60,7 @@ public class SmallShapeTests
         var op = new PlasmaOp { Name = "Plasma1" };
         op.PrimitiveIds.AddRange([outline.Id, tiny.Id]);
         op.KerfWidth.Set(1.2);
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
 
         var tp = ToolpathGenerator.Generate(doc, op);

@@ -76,6 +76,10 @@
           <CustomMOPFooter state="Default" />
           <Name>Plasma</Name>
           <SmallHoleSize state="Value">10</SmallHoleSize>
+          <KerfWidth state="Value">1.5</KerfWidth>
+          <PierceHeight state="Value">3.8</PierceHeight>
+          <PierceDelay state="Value">0.5</PierceDelay>
+          <CutHeight state="Value">1.5</CutHeight>
         </mop>
       </machineops>
       <Stock>

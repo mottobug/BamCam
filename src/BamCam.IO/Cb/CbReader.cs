@@ -88,8 +88,26 @@ public static class CbReader
             }
         }
         if (doc.Layers.Count == 0) doc.Layers.Add(new Layer("Default"));
+        if (doc.Units == DrawingUnits.Inches) UseInchDefaultsForMissingValues(doc);
         doc.IsModified = false;
         return doc;
+    }
+
+    /// <summary>
+    /// Operations only BamCam has were saved without their default values (issue 32): in an inch drawing the missing ones
+    /// get the inch starting values, not the millimetre ones of a new operation (a lead-in of 4 would be 4 inches).
+    /// </summary>
+    private static void UseInchDefaultsForMissingValues(CadDocument doc)
+    {
+        foreach (var op in doc.Parts.SelectMany(p => p.Operations))
+        {
+            if (op is not IInchDefaults || Activator.CreateInstance(op.GetType()) is not MachineOp fresh) continue;
+            ((IInchDefaults)fresh).UseInchDefaults();
+            var inch = fresh.Parameters().ToDictionary(p => p.Name, p => p.Param);
+            foreach (var (name, param, _) in op.Parameters())
+                if (param.State == ParamState.Default && !op.ElementOrder.Contains(name) && inch.TryGetValue(name, out var value))
+                    param.BoxedValue = value.BoxedValue;
+        }
     }
 
     private static void ReadLayer(CadDocument doc, XElement el)

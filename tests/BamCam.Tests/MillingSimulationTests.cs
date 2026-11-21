@@ -77,6 +77,7 @@ public class MillingSimulationTests
         op.PrimitiveIds.Add(outline.Id);
         op.PrimitiveIds.Add(hole.Id);
         op.KerfWidth.Set(2);
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
         Assert.True(MillingSimulation.CanSimulate(op));
         var tp = ToolpathGenerator.Generate(doc, op);

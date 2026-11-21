@@ -982,6 +982,7 @@ Macro catalogue (all documented):
   - `$mop.clearanceplane`, `$mop.cutfeedrate`, `$mop.depthincrement`, `$mop.dwell`.
   - `$mop.first.x/y/z`.
   - `$mop.header/footer`, `$mop.holediameter`, `$mop.name`, `$mop.peckdistance`, `$mop.plungefeedrate`, `$mop.retractheight`, `$mop.stocksurface`, `$mop.tag`, `$mop.targetdepth`.
+  - Plasma: `$mop.cutdata`, `$mop.pierceheight`, `$mop.piercedelay`, `$mop.cutheight`.
   - `$part.name`.
 - Stock: `$stock.xsize|width|_width`, `$stock.ysize|length|_length`, `$stock.zsize|height|_height`, `$stock.xoffset`, `$-stock.xoffset|stock_x`, `$stock.yoffset`, `$-stock.yoffset|stock_y`, `$stock_z`.
 - Tools:

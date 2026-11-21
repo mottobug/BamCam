@@ -493,8 +493,10 @@ public static class CbWriter
         foreach (var name in canonical)
             if (!written.Contains(name) && (name is "Name" or "primitive" || parameters.ContainsKey(name) ||
                                             name == "BoundaryShapes" && op is Profile3DOp { BoundaryShapes.Count: > 0 })) WriteName(name);
+        // Default values are left out as CamBam does, except for operations only BamCam has: their defaults depend on the
+        // units (inch starting values), and a value left out would come back as the millimetre one (issue 32).
         foreach (var (name, param) in parameters)
-            if (!written.Contains(name) && param.State != ParamState.Default) WriteName(name);
+            if (!written.Contains(name) && (param.State != ParamState.Default || op.OnlyInBamCam)) WriteName(name);
         if (!written.Contains("Enabled") && !op.Enabled) WriteName("Enabled");
         if (!written.Contains("Style") && !string.IsNullOrEmpty(op.Style)) WriteName("Style");
         if (!written.Contains("Tag") && !string.IsNullOrEmpty(op.Tag)) WriteName("Tag");

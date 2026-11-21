@@ -41,7 +41,7 @@ public enum PlasmaDirection
 /// around it. The path is offset by half the kerf width, enters and leaves through the scrap side with lead moves and
 /// cuts holes before the outline that contains them, so that parts don't move before they are finished.
 /// </summary>
-public sealed class PlasmaOp : MachineOp
+public sealed class PlasmaOp : MachineOp, IInchDefaults
 {
     public override string XmlName => "BamCamPlasma";
     public override string DisplayType => "Plasma";
@@ -227,10 +227,36 @@ internal static class PlasmaGenerator
             .Where(s => s.D <= tolerance).OrderBy(s => s.D).Select(s => (Point2?)s.Point).FirstOrDefault();
     }
 
-    private static string Fmt(double v) => v.ToString("0.####", Localization.Tr.Culture);
+    /// <summary>
+    /// Issue 33: without cut data (or with cut data that no table has), kerf, feed and heights still at their default are
+    /// only the starting values of a new operation, not values for the material: then no toolpath is made, and the message
+    /// names the values to enter (or Cut Data to choose). Returns false in that case.
+    /// </summary>
+    private static bool HasCuttingValues(GenContext ctx, PlasmaOp op, Toolpath tp)
+    {
+        var name = op.CutData.Value ?? "";
+        if (name.Trim().Length > 0 && CamLibraries.FindCutData(ctx.Doc, name) != null) return true;
+        var defaults = new (ICamParam Param, string Display)[]
+        {
+            (op.KerfWidth, "Kerf Width"), (op.CutFeedrate, "Cut Feedrate"), (op.PierceHeight, "Pierce Height"),
+            (op.PierceDelay, "Pierce Delay"), (op.CutHeight, "Cut Height"),
+        }.Where(p => p.Param.State == ParamState.Default).Select(p => Localization.Tr.T(p.Display)).ToList();
+        if (defaults.Count == 0) return true;
+        tp.Warnings.Add(name.Trim().Length == 0
+            ? Localization.Tr.F("{0}: no Cut Data chosen and no values entered for {1}, so no toolpath is generated. Choose Cut Data or enter these values for your material.", op.Name, string.Join(", ", defaults))
+            : Localization.Tr.F("{0}: the Cut Data '{1}' is in no cut data table and no values are entered for {2}, so no toolpath is generated. Choose other Cut Data or enter these values.", op.Name, name, string.Join(", ", defaults)));
+        return false;
+    }
+
+    private static string Fmt(double v) =>v.ToString("0.####", Localization.Tr.Culture);
 
     public static void Generate(GenContext ctx, PlasmaOp op, Toolpath tp)
     {
+        if (!HasCuttingValues(ctx, op, tp))
+        {
+            ctx.Finish(tp);
+            return;
+        }
         var surface = ctx.StockSurface;
         var halfKerf = Math.Max(0, op.KerfWidth.Value) / 2;
         var sourcesWithEntity = ctx.SourcePaths().Where(s => s.Path.SegmentCount > 0).ToList();

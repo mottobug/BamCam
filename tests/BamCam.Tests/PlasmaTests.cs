@@ -21,6 +21,7 @@ public class PlasmaTests
         op.PrimitiveIds.Add(hole.Id);
         op.KerfWidth.Set(2);
         op.Overcut.Set(0);
+        op.WithValues();
         setup?.Invoke(op);
         doc.ActivePart.Operations.Add(op);
         return (doc, op);
@@ -121,6 +122,18 @@ public class PlasmaTests
         Assert.Contains(cuts[0], m => Math.Abs(m.Feed - 1000) < 1e-9);
         Assert.DoesNotContain(cuts[1].Skip(1), m => Math.Abs(m.Feed - 1000) < 1e-9);
         Assert.Equal(1, tp.Moves.Count(m => m is { Kind: MoveKind.Torch, Torch: TorchAction.ThcOn }));
+    }
+
+    [Fact]
+    public void Plasma_macros_give_the_heights_and_the_pierce_delay()
+    {
+        // Issue 34: e.g. for a post that needs the values in its own commands or comments.
+        var (doc, op) = Plate(o => { o.PierceHeight.Set(4.2); o.PierceDelay.Set(0.7); o.CutHeight.Set(1.6); });
+        var tp = ToolpathGenerator.Generate(doc, op);
+        var post = PostProcessorDefinition.BuiltIn().Single(p => p.Name == "GRBL Plasma");
+        post.MOP = "(P {$mop.pierceheight} D {$mop.piercedelay} C {$mop.cutheight})\r\n{$blocks}";
+        var lines = GCodePoster.Post(doc, new Dictionary<MachineOp, Toolpath> { [op] = tp }, post).Text.Split("\r\n");
+        Assert.Contains("(P 4.2 D 0.7 C 1.6)", lines);
     }
 
     [Fact]
@@ -226,7 +239,8 @@ public class PlasmaTests
             try
             {
                 var (doc, op) = Plate();
-                op.KerfWidth.State = ParamState.Default; // Plate() typed the kerf width
+                // Plate() typed the values: back to Default, so that the cut data gives them.
+                foreach (var p in new[] { op.KerfWidth, op.CutFeedrate, op.PierceHeight, op.PierceDelay, op.CutHeight }) p.State = ParamState.Default;
                 op.CutData.Set("Steel 4");
                 op.PierceDelay.Set(0.9);
                 var changed = LibraryFiles.ApplyStyle(doc, op);

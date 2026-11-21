@@ -8,7 +8,7 @@ namespace BamCam.Core.Cam;
 /// path is moved forward by that offset and gets swivel arcs around sharp corners, so that the blade follows the
 /// drawn shape and turns on the spot at corners.
 /// </summary>
-public sealed class DragKnifeOp : DepthOp
+public sealed class DragKnifeOp : DepthOp, IInchDefaults
 {
     public override string XmlName => "BamCamDragKnife";
     public override string DisplayType => "Drag Knife";

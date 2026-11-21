@@ -291,7 +291,9 @@ Special operations:
   folder of the system folder): material, thickness, current, nozzle, kerf width, feedrate, pierce height, pierce
   delay and cut height. The operation takes these values wherever it keeps the default (italic) value, also after
   the table changes; a value typed into the operation wins. A table in other units than the drawing is converted
-  (kerf width, feedrate and heights; the pierce delay is in seconds). The tables start with a few rough values for 30 to 45
+  (kerf width, feedrate and heights; the pierce delay is in seconds). Without Cut Data (or with Cut Data no table has),
+  no toolpath is made until kerf width, feedrate, pierce height, pierce delay and cut height are typed in; the
+  message window names the values still missing. The tables start with a few rough values for 30 to 45
   A cutters: replace them with the cut chart of your plasma cutter (right-click an entry: duplicate, delete; a table: new
   entry, duplicate, rename, delete table; Plasma Cut Data: new table). Each table is one file; the two starting tables
   are written again when missing, so they cannot be renamed or deleted (duplicate them instead). Operations remember
@@ -313,7 +315,9 @@ Special operations:
   *THC* sends the THC on / off codes of the post processor around each cut (left out in holes up to *Small Hole
   Size*, which are also cut slower). Use the post processor *GRBL Plasma* (torch `M3 S1000` / `M5`, pierce delay
   `G4 P…`, probing `G38.2` and `G92`) or set the *Plasma* templates of your own post: Torch On, Torch Off, Pierce
-  Delay, Torch Probe, Torch Probe Set Z, THC on / off. On GRBL switch laser mode off (`$32=0`), otherwise `M3`
+  Delay, Torch Probe, Torch Probe Set Z, THC on / off. Pierce height and cut height are Z moves of the toolpath; a
+  post that needs the values elsewhere can use `{$mop.pierceheight}`, `{$mop.piercedelay}` (seconds) and
+  `{$mop.cutheight}` (all templates and the order: [spec-formats.md](spec-formats.md#bamcam-plasma-templates)). On GRBL switch laser mode off (`$32=0`), otherwise `M3`
   only switches the torch while the machine moves. Try a new setup in the air first (torch off or without
   material). Example: `examples_to_test/Plasma (bracket).cb`.
 

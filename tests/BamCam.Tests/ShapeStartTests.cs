@@ -47,6 +47,7 @@ public class ShapeStartTests
         op.KerfWidth.Set(2);
         op.LeadIn.Set(PlasmaLead.None);
         op.Overcut.Set(0);
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
         return (doc, op, plate);
     }
@@ -110,6 +111,7 @@ public class ShapeStartTests
         op.LeadInLength.Set(4);
         op.LeadOut.Set(lead);
         op.LeadOutLength.Set(2);
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
 
         var tp = ToolpathGenerator.Generate(doc, op);
@@ -132,6 +134,7 @@ public class ShapeStartTests
         op.LeadOutLength.Set(5);
         op.Overcut.Set(0);
         op.WriteShapeStarts([(slot.Id, new Point2(startX, 10))]);
+        op.WithValues();
         doc.ActivePart.Operations.Add(op);
 
         var tp = ToolpathGenerator.Generate(doc, op);

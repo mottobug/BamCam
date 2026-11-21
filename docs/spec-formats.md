@@ -916,6 +916,8 @@ All macros found in shipped posts (count):
 | `{$mop.name}` `{$mop.header}` `{$mop.footer}` | MOP name / custom header / custom footer |
 | `{$mop.clearanceplane}` `{$mop.retractheight}` `{$mop.targetdepth}` `{$mop.plungefeedrate}` | MOP values (bare numbers, no register letter) |
 | `{$mop.first.x}` `{$mop.first.y}` | first toolpath point of the MOP |
+| `{$mop.cutdata}` | BamCam plasma: name of the chosen Cut Data (empty without) |
+| `{$mop.pierceheight}` `{$mop.piercedelay}` `{$mop.cutheight}` | BamCam plasma: pierce height and cut height above the material, pierce delay in seconds (bare numbers; empty for other MOPs) |
 | `{$g0}` `{$g1}` `{$g2}` `{$g3}` `{$g81}` `{$g82}` `{$g83}` | G-code word (always output) |
 | `{$_g0}` `{$_g1}` `{$_g2}` `{$_g3}` `{$_g81}` `{$_g82}` `{$_g83}` | modal G-code word |
 | `{$_x}` `{$_y}` `{$_z}` `{$_a}` `{$_b}` `{$_c}` `{$_f}` `{$_r}` `{$_q}` | modal register words |
@@ -931,6 +933,37 @@ Additional macros described in help only: `$arc.i/j/k`, `$arc.radius`, `$arc.sta
 `$stock.xoffset/yoffset`, `$-stock.xoffset/yoffset`, `$xneg/$yneg/$zneg…` (sign-reversed), `$xabs…` (absolute),
 `$outfile` (post-build args). Style library macros `{$Material}`, `{$Units}`; tool name macros
 `{$diameter} {$flutes} {$index} {$length} {$partcode} {$profile} {$veeangle}`; OutFile may use `{$cbfile.name}`.
+
+#### BamCam plasma templates
+
+Plasma operations (BamCam's own `BamCamPlasma` MOP) use these post processor templates, category *Plasma*.
+They are BamCam additions, not CamBam properties:
+
+| Template | Default | Written | Registers |
+|---|---|---|---|
+| Torch On | `M3` | at the pierce point, after the move to pierce height | – |
+| Pierce Delay | `G4 {$p}` | right after Torch On (not when the delay is 0) | `{$p}` pierce delay in seconds |
+| Torch Off | `M5` | at the end of each cut | – |
+| Torch Probe | `G38.2 {$z} {$f}` | before each pierce with Height Control = Probe | `{$z}` lowest Z, `{$f}` probe feedrate |
+| Torch Probe Set Z | `G92 {$z}` | right after Torch Probe | `{$z}` Z at the trigger point (stock surface minus switch offset) |
+| Torch Height Control On / Off | empty | THC on at cut height, off before Torch Off | – |
+
+Pierce height and cut height are not templates: they are Z moves of the toolpath (rapid down to pierce height,
+Torch On, Pierce Delay, feed down to cut height with the plunge feedrate), written with Rapid and FeedMove. For posts
+that need the values elsewhere there are `{$mop.pierceheight}`, `{$mop.piercedelay}` and `{$mop.cutheight}`, e.g. in
+MOP: `{$comment} {$mop.name} pierce {$mop.pierceheight} cut {$mop.cutheight} {$endcomment}`. Each sequence per cut:
+
+```
+Torch Probe, Torch Probe Set Z     (Height Control = Probe only)
+G0 Z<stock surface + pierce height>
+Torch On
+Pierce Delay
+G1 Z<stock surface + cut height>
+Torch Height Control On
+... cut ...
+Torch Height Control Off
+Torch Off
+```
 
 ### 3.4 Built-in defaults and expansion rules (inferred from Default.cbpp + snap-together-box.nc)
 

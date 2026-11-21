@@ -1776,6 +1776,8 @@
   "The plugin folder {0} exists already. Replace it with the content of the ZIP file?": "Den Plugin-Ordner {0} gibt es schon. Durch den Inhalt der ZIP-Datei ersetzen?",
   "The plugin in {0} is in use. Switch it off in this window, restart BamCam and install it again.": "Das Plugin in {0} wird gerade verwendet. Schalten Sie es in diesem Fenster aus, starten Sie BamCam neu und installieren Sie es dann erneut.",
   "Unpacks a plugin ZIP file (e.g. a community plugin from a BamCam release) into the plugin folder.": "Entpackt eine Plugin-ZIP-Datei (z. B. ein Community-Plugin aus einem BamCam-Release) in den Plugin-Ordner.",
+  "{0}: no Cut Data chosen and no values entered for {1}, so no toolpath is generated. Choose Cut Data or enter these values for your material.": "{0}: Keine Schnittdaten gewählt und keine Werte für {1} eingetragen, daher wird keine Werkzeugbahn erzeugt. Wählen Sie Schnittdaten oder tragen Sie diese Werte für Ihr Material ein.",
+  "{0}: the Cut Data '{1}' is in no cut data table and no values are entered for {2}, so no toolpath is generated. Choose other Cut Data or enter these values.": "{0}: Die Schnittdaten '{1}' stehen in keiner Schnittdaten-Tabelle und für {2} sind keine Werte eingetragen, daher wird keine Werkzeugbahn erzeugt. Wählen Sie andere Schnittdaten oder tragen Sie diese Werte ein.",
   "lead-in": "Anfahrbewegung",
   "lead-out": "Abfahrbewegung",
   "{0}: the {1} of object {2} did not fit into the hole and was shortened to {3}.": "{0}: Die {1} von Objekt {2} passte nicht in das Loch und wurde auf {3} gekürzt.",

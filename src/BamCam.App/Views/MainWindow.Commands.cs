@@ -600,9 +600,7 @@ public partial class MainWindow
             part.Operations.Add(op);
             if (CamLibraries.FindStyleLibrary(doc, part) == null) ApplyUnitDefaults(op);
             LibraryFiles.ApplyStyle(doc, op);
-            if (op is DragKnifeOp knife && doc.Units == DrawingUnits.Inches) knife.UseInchDefaults();
-            if (op is PlasmaOp plasma && doc.Units == DrawingUnits.Inches) plasma.UseInchDefaults();
-            if (op is VEngraveOp vEngrave && doc.Units == DrawingUnits.Inches) vEngrave.UseInchDefaults();
+            if (op is IInchDefaults inchOp && doc.Units == DrawingUnits.Inches) inchOp.UseInchDefaults();
             var stockEmpty = (part.Stock.IsEmpty ? doc.Machining.Stock : part.Stock).IsEmpty;
             if (op is Profile3DOp p3 && stockEmpty)
             {

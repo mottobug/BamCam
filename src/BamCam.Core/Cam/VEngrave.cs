@@ -9,7 +9,7 @@ namespace BamCam.Core.Cam;
 /// shape is wider than the cone at the maximum depth (Target Depth), the bottom stays flat at that depth: its outline
 /// is cut and its inside cleared with the V-bit (or left for a pocket with another tool).
 /// </summary>
-public sealed class VEngraveOp : DepthOp
+public sealed class VEngraveOp : DepthOp, IInchDefaults
 {
     public override string XmlName => "BamCamVEngrave";
     public override string DisplayType => "V-Engrave";
