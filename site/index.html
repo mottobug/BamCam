@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BamCam – free CAD/CAM software for CNC milling, plasma and lathe</title>
+<meta name="description" content="BamCam is a free, open source 2.5D and 3D CAD/CAM program for Windows, Linux and macOS. Draw or import DXF, SVG and STL, create toolpaths for milling, V-carving, drilling, thread milling, plasma, drag knife and turning, simulate them in 3D and write G-code. Reads and writes CamBam .cb files.">
+<meta name="keywords" content="CAM software, CAD/CAM, CNC, G-code generator, free CAM, open source CAM, CNC router, plasma cutting, V-carving, lathe, toolpath, DXF to G-code, CamBam compatible, Linux CAM, macOS CAM">
+<link rel="canonical" href="https://mottobug.github.io/BamCam/">
+<link rel="icon" type="image/png" href="bamcam.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="BamCam – free CAD/CAM software for CNC">
+<meta property="og:description" content="Free, open source CAD/CAM for Windows, Linux and macOS: milling, V-carving, plasma, lathe, 3D simulation, G-code. Reads and writes CamBam .cb files.">
+<meta property="og:url" content="https://mottobug.github.io/BamCam/">
+<meta property="og:image" content="https://mottobug.github.io/BamCam/screenshots/t-bar-toolpaths.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "BamCam",
+  "applicationCategory": "DesignApplication",
+  "operatingSystem": "Windows, Linux, macOS",
+  "description": "Free, open source CAD/CAM software for CNC milling, plasma cutting, drag knife and turning, with 3D simulation and G-code output. Compatible with CamBam .cb files.",
+  "url": "https://mottobug.github.io/BamCam/",
+  "downloadUrl": "https://github.com/mottobug/BamCam/releases/latest",
+  "license": "https://opensource.org/licenses/MIT",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "screenshot": "https://mottobug.github.io/BamCam/screenshots/t-bar-toolpaths.png"
+}
+</script>
+<style>
+:root {
+  --bg: #f7f8fa; --surface: #ffffff; --text: #1b1f24; --muted: #57606a; --line: #d8dee4;
+  --accent: #d9480f; --accent-text: #ffffff; --code: #eef1f4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --surface: #171b21; --text: #e6e9ed; --muted: #9aa4ae; --line: #2b323b;
+    --accent: #ff7a3d; --accent-text: #111111; --code: #222831;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --surface: #171b21; --text: #e6e9ed; --muted: #9aa4ae; --line: #2b323b;
+  --accent: #ff7a3d; --accent-text: #111111; --code: #222831;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+header.top { border-bottom: 1px solid var(--line); background: var(--surface); }
+header.top .wrap { display: flex; align-items: center; gap: 12px; height: 60px; }
+header.top img { width: 32px; height: 32px; }
+header.top .name { font-weight: 700; font-size: 18px; margin-right: auto; }
+header.top nav a { color: var(--muted); text-decoration: none; margin-left: 18px; font-size: 15px; }
+header.top nav a:hover { color: var(--text); }
+.hero { padding: 56px 0 32px; text-align: center; }
+.hero h1 { font-size: clamp(28px, 5vw, 44px); line-height: 1.15; margin: 0 0 16px; }
+.hero p.lead { font-size: 19px; color: var(--muted); max-width: 760px; margin: 0 auto 28px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.btn {
+  display: inline-block; padding: 12px 22px; border-radius: 8px; font-weight: 600; text-decoration: none;
+  border: 1px solid var(--line); color: var(--text); background: var(--surface);
+}
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.platforms { color: var(--muted); font-size: 14px; margin-top: 14px; }
+.shot { margin: 40px auto 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0,0,0,.12); max-width: 1000px; }
+.shot img { display: block; width: 100%; height: auto; }
+section { padding: 48px 0; }
+section h2 { font-size: 28px; margin: 0 0 8px; }
+section p.sub { color: var(--muted); margin: 0 0 28px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+.card h3 { margin: 0 0 6px; font-size: 17px; }
+.card p { margin: 0; color: var(--muted); font-size: 15px; }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; }
+.gallery figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.gallery img { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 729; object-fit: cover; object-position: top left; }
+.gallery figcaption { padding: 10px 14px; font-size: 14px; color: var(--muted); }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px 14px 56px; position: relative; }
+.steps li::before { content: counter(s); position: absolute; left: 18px; top: 14px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-text); font-weight: 700; text-align: center; line-height: 26px; font-size: 14px; }
+code { background: var(--code); padding: 1px 6px; border-radius: 4px; font-size: 14px; }
+footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+footer p { margin: 6px 0; }
+@media (max-width: 600px) {
+  header.top nav a:not(.gh) { display: none; }
+  .hero { padding-top: 36px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <img src="bamcam.png" alt="" width="32" height="32">
+    <span class="name">BamCam</span>
+    <nav>
+      <a href="#features">Features</a>
+      <a href="#screenshots">Screenshots</a>
+      <a href="#start">Get started</a>
+      <a class="gh" href="https://github.com/mottobug/BamCam">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<div class="wrap hero">
+  <h1>Free CAD/CAM software for your CNC machine</h1>
+  <p class="lead">BamCam draws or imports your parts, creates the toolpaths for milling, V-carving, drilling,
+    thread milling, plasma, drag knife and the lathe, simulates them in 3D and writes the G-code for your machine.
+    Open source, for Windows, Linux and macOS, and compatible with CamBam <code>.cb</code> files.</p>
+  <div class="buttons">
+    <a class="btn primary" href="https://github.com/mottobug/BamCam/releases/latest">Download</a>
+    <a class="btn" href="https://github.com/mottobug/BamCam/blob/main/docs/user-guide.md">User guide</a>
+    <a class="btn" href="https://github.com/mottobug/BamCam">Source code</a>
+  </div>
+  <p class="platforms">Windows 10/11 (installer or zip) · Linux x64 and ARM64 · macOS Intel and Apple Silicon · MIT License</p>
+  <div class="shot">
+    <img src="screenshots/t-bar-toolpaths.png" width="1280" height="729"
+         alt="BamCam on Windows: a T-bar drawing with the toolpaths of both profiles">
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <h2>What BamCam does</h2>
+    <p class="sub">From the drawing to G-code in one program.</p>
+    <div class="grid">
+      <div class="card"><h3>Drawing and CAD</h3><p>Lines, arcs, polylines, splines, text and point lists with object snaps and typed sizes. Offset, booleans, fillet, trim, arrays, text on a path.</p></div>
+      <div class="card"><h3>Import and export</h3><p>DXF (splines stay splines), SVG, STL, images as height maps or traced outlines, G-code back-plot. DXF export R2000 and R12.</p></div>
+      <div class="card"><h3>Profile and pocket</h3><p>Inside and outside profiles with holding tabs, lead-ins and corner overcut; pockets with islands, offset or hatch fill.</p></div>
+      <div class="card"><h3>Trochoidal milling</h3><p>High speed clearing of pockets, slots and 3D models with the matmill plugin: a large depth of cut with a small stepover.</p></div>
+      <div class="card"><h3>V-carving and engraving</h3><p>The V-bit follows the centre lines and goes as deep as the shape is wide, with sharp corners and flat bottoms for wide areas.</p></div>
+      <div class="card"><h3>Drilling and threads</h3><p>Canned cycles G81, G82, G83, spiral milling, thread milling inside and outside, right- or left-hand, and tapping with G84.</p></div>
+      <div class="card"><h3>3D machining</h3><p>Waterline and scanline roughing and finishing of STL models, rest machining, back face with the part turned over, and moulds.</p></div>
+      <div class="card"><h3>Plasma, laser, drag knife</h3><p>Kerf compensation, lead-ins through the scrap, pierce height and delay, probing, THC, cut data tables; drag knife offset and swivel.</p></div>
+      <div class="card"><h3>Lathe</h3><p>Facing, roughing and finishing, grooves, threads, drilling and boring from a profile drawn on one side of the axis.</p></div>
+      <div class="card"><h3>3D simulation</h3><p>The stock is cut with the real tool shape, from above and below, with the rest material in colour and a slider through every move.</p></div>
+      <div class="card"><h3>G-code for your controller</h3><p>Post processors for Mach3, LinuxCNC, GRBL, GRBL Plasma and more; existing CamBam <code>.cbpp</code> post processors are loaded as they are.</p></div>
+      <div class="card"><h3>Scripts and plugins</h3><p>C# script objects for parametric parts, a script editor, and plugins for own commands and machining operations.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="screenshots">
+  <div class="wrap">
+    <h2>Screenshots</h2>
+    <p class="sub">Every picture links to its full size.</p>
+    <div class="gallery">
+      <figure><a href="screenshots/battery-bridge-toolpaths.png"><img loading="lazy" src="screenshots/battery-bridge-toolpaths.png" alt="Battery bridge with pockets and profiles"></a>
+        <figcaption>Pockets and profiles with their toolpaths</figcaption></figure>
+      <figure><a href="screenshots/trochoidal-pocket.png"><img loading="lazy" src="screenshots/trochoidal-pocket.png" alt="Trochoidal pocket around an island"></a>
+        <figcaption>Trochoidal pocket around an island (matmill plugin)</figcaption></figure>
+      <figure><a href="screenshots/thread-milling.png"><img loading="lazy" src="screenshots/thread-milling.png" alt="Thread milling and tapping"></a>
+        <figcaption>Internal and external thread milling, tapping with G84</figcaption></figure>
+      <figure><a href="screenshots/lathe-shaft.png"><img loading="lazy" src="screenshots/lathe-shaft.png" alt="Turned shaft with facing, turning, groove, thread and drilling"></a>
+        <figcaption>Lathe: facing, turning, groove, thread and centre hole</figcaption></figure>
+      <figure><a href="screenshots/splines.png"><img loading="lazy" src="screenshots/splines.png" alt="Splines with tangent handles"></a>
+        <figcaption>Splines (NURBS) with tangent handles</figcaption></figure>
+      <figure><a href="screenshots/text-on-polyline.png"><img loading="lazy" src="screenshots/text-on-polyline.png" alt="Text along a polyline"></a>
+        <figcaption>Text along a polyline</figcaption></figure>
+      <figure><a href="screenshots/script-object.png"><img loading="lazy" src="screenshots/script-object.png" alt="C# script object: a flange with holes"></a>
+        <figcaption>C# script object: a parametric flange</figcaption></figure>
+      <figure><a href="screenshots/polyline-points.png"><img loading="lazy" src="screenshots/polyline-points.png" alt="Polyline with its point list"></a>
+        <figcaption>Editing the points of a polyline</figcaption></figure>
+      <figure><a href="screenshots/configuration.png"><img loading="lazy" src="screenshots/configuration.png" alt="Configuration with language selection and post processors"></a>
+        <figcaption>Configuration and post processors</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <h2>Get started</h2>
+    <p class="sub">Free of charge, no account, no licence key.</p>
+    <ol class="steps">
+      <li>Download the package for your system from the <a href="https://github.com/mottobug/BamCam/releases/latest">latest release</a>: the setup or zip for Windows, the <code>.tar.gz</code> for Linux (with <code>install.sh</code>), the <code>.zip</code> with <code>BamCam.app</code> for macOS.</li>
+      <li>Open one of the <a href="https://github.com/mottobug/BamCam/tree/main/examples">example drawings</a>: there is one for each kind of operation, from profile and pocket to plasma, lathe and a 3D pebble.</li>
+      <li>Press <code>Ctrl+T</code> to generate the toolpaths, <code>Ctrl+Shift+T</code> for the 3D simulation, then write the G-code for your post processor.</li>
+      <li>Read the <a href="https://github.com/mottobug/BamCam/blob/main/docs/user-guide.md">user guide</a> for all functions and shortcuts. Questions and ideas are welcome in the <a href="https://github.com/mottobug/BamCam/discussions">discussions</a>, bugs in the <a href="https://github.com/mottobug/BamCam/issues">issues</a>.</li>
+    </ol>
+    <p class="platforms" style="text-align:left">On macOS the app has no Apple developer certificate: after the download, choose “Open Anyway” in System Settings ▸ Privacy &amp; Security, or run <code>xattr -dr com.apple.quarantine BamCam.app</code>.</p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>BamCam is free software under the <a href="https://github.com/mottobug/BamCam/blob/main/LICENSE">MIT License</a>. Source code, releases and documentation on <a href="https://github.com/mottobug/BamCam">GitHub</a>.</p>
+    <p>BamCam is an independent program and not affiliated with CamBam or its owner. “CamBam” is a trademark of its owner.</p>
+  </div>
+</footer>
+</body>
+</html>
