@@ -217,7 +217,7 @@ as wide as its kerf (without stock the sheet is as thick as in the cut data, els
 and cuts the stock from below, so front and back operations simulated together show the part as it comes off the
 machine, cut free where both sides meet; the tool of a back face move is drawn pointing up. Rest material on the
 underside is coloured like on top. The stock has one height for the top and one for the underside per cell.
-Example: `examples_to_test/3D profile (pebble).cb`, a pebble roughed trochoidally and finished on both sides, with a
+Example: `examples/3D profile (pebble).cb`, a pebble roughed trochoidally and finished on both sides, with a
 waterline rough to compare (off) and the mould of it as a part of its own (off: select the part to simulate it alone).
 The pebble is computed by BamCam's tests, so the file has no third-party content.
 
@@ -423,6 +423,16 @@ starts within *Max Crossover Distance* × tool diameter, otherwise it goes up. C
 counter-clockwise about the origin), for example to cut along a slanted part without turning the drawing. Start Corner
 and Milling Direction apply to the turned rows: *Top* is then the side the turned grid calls top. CamBam does not know
 the parameter and cuts such a drawing with unturned rows.
+
+**Rest From Operation** (only in BamCam, Waterline Rough and Trochoidal 3D Rough): rest machining. Choose the roughing
+operation done before with a larger tool (the list offers the other Waterline Roughs); this operation then cuts only
+the material it left at each level: corners, gaps and narrow places the larger tool could not reach, also the strips a
+trochoidal roughing left out. BamCam takes this from the toolpath of the earlier operation, so it works for any tool
+shape (a ball nose reaches less wide just above its tip). Its *Roughing Clearance* counts as cut: that skin is for the
+finishing. Both operations must cut the same side (Back Face, Mold and Transform alike). The steps the larger tool
+leaves on slopes between its levels are not rest machined; the finishing takes them. When nothing is left, the message
+window says so; with a name no operation has, everything is cut, with a warning. CamBam does not know the parameter and
+cuts everything. Example: *Front rest rough, 3 mm* in `examples/3D profile (pebble).cb`.
 
 File ▸ Insert File adds a file to the open drawing; undo removes the whole insertion again.
 

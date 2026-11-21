@@ -115,6 +115,19 @@ public static class Polygons
     }
 
     /// <summary>
+    /// The area swept by a disc of radius <paramref name="delta"/> along many open paths, as one union (e.g. what a tool
+    /// cut along a toolpath). <paramref name="tolerance"/> flattens the paths and the round ends.
+    /// </summary>
+    public static List<Path2> OffsetOpen(IEnumerable<Path2> paths, double delta, double tolerance = Tolerance.Chord)
+    {
+        var src = new PathsD();
+        foreach (var path in paths) src.Add(new PathD(path.Flatten(tolerance).Select(p => new PointD(p.X, p.Y))));
+        if (src.Count == 0 || delta <= 0) return [];
+        var res = Clipper.InflatePaths(src, delta, JoinType.Round, EndType.Round, 2.0, Precision, tolerance);
+        return res.Select(p => FromClipper(p)).ToList();
+    }
+
+    /// <summary>
     /// One side of an open path, in its direction: round at outer corners, cut off at inner ones, and ending exactly
     /// beside the path's ends. It is the matching stretch of the band around the path. A negative distance gives the
     /// other side.

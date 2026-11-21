@@ -21287,6 +21287,57 @@
         <surface3d>
           <WorkPlane state="Default">XY</WorkPlane>
           <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">3</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Value">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">300</PlungeFeedrate>
+          <CutFeedrate state="Value">1500</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Front rest rough, 3 mm</Name>
+          <StockSurface state="Value">13</StockSurface>
+          <RoughingClearance state="Value">0.5</RoughingClearance>
+          <ClearancePlane state="Value">20</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+          </primitive>
+          <DepthIncrement state="Value">2</DepthIncrement>
+          <TargetDepth state="Value">0</TargetDepth>
+          <StepOver state="Value">0.4</StepOver>
+          <StepoverFeedrate state="Default">Plunge Feedrate</StepoverFeedrate>
+          <Resolution state="Default">0.2</Resolution>
+          <ClipAreaMin state="Default">0,0</ClipAreaMin>
+          <ClipAreaMax state="Default">0,0</ClipAreaMax>
+          <StartCorner state="Default">BottomLeft</StartCorner>
+          <Profile3DMethod state="Value">WaterlineRough</Profile3DMethod>
+          <BackFaceCulling state="Default">True</BackFaceCulling>
+          <PlaneSliceOnly state="Default">False</PlaneSliceOnly>
+          <ScanlineGradientThreshold state="Default">90</ScanlineGradientThreshold>
+          <Mold state="Default">False</Mold>
+          <Additive state="Default">False</Additive>
+          <BackFace state="Default">False</BackFace>
+          <BackFaceZeroZ state="Default">0</BackFaceZeroZ>
+          <FlipAxis state="Default">X</FlipAxis>
+          <CutOrdering state="Default">DepthFirst</CutOrdering>
+          <MillingDirection state="Default">Conventional</MillingDirection>
+          <LeadInMove state="Default" />
+          <LeadOutMove state="Default" />
+          <BoundaryMethod state="Value">BoundingBox</BoundaryMethod>
+          <BoundaryMargin state="Value">3</BoundaryMargin>
+          <BoundaryTaper state="Default">0</BoundaryTaper>
+          <RegionFillStyle state="Default">InsideOutsideOffsets</RegionFillStyle>
+          <RestFromOperation state="Value">Front trochoidal rough</RestFromOperation>
+        </surface3d>
+        <surface3d>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
           <RoughingFinishing state="Value">Finishing</RoughingFinishing>
           <ToolDiameter state="Value">3</ToolDiameter>
           <ToolNumber state="Default">0</ToolNumber>

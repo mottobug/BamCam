@@ -129,6 +129,9 @@ public class Profile3DOp : AreaOp
     [Param(78, "3D"), DisplayName("Scan Angle"),
      Description("Horizontal and Vertical: turns the rows by this angle (degrees, counter-clockwise about the origin), e.g. to cut along a slanted part. Start Corner and Milling Direction apply to the turned rows. Only BamCam has it: CamBam cuts the rows unturned.")]
     public CamParam<double> ScanAngle { get; set; } = new(0);
+    [Param(79, "3D"), DisplayName("Rest From Operation"),
+     Description("Waterline Rough (also trochoidal): name of the roughing operation done before with a larger tool. Only the rest it left at each level is cut: corners, gaps and narrow places it could not reach. Empty = everything. Only BamCam has it: CamBam cuts everything.")]
+    public CamParam<string> RestFromOperation { get; set; } = new("");
     [Param(76, "Cutting")] public CamParam<RegionFillStyle> RegionFillStyle { get; set; } = new(Cam.RegionFillStyle.InsideOutsideOffsets);
 
     /// <summary>Entity ids used as boundary when <see cref="BoundaryMethod"/> is SelectedShapes (no state attribute).</summary>

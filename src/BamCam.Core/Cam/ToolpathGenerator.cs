@@ -40,7 +40,10 @@ public static class ToolpathGenerator
             // Plugin generators first: a plugin operation may derive from a built-in one (e.g. matmill's trochoidal 3D
             // roughing from the 3D profile) and still has its own toolpath.
             if (Generators.TryGetValue(op.GetType(), out var pluginGenerator))
+            {
                 pluginGenerator(new ToolpathContext(ctx), op, tp);
+                ctx.Finish(tp); // what the core found, e.g. about Rest From Operation
+            }
             else switch (op)
             {
                 case ProfileOp p: ProfileGenerator.Generate(ctx, p, tp); break;

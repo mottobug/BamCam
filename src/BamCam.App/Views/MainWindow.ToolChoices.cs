@@ -31,6 +31,11 @@ public partial class MainWindow
                     T("(none: the style of Machining)")),
                 (MachiningOptions, nameof(MachiningOptions.Style)) => CamLibraries.StyleChoices(CamLibraries.FindStyleLibrary(doc, null),
                     T("(default style)")),
+                // The roughing operations a 3D profile can take its rest from: the other Waterline Roughs (also trochoidal).
+                (Profile3DOp op, nameof(Profile3DOp.RestFromOperation)) =>
+                    [new("", T("(none: cut everything)")), .. doc.Parts.SelectMany(p => p.Operations).OfType<Profile3DOp>()
+                        .Where(o => o != op && o.Profile3DMethod.Value == Profile3DMethod.WaterlineRough && o.Name.Length > 0)
+                        .Select(o => o.Name).Distinct().Select(n => new KeyValuePair<string, string>(n, n))],
                 _ => null,
             };
         };

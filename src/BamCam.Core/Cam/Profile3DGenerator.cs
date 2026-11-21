@@ -1,6 +1,7 @@
 using BamCam.Core.Geometry;
 using BamCam.Core.Localization;
 using BamCam.Core.Model;
+using BamCam.Core.Simulation;
 
 namespace BamCam.Core.Cam;
 
@@ -84,16 +85,173 @@ internal static class Profile3DGenerator
         var simplify = 0.02 * ctx.ToolDiameter;
         var grow = ctx.ToolRadius + op.RoughingClearance.Value + simplify;
         var silhouettes = new MeshSilhouettes(mesh, ctx.Cancel);
+        var rest = RestMachining.For(ctx, op);
         var levels = new List<WaterlineLevel>();
         var top = ctx.StockSurface;
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();
             var centre = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), Polygons.Offset(silhouettes.Above(z), grow));
+            if (rest != null) centre = rest.Only(centre, z);
             levels.Add(new WaterlineLevel(z, top, Polygons.BuildShapes(Polygons.Offset(centre, ctx.ToolRadius, simplify: simplify))));
             top = z;
         }
+        if (rest != null && levels.All(l => l.Areas.Count == 0)) ctx.Warnings.Add(RestDone(op));
         return levels;
+    }
+
+    private static string RestDone(Profile3DOp op) =>
+        Tr.F("{0}: '{1}' left no rest material for this tool, so there is nothing to cut.", op.Name, op.RestFromOperation.Value.Trim());
+
+    /// <summary>
+    /// Rest machining (Rest From Operation): what the earlier roughing operation cut, taken from its toolpath, so that
+    /// also the strips a trochoidal roughing left out count as rest. At a height Z the earlier tool removed the material
+    /// within its reach around every cut move at or below Z (a ball nose reaches less wide just above its tip). Its
+    /// Roughing Clearance counts as cut: that skin is for the finishing, not for the rest machining.
+    /// </summary>
+    private sealed class RestMachining
+    {
+        private readonly GenContext _ctx;
+        private readonly List<(double Z, List<Path2> Chains)> _levels;
+        private readonly SimTool _tool;
+        private readonly double _clearance;
+        private readonly Dictionary<(double Z, double R), List<Path2>> _swept = [];
+
+        private RestMachining(GenContext ctx, List<(double, List<Path2>)> levels, SimTool tool, double clearance)
+        {
+            _ctx = ctx;
+            _levels = levels;
+            _tool = tool;
+            _clearance = clearance;
+        }
+
+        [ThreadStatic] private static HashSet<MachineOp>? _inProgress;
+
+        /// <summary>The rest machining of the operation, or null for everything (with a warning when the name is wrong).</summary>
+        public static RestMachining? For(GenContext ctx, Profile3DOp op)
+        {
+            var name = (op.RestFromOperation.Value ?? "").Trim();
+            if (name.Length == 0) return null;
+            string Warn(string message)
+            {
+                ctx.Warnings.Add(Tr.F("{0}: Rest From Operation: {1} Everything is cut.", op.Name, message));
+                return message;
+            }
+            var earlier = ctx.Doc.Parts.SelectMany(p => p.Operations).OfType<Profile3DOp>().FirstOrDefault(o => o != op && o.Name == name);
+            if (earlier == null)
+            {
+                Warn(Tr.F("there is no 3D profile named '{0}'.", name));
+                return null;
+            }
+            if (earlier.Profile3DMethod.Value != Profile3DMethod.WaterlineRough)
+            {
+                Warn(Tr.F("'{0}' is no Waterline Rough.", name));
+                return null;
+            }
+            // Both must cut the model in the same position, or their coordinates do not match.
+            if (earlier.BackFace.Value != op.BackFace.Value || earlier.Mold.Value != op.Mold.Value ||
+                op.BackFace.Value && (earlier.FlipAxis.Value != op.FlipAxis.Value || Math.Abs(earlier.BackFaceZeroZ.Value - op.BackFaceZeroZ.Value) > 1e-9) ||
+                !earlier.MOPTransform.Value.Equals(op.MOPTransform.Value))
+            {
+                Warn(Tr.F("'{0}' cuts another side or position (Back Face, Mold or Transform differ).", name));
+                return null;
+            }
+            _inProgress ??= [];
+            if (!_inProgress.Add(op))
+            {
+                Warn(Tr.F("'{0}' takes its rest from this operation again.", name));
+                return null;
+            }
+            Toolpath toolpath;
+            try
+            {
+                toolpath = ToolpathGenerator.Generate(ctx.Doc, earlier, ctx.Cancel);
+            }
+            finally
+            {
+                _inProgress.Remove(op);
+            }
+            if (toolpath.Moves.Count == 0)
+            {
+                Warn(Tr.F("'{0}' has no toolpath.", name));
+                return null;
+            }
+
+            // The cut moves of the earlier operation as polylines per Z (moves that change Z only lead to the next level).
+            var earlierTool = MillingSimulation.ToolOf(ctx.Doc, earlier);
+            var tolerance = Math.Max(Tolerance.Chord, 0.02 * earlierTool.Radius);
+            var levels = new Dictionary<double, List<Path2>>();
+            List<Point2>? chain = null;
+            var chainZ = double.NaN;
+            void Close()
+            {
+                if (chain is { Count: >= 2 })
+                {
+                    if (!levels.TryGetValue(chainZ, out var list)) levels[chainZ] = list = [];
+                    list.Add(Path2.FromPoints(chain, closed: false));
+                }
+                chain = null;
+            }
+            foreach (var (from, to, kind) in toolpath.DisplaySegments(tolerance))
+            {
+                var level = kind != MoveKind.Rapid && Math.Abs(from.Z - to.Z) < 1e-6;
+                if (!level || chain != null && (Math.Abs(from.Z - chainZ) > 1e-6 || !chain[^1].AlmostEquals(from.XY, 1e-9))) Close();
+                if (!level) continue;
+                if (chain == null)
+                {
+                    chain = [from.XY];
+                    chainZ = Math.Round(from.Z, 6);
+                }
+                chain.Add(to.XY);
+            }
+            Close();
+            return new RestMachining(ctx, levels.Select(kv => (kv.Key, kv.Value)).OrderBy(l => l.Item1).ToList(), earlierTool,
+                Math.Max(0, earlier.RoughingClearance.Value));
+        }
+
+        /// <summary>Width the earlier tool cuts at a height above its tip (its radius once the height reaches its shoulder).</summary>
+        private double Reach(double height)
+        {
+            if (_tool.HeightAt(_tool.Radius) <= height + 1e-9) return _tool.Radius;
+            double lo = 0, hi = _tool.Radius;
+            for (var i = 0; i < 40; i++)
+            {
+                var mid = (lo + hi) / 2;
+                if (_tool.HeightAt(mid) <= height) lo = mid;
+                else hi = mid;
+            }
+            return lo;
+        }
+
+        /// <summary>Where the earlier operation removed the material at height <paramref name="z"/> (plus its clearance).</summary>
+        public List<Path2> Cut(double z)
+        {
+            var parts = new List<Path2>();
+            foreach (var (zp, chains) in _levels)
+            {
+                if (zp > z + 1e-6) break;
+                var r = Math.Round(Reach(z - zp) + _clearance, 4);
+                if (r <= 1e-6) continue;
+                if (!_swept.TryGetValue((zp, r), out var swept))
+                    _swept[(zp, r)] = swept = Polygons.OffsetOpen(chains, r, Math.Max(Tolerance.Chord, 0.02 * r));
+                parts.AddRange(swept);
+                _ctx.Cancel.ThrowIfCancellationRequested();
+            }
+            return parts.Count == 0 ? [] : Polygons.Union(parts);
+        }
+
+        /// <summary>
+        /// The tool centre area <paramref name="centre"/> of a level cut down to the places from which the tool reaches
+        /// material the earlier operation left. Slivers thinner than 2 % of the tool, left by rounding, do not count.
+        /// </summary>
+        public List<Path2> Only(List<Path2> centre, double z)
+        {
+            var r = _ctx.ToolRadius;
+            var left = Polygons.Difference(Polygons.Offset(centre, r), Cut(z));
+            var sliver = 0.02 * _ctx.ToolDiameter;
+            left = Polygons.Offset(Polygons.Offset(left, -sliver), sliver);
+            return left.Count == 0 ? [] : Polygons.Intersection(centre, Polygons.Offset(left, r));
+        }
     }
 
     // ------------------------------------------------------------------ input geometry
@@ -409,11 +567,13 @@ internal static class Profile3DGenerator
 
         var prev = ctx.StockSurface;
         var silhouettes = new MeshSilhouettes(mesh, ctx.Cancel);
+        var rest = RestMachining.For(ctx, op);
         foreach (var z in WaterLevels(ctx, op, mesh))
         {
             ctx.Cancel.ThrowIfCancellationRequested();
             var blocked = Polygons.Offset(silhouettes.Above(z), grow); // area blocked for the tool centre
             var free = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), blocked);
+            if (rest != null) free = rest.Only(free, z);
             foreach (var shape in Polygons.BuildShapes(free))
             {
                 // Mesh outlines are faceted anyway: a coarse arc tolerance keeps point counts manageable.
@@ -431,6 +591,7 @@ internal static class Profile3DGenerator
             }
             prev = z;
         }
+        if (rest != null && mb.Position == null) ctx.Warnings.Add(RestDone(op));
     }
 
     private static void WaterlineFinish(GenContext ctx, Profile3DOp op, Mesh mesh, List<Path2> boundary, MoveBuilder mb)

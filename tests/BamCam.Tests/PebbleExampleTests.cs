@@ -8,14 +8,14 @@ using MatmillPlugin;
 namespace BamCam.Tests;
 
 /// <summary>
-/// The example drawing <c>examples_to_test/3D profile (pebble).cb</c>: a pebble computed here (no third-party model),
+/// The example drawing <c>examples/3D profile (pebble).cb</c>: a pebble computed here (no third-party model),
 /// machined with every kind of 3D profile: trochoidal and waterline roughing, waterline and scanline finishing, the
 /// back face with the part turned over and the mould of it. Set BAMCAM_WRITE_EXAMPLES=1 to write the file again.
 /// </summary>
 [Collection(GlobalLibrariesCollection.Name)]
 public class PebbleExampleTests
 {
-    private static readonly string File3D = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples_to_test/3D profile (pebble).cb"));
+    private static readonly string File3D = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../examples/3D profile (pebble).cb"));
 
     // Half axes of the outline and the thickness above and below the middle (Z = 0).
     private const double A = 40, B = 26, H = 12;
@@ -171,6 +171,14 @@ public class PebbleExampleTests
         waterline.RoughingClearance.Set(0.5);
         waterline.Enabled = false;
         front.Operations.Add(waterline);
+        // Rest machining: a 3 mm end mill only where the trochoidal roughing left material (strips too narrow for it).
+        var rest = Op<Profile3DOp>("Front rest rough, 3 mm", pebble, 3, ToolProfile.EndMill);
+        rest.Profile3DMethod.Set(Profile3DMethod.WaterlineRough);
+        rest.DepthIncrement.Set(2);
+        rest.StepOver.Set(0.4);
+        rest.RoughingClearance.Set(0.5);
+        rest.RestFromOperation.Set("Front trochoidal rough");
+        front.Operations.Add(rest);
         front.Operations.Add(Finish("Front waterline finish", pebble, Profile3DMethod.WaterlineFinish));
         front.Operations.Add(Finish("Front scanline finish", pebble, Profile3DMethod.Horizontal));
 
@@ -199,7 +207,7 @@ public class PebbleExampleTests
         Assert.True(File.Exists(File3D), File3D);
         var doc = CbReader.Load(File3D);
         var ops = doc.Parts.SelectMany(p => p.Operations).ToList();
-        Assert.Equal(8, ops.Count);
+        Assert.Equal(9, ops.Count);
         foreach (var op in ops.Where(o => o.Enabled))
         {
             var tp = ToolpathGenerator.Generate(doc, op);
