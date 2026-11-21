@@ -522,6 +522,25 @@ internal static class ProfileGenerator
 
 internal static class PocketGenerator
 {
+    /// <summary>Regions in the order of a walk from <paramref name="from"/>: always the one whose first ring is nearest.</summary>
+    private static List<(List<Loop> Normal, List<Loop> Finish)> NearestFirst(List<(List<Loop> Normal, List<Loop> Finish)> regions, Point2 from)
+    {
+        static double Distance(List<Loop> seq, Point2 p) => seq[0].Points.Min(q => Point2.Distance(q, p));
+        var left = regions.ToList();
+        var ordered = new List<(List<Loop> Normal, List<Loop> Finish)>(left.Count);
+        var pos = from;
+        while (left.Count > 0)
+        {
+            var next = left.MinBy(r => Distance(r.Normal, pos));
+            left.Remove(next);
+            ordered.Add(next);
+            // Go on from the middle of the finished pocket (the tool leaves it somewhere on its last ring).
+            var pts = next.Normal.SelectMany(l => l.Points).ToList();
+            pos = new Point2((pts.Min(q => q.X) + pts.Max(q => q.X)) / 2, (pts.Min(q => q.Y) + pts.Max(q => q.Y)) / 2);
+        }
+        return ordered;
+    }
+
     public static void Generate(GenContext ctx, PocketOp op, Toolpath tp)
     {
         var dia = ctx.ToolDiameter;
@@ -605,7 +624,9 @@ internal static class PocketGenerator
             }
         }
 
-        var ordered = regions.OrderBy(s => s.Normal[0].Start.X).ToList();
+        // Without a start point from left to right; with one the pocket nearest to it first, then always the nearest next
+        // one (before, only the first ring's start followed the start point, while the leftmost pocket still came first).
+        var ordered = op.StartXY is { } startXY ? NearestFirst(regions, startXY) : regions.OrderBy(s => s.Normal[0].Start.X).ToList();
         if (op.CutOrdering.Value == CutOrdering.LevelFirst)
         {
             var prev = ctx.StockSurface;

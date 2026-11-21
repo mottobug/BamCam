@@ -179,6 +179,9 @@ Everything can be undone with `Ctrl+Z`.
    *Paste Format* (or select it and press `Ctrl+Shift+V`). It takes all values with their state (default or typed),
    but keeps its name, its objects and, for plasma, its start points of the shapes. Both must be of the same type;
    otherwise the message window says so.
+   **Start Point** (Options) of a pocket with several shapes: the pocket nearest to it is cut first, then always the
+   nearest next one; its first ring starts at the point nearest to the start point. Without a start point the
+   pockets are cut from left to right.
    **Mirrored and moved copies of an operation:** copy and paste it, then set its *Transform* (Options, button [...]):
    scale X/Y/Z and rotate about Z around the drawing origin, then move. *Mirror Y* (scale Y -1) gives the other half
    of a mold. BamCam transforms the drawing objects before it computes the toolpath, so the milling direction stays
