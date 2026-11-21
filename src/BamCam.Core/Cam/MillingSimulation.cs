@@ -22,8 +22,11 @@ public sealed class HeightField
         Bottom = bottom;
         Z = new float[nx * ny];
         Target = new float[nx * ny];
+        Low = new float[nx * ny];
+        TargetLow = new float[nx * ny];
         Reset();
         Array.Fill(Target, float.NaN);
+        Array.Fill(TargetLow, float.NaN);
     }
 
     public double X0 { get; }
@@ -36,12 +39,27 @@ public sealed class HeightField
     public float[] Z { get; }
     public float[] Target { get; }
 
-    public void Reset() => Array.Fill(Z, (float)Top);
+    /// <summary>
+    /// Height of the underside of the material per cell: <see cref="Bottom"/> until a back face operation (3D profile
+    /// with Back Face, cut with the part turned over) cuts it from below. Where it reaches <see cref="Z"/> the cut goes
+    /// through. <see cref="TargetLow"/> is the underside those operations are meant to reach (NaN where none).
+    /// </summary>
+    public float[] Low { get; }
+    public float[] TargetLow { get; }
+
+    public void Reset()
+    {
+        Array.Fill(Z, (float)Top);
+        Array.Fill(Low, (float)Bottom);
+    }
 
     /// <summary>Centre of cell (i, j).</summary>
     public Point2 CellCentre(int i, int j) => new(X0 + (i + 0.5) * Cell, Y0 + (j + 0.5) * Cell);
 
     public float this[int i, int j] => Z[j * Nx + i];
+
+    /// <summary>Underside of cell (i, j).</summary>
+    public float LowAt(int i, int j) => Low[j * Nx + i];
 }
 
 /// <summary>Cutting part of a tool: height of its surface above the tip at a distance from its axis.</summary>
@@ -121,8 +139,11 @@ public static class MillingSimulation
         var part = jobs.Select(j => doc.Parts.FirstOrDefault(p => p.Operations.Contains(j.Op))).FirstOrDefault();
         var stock = part is { Stock.IsEmpty: false } ? part.Stock : doc.Machining.Stock;
         double x0, y0, x1, y1, top, bottom;
-        var cuts = jobs.SelectMany(j => j.Toolpath.DisplaySegments(0.05).Where(s => s.Kind != MoveKind.Rapid)).ToList();
-        var lowest = cuts.Count == 0 ? 0 : cuts.Min(s => Math.Min(s.From.Z, s.To.Z));
+        // Back face toolpaths turned back into drawing coordinates: they cut the underside.
+        var cuts = jobs.SelectMany(j => j.Toolpath.DisplaySegments(0.05).Where(s => s.Kind != MoveKind.Rapid)
+            .Select(s => (From: TurnOver(j.Op, s.From), To: TurnOver(j.Op, s.To), Below: IsBackFace(j.Op)))).ToList();
+        var fromAbove = cuts.Where(s => !s.Below).ToList();
+        var lowest = fromAbove.Count == 0 ? 0 : fromAbove.Min(s => Math.Min(s.From.Z, s.To.Z));
         if (!stock.IsEmpty)
         {
             (x0, y0, x1, y1) = (stock.PMin.X, stock.PMin.Y, stock.PMax.X, stock.PMax.Y);
@@ -139,11 +160,17 @@ public static class MillingSimulation
                 x1 = cuts.Max(s => Math.Max(s.From.X, s.To.X)) + margin;
                 y1 = cuts.Max(s => Math.Max(s.From.Y, s.To.Y)) + margin;
             }
-            top = jobs.Select(j => j.Op.StockSurface.Value).DefaultIfEmpty(0).Max();
+            var front = jobs.Where(j => !IsBackFace(j.Op)).ToList();
+            top = front.Count > 0 || cuts.Count == 0
+                ? front.Select(j => j.Op.StockSurface.Value).DefaultIfEmpty(0).Max()
+                : cuts.Max(s => Math.Max(s.From.Z, s.To.Z)) + 1; // only back faces: a little above their highest cut
             // Plasma cuts above the sheet: its thickness comes from the cut data (1 without).
             var sheet = jobs.Select(j => j.Op).OfType<PlasmaOp>()
                 .Select(p => CamLibraries.FindCutData(doc, p.CutData.Value) is { } data ? data.Thickness * CamLibraries.CutDataScale(doc, data) : 0).DefaultIfEmpty(0).Max();
             bottom = Math.Min(Math.Min(lowest, top) - 1, top - sheet);
+            // A back face starts at its stock surface, turned over: the underside of the material.
+            foreach (var (op, _) in jobs.Where(j => IsBackFace(j.Op)))
+                bottom = Math.Min(bottom, TurnOver(op, new Point3(0, 0, op.StockSurface.Value)).Z);
         }
         var widest = Math.Max(x1 - x0, y1 - y0);
         if (cell <= 0) cell = Math.Max(widest / 600, 0.01);
@@ -155,8 +182,9 @@ public static class MillingSimulation
     }
 
     /// <summary>
-    /// The material as a closed triangle mesh: the cut surface through the centres of the cells, the sides down to the
-    /// bottom of the field and the bottom. With more than <paramref name="maxTriangles"/> it takes every n-th cell.
+    /// The material as a closed triangle mesh: the cut surface through the centres of the cells, the underside (flat at
+    /// the bottom of the field unless a back face operation cut it) and the sides between them. With more than
+    /// <paramref name="maxTriangles"/> it takes every n-th cell.
     /// </summary>
     public static SurfaceEntity ToSurface(HeightField f, int maxTriangles = 1_000_000)
     {
@@ -174,7 +202,7 @@ public static class MillingSimulation
             xs = Samples(f.Nx, step);
             ys = Samples(f.Ny, step);
             long ring = 2L * (xs.Count - 1 + ys.Count - 1);
-            if (2L * (xs.Count - 1) * (ys.Count - 1) + 3 * ring <= Math.Max(maxTriangles, 100) || step >= Math.Max(f.Nx, f.Ny)) break;
+            if (4L * (xs.Count - 1) * (ys.Count - 1) + 2 * ring <= Math.Max(maxTriangles, 100) || step >= Math.Max(f.Nx, f.Ny)) break;
             step++;
         }
 
@@ -200,41 +228,64 @@ public static class MillingSimulation
             Face(Top(i, j), Top(i + 1, j), Top(i + 1, j + 1));
             Face(Top(i, j), Top(i + 1, j + 1), Top(i, j + 1));
         }
-        // Its border, counter-clockwise seen from above, and the sides from it down to the bottom.
-        var border = new List<int>();
-        for (var i = 0; i < gx - 1; i++) border.Add(Top(i, 0));
-        for (var j = 0; j < gy - 1; j++) border.Add(Top(gx - 1, j));
-        for (var i = gx - 1; i > 0; i--) border.Add(Top(i, gy - 1));
-        for (var j = gy - 1; j > 0; j--) border.Add(Top(0, j));
-        var below = new int[border.Count];
-        for (var k = 0; k < border.Count; k++)
+        // The underside (flat at the bottom unless a back face operation cut it), facing down.
+        var under = surface.Vertices.Count;
+        foreach (var j in ys)
+        foreach (var i in xs)
         {
-            below[k] = surface.Vertices.Count;
-            surface.Vertices.Add(surface.Vertices[border[k]] with { Z = f.Bottom });
+            var c = f.CellCentre(i, j);
+            surface.Vertices.Add(new Point3(c.X, c.Y, Math.Min(f.LowAt(i, j), f[i, j])));
         }
-        var centre = surface.Vertices.Count;
-        var middle = f.CellCentre(0, 0) + (f.CellCentre(f.Nx - 1, f.Ny - 1) - f.CellCentre(0, 0)) * 0.5;
-        surface.Vertices.Add(new Point3(middle.X, middle.Y, f.Bottom));
+        int Under(int i, int j) => under + j * gx + i;
+        for (var j = 0; j + 1 < gy; j++)
+        for (var i = 0; i + 1 < gx; i++)
+        {
+            Face(Under(i, j), Under(i + 1, j + 1), Under(i + 1, j));
+            Face(Under(i, j), Under(i, j + 1), Under(i + 1, j + 1));
+        }
+        // The border, counter-clockwise seen from above, and the sides from the top down to the underside.
+        var border = new List<(int I, int J)>();
+        for (var i = 0; i < gx - 1; i++) border.Add((i, 0));
+        for (var j = 0; j < gy - 1; j++) border.Add((gx - 1, j));
+        for (var i = gx - 1; i > 0; i--) border.Add((i, gy - 1));
+        for (var j = gy - 1; j > 0; j--) border.Add((0, j));
         for (var k = 0; k < border.Count; k++)
         {
-            var next = (k + 1) % border.Count;
-            Face(border[k], below[k], below[next]);
-            Face(border[k], below[next], border[next]);
-            Face(centre, below[next], below[k]); // the bottom, facing down
+            var (a, b) = (border[k], border[(k + 1) % border.Count]);
+            Face(Top(a.I, a.J), Under(a.I, a.J), Under(b.I, b.J));
+            Face(Top(a.I, a.J), Under(b.I, b.J), Top(b.I, b.J));
         }
         return surface;
     }
 
-    /// <summary>One straight piece of a move.</summary>
-    public readonly record struct Step(Point3 From, Point3 To, SimTool Tool, MachineOp Op);
+    /// <summary>
+    /// One straight piece of a move, in drawing coordinates. <paramref name="FromBelow"/>: a back face operation, whose
+    /// toolpath is for the part turned over; turned back, its tool points up and cuts the underside.
+    /// </summary>
+    public readonly record struct Step(Point3 From, Point3 To, SimTool Tool, MachineOp Op, bool FromBelow = false);
 
     /// <summary>
     /// One move of a toolpath (G0, G1, G2/G3, a drilling cycle) as the straight pieces it is cut in; arcs are split
-    /// into lines. Rapids are moves too but cut nothing.
+    /// into lines. Rapids are moves too but cut nothing. For a back face operation the points are turned back into
+    /// drawing coordinates (<see cref="FromBelow"/>).
     /// </summary>
-    public sealed record SimMove(MachineOp Op, Move Move, int Index, Point3 From, IReadOnlyList<Step> Pieces)
+    public sealed record SimMove(MachineOp Op, Move Move, int Index, Point3 From, IReadOnlyList<Step> Pieces, bool FromBelow = false, Point3? EndPoint = null)
     {
-        public Point3 End => Pieces.Count > 0 ? Pieces[^1].To : Move.To;
+        public Point3 End => Pieces.Count > 0 ? Pieces[^1].To : EndPoint ?? Move.To;
+    }
+
+    /// <summary>Whether the operation is cut with the part turned over (3D profile with Back Face).</summary>
+    public static bool IsBackFace(MachineOp op) => op is Profile3DOp { BackFace.Value: true };
+
+    /// <summary>
+    /// A point of a back face toolpath in drawing coordinates, and back: the 3D profile turns the model 180° about the
+    /// flip axis with Back Face Zero Z becoming Z = 0, which is its own inverse.
+    /// </summary>
+    public static Point3 TurnOver(MachineOp op, Point3 p)
+    {
+        if (op is not Profile3DOp { BackFace.Value: true } b) return p;
+        var zz = b.BackFaceZeroZ.Value;
+        return b.FlipAxis.Value == FlipAxis.X ? new Point3(p.X, -p.Y, zz - p.Z) : new Point3(-p.X, p.Y, zz - p.Z);
     }
 
     /// <summary>All moves of the jobs in order (<see cref="SimMove.Index"/> counts within each toolpath, from 1).</summary>
@@ -246,6 +297,7 @@ public static class MillingSimulation
             var tool = ToolOf(doc, op);
             Point3? pos = toolpath.StartPosition;
             var index = 0;
+            var below = IsBackFace(op);
             foreach (var m in toolpath.Moves)
             {
                 if (!m.IsMotion && m.Kind is not (MoveKind.DrillCycle or MoveKind.ThreadCycle)) continue;
@@ -253,9 +305,11 @@ public static class MillingSimulation
                 var single = new Toolpath { StartPosition = pos };
                 single.Moves.Add(m);
                 var pieces = single.DisplaySegments(tolerance)
-                    .Where(s => s.Kind != MoveKind.Rapid).Select(s => new Step(s.From, s.To, tool, op)).ToList();
+                    .Where(s => s.Kind != MoveKind.Rapid).Select(s => new Step(TurnOver(op, s.From), TurnOver(op, s.To), tool, op, below)).ToList();
                 var start = pos ?? m.To;
-                moves.Add(new SimMove(op, m, index, start, pieces));
+                moves.Add(below
+                    ? new SimMove(op, m, index, TurnOver(op, start), pieces, true, TurnOver(op, m.To))
+                    : new SimMove(op, m, index, start, pieces));
                 pos = m.Kind == MoveKind.DrillCycle ? start with { X = m.To.X, Y = m.To.Y } : m.To;
             }
         }
@@ -268,9 +322,14 @@ public static class MillingSimulation
         foreach (var piece in move.Pieces) Cut(f, piece);
     }
 
-    /// <summary>Lowers the heights under the tool moving along one straight step.</summary>
+    /// <summary>Lowers the heights under the tool moving along one straight step (raises the underside from below).</summary>
     public static void Cut(HeightField f, Step step)
     {
+        if (step.FromBelow)
+        {
+            CutFromBelow(f, step);
+            return;
+        }
         var tool = step.Tool;
         var r = tool.Radius;
         if (tool.Through || Math.Abs(step.From.Z - step.To.Z) < 1e-9)
@@ -321,6 +380,39 @@ public static class MillingSimulation
         }
     }
 
+    /// <summary>
+    /// A back face step turned back into drawing coordinates: the tool points up, its tip at the step, and raises the
+    /// underside of the cells it reaches. Sampled along the step as a move with Z change from above.
+    /// </summary>
+    private static void CutFromBelow(HeightField f, Step step)
+    {
+        var tool = step.Tool;
+        var r = tool.Radius;
+        var stamp = Stamp(f.Cell, tool);
+        var length = Point3.Distance(step.From, step.To);
+        var n = Math.Max(1, (int)Math.Ceiling(length / (f.Cell * 0.5)));
+        for (var k = 0; k <= n; k++)
+        {
+            var p = step.From + (step.To - step.From) * ((double)k / n);
+            if (p.Z <= f.Bottom) continue;
+            var ci = (int)Math.Floor((p.X - f.X0) / f.Cell);
+            var cj = (int)Math.Floor((p.Y - f.Y0) / f.Cell);
+            var fx = p.X - (f.X0 + (ci + 0.5) * f.Cell);
+            var fy = p.Y - (f.Y0 + (cj + 0.5) * f.Cell);
+            foreach (var (di, dj) in stamp)
+            {
+                int i = ci + di, j = cj + dj;
+                if ((uint)i >= (uint)f.Nx || (uint)j >= (uint)f.Ny) continue;
+                double dx = di * f.Cell - fx, dy = dj * f.Cell - fy;
+                var d2 = dx * dx + dy * dy;
+                if (d2 > r * r) continue;
+                var z = (float)(p.Z - tool.HeightAt(Math.Sqrt(d2)));
+                var idx = j * f.Nx + i;
+                if (z > f.Low[idx]) f.Low[idx] = z;
+            }
+        }
+    }
+
     private static readonly Dictionary<(double, double), List<(int, int)>> Stamps = [];
 
     /// <summary>Cells the tool may reach, as offsets from the cell of its axis.</summary>
@@ -348,6 +440,7 @@ public static class MillingSimulation
     public static void SetTargets(HeightField f, CadDocument doc, IEnumerable<MachineOp> ops)
     {
         Array.Fill(f.Target, float.NaN);
+        Array.Fill(f.TargetLow, float.NaN);
         foreach (var op in ops)
         {
             var part = doc.Parts.FirstOrDefault(p => p.Operations.Contains(op));
@@ -375,6 +468,11 @@ public static class MillingSimulation
             else if (op is Profile3DOp { BackFace.Value: false, Mold.Value: false, Additive.Value: false })
             {
                 foreach (var s in op.PrimitiveIds.Select(doc.FindEntity).OfType<SurfaceEntity>()) Surface(f, s, op.MOPTransform.Value);
+            }
+            else if (op is Profile3DOp { BackFace.Value: true, Mold.Value: false, Additive.Value: false })
+            {
+                // Cut with the part turned over: the underside of the surface, in drawing coordinates.
+                foreach (var s in op.PrimitiveIds.Select(doc.FindEntity).OfType<SurfaceEntity>()) Surface(f, s, op.MOPTransform.Value, underside: true);
             }
         }
     }
@@ -433,9 +531,11 @@ public static class MillingSimulation
         }
     }
 
-    /// <summary>Target of the cells under a mesh: its highest surface there.</summary>
-    /// <summary>The surface as target, moved, turned or mirrored with the transform of the operation, as it is cut.</summary>
-    private static void Surface(HeightField f, SurfaceEntity s, Matrix4 transform)
+    /// <summary>
+    /// The surface as target, moved, turned or mirrored with the transform of the operation, as it is cut: its highest
+    /// point per cell for the top, with <paramref name="underside"/> its lowest point for the underside.
+    /// </summary>
+    private static void Surface(HeightField f, SurfaceEntity s, Matrix4 transform, bool underside = false)
     {
         var v = s.WorldVertices().Select(p => transform.IsIdentity ? p : transform.Transform(p)).ToList();
         var surface = new float[f.Target.Length];
@@ -459,10 +559,13 @@ public static class MillingSimulation
                 if (l1 < 0 || l2 < 0 || l3 < 0) continue;
                 var z = (float)(l1 * a.Z + l2 * b.Z + l3 * c.Z);
                 var idx = j * f.Nx + i;
-                if (float.IsNaN(surface[idx]) || z > surface[idx]) surface[idx] = z;
+                if (float.IsNaN(surface[idx]) || (underside ? z < surface[idx] : z > surface[idx])) surface[idx] = z;
             }
         }
+        // Several operations: the deepest target wins (on the underside the highest).
+        var target = underside ? f.TargetLow : f.Target;
         for (var idx = 0; idx < surface.Length; idx++)
-            if (!float.IsNaN(surface[idx]) && (float.IsNaN(f.Target[idx]) || surface[idx] < f.Target[idx])) f.Target[idx] = surface[idx];
+            if (!float.IsNaN(surface[idx]) && (float.IsNaN(target[idx]) || (underside ? surface[idx] > target[idx] : surface[idx] < target[idx])))
+                target[idx] = surface[idx];
     }
 }

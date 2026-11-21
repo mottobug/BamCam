@@ -37,6 +37,9 @@ public sealed class SimulationView : Control
     /// <summary>Tool tip position and the tool, drawn as its outline with the shape it cuts with (null = none).</summary>
     public (Core.Geometry.Point3 Tip, SimTool Tool)? Tool { get; set; }
 
+    /// <summary>The tool cuts from below (a back face operation, the part turned over): drawn pointing up.</summary>
+    public bool ToolFromBelow { get; set; }
+
     public HeightField? Field
     {
         get => _field;
@@ -72,6 +75,13 @@ public sealed class SimulationView : Control
     /// <summary>The outline of the turning tool, as lines in drawing coordinates (with <see cref="Turned"/>).</summary>
     public List<(Core.Geometry.Point3 From, Core.Geometry.Point3 To)>? TurnedTool { get; set; }
 
+    /// <summary>Diagnostics: looks at the stock from below (the underside a back face operation cut).</summary>
+    public void ViewFromBelow()
+    {
+        _pitch = 3 * Math.PI / 4;
+        InvalidateVisual();
+    }
+
     public void ResetView()
     {
         _yaw = -Math.PI / 6;
@@ -104,7 +114,8 @@ public sealed class SimulationView : Control
         {
             _yaw = _dragFrom.Yaw - d.X * 0.01;
             // A turned part can also be seen from below.
-            _pitch = Math.Clamp(_dragFrom.Pitch - d.Y * 0.01, _turned != null ? -Math.PI / 2 : 0, Math.PI / 2);
+            // Past 90° from below: the underside of a part cut from both sides (back face); the turned part all round.
+            _pitch = Math.Clamp(_dragFrom.Pitch - d.Y * 0.01, _turned != null ? -Math.PI / 2 : 0, Math.PI);
             InvalidateVisual();
         }
         else if (_panning)
@@ -174,11 +185,17 @@ public sealed class SimulationView : Control
         var ny = (f.Ny - 1) / step + 1;
         var z = new float[nx * ny];
         var target = new float[nx * ny];
+        // The underside likewise, with the highest cell of each block (grooves cut from below stay visible).
+        var under = new float[nx * ny];
+        var targetUnder = new float[nx * ny];
+        var cutBelow = false;
         for (var j = 0; j < ny; j++)
         for (var i = 0; i < nx; i++)
         {
             var low = float.MaxValue;
             var tgt = float.NaN;
+            var high = float.MinValue;
+            var tgtUnder = float.NaN;
             for (var bj = j * step; bj < Math.Min(f.Ny, (j + 1) * step); bj++)
             for (var bi = i * step; bi < Math.Min(f.Nx, (i + 1) * step); bi++)
             {
@@ -186,9 +203,16 @@ public sealed class SimulationView : Control
                 var v = f.Z[k];
                 if (v < low) low = v;
                 if (!float.IsNaN(f.Target[k]) && (float.IsNaN(tgt) || f.Target[k] < tgt)) tgt = f.Target[k];
+                if (f.Low[k] > high) high = f.Low[k];
+                if (!float.IsNaN(f.TargetLow[k]) && (float.IsNaN(tgtUnder) || f.TargetLow[k] > tgtUnder)) tgtUnder = f.TargetLow[k];
             }
-            z[j * nx + i] = float.IsFinite(low) ? low : (float)f.Top;
+            var top = float.IsFinite(low) ? low : (float)f.Top;
+            z[j * nx + i] = top;
             target[j * nx + i] = tgt;
+            var bottom = float.IsFinite(high) ? Math.Min(high, top) : (float)f.Bottom;
+            under[j * nx + i] = bottom;
+            targetUnder[j * nx + i] = tgtUnder;
+            if (bottom > f.Bottom + 1e-4) cutBelow = true;
         }
 
         // Orthographic camera: yaw about Z, then tilt by pitch (0 = from above).
@@ -246,24 +270,50 @@ public sealed class SimulationView : Control
             return result;
         }
 
+        var projectedUnder = new (double X, double Y, double Depth)[nx * ny];
+        for (var j = 0; j < ny; j++)
+        for (var i = 0; i < nx; i++)
+            projectedUnder[j * nx + i] = Project(i * cell, j * cell, under[j * nx + i]);
+
+        // Material left below the underside target (cut from below) counts like rest material on top.
+        double DeviationUnder(int a, int b, int c, int d)
+        {
+            var result = double.NaN;
+            foreach (var k in (ReadOnlySpan<int>)[a, b, c, d])
+            {
+                if (float.IsNaN(targetUnder[k])) continue;
+                var e = targetUnder[k] - under[k];
+                if (double.IsNaN(result) || Math.Abs(e) < Math.Abs(result)) result = e;
+            }
+            return result;
+        }
+
         for (var j = 0; j + 1 < ny; j++)
         for (var i = 0; i + 1 < nx; i++)
         {
             int a = j * nx + i, b = a + 1, c = a + nx, d = c + 1;
-            // Cut through to the bottom (a plasma kerf, a cut-out profile): no material, the background shows.
-            var through = (float)(f.Bottom + 1e-4);
-            if (z[a] <= through && z[b] <= through && z[c] <= through && z[d] <= through) continue;
+            // Cut through to the underside (a plasma kerf, a cut-out profile, a part cut free from both sides): no
+            // material, the background shows.
+            const float Through = 1e-4f;
+            if (z[a] <= under[a] + Through && z[b] <= under[b] + Through && z[c] <= under[c] + Through && z[d] <= under[d] + Through) continue;
             var dzdx = (z[b] + z[d] - z[a] - z[c]) / (2 * cell);
             var dzdy = (z[c] + z[d] - z[a] - z[b]) / (2 * cell);
             var color = Shade(-dzdx, -dzdy, 1, ColorOf(Deviation(a, b, c, d), f));
             Triangle(projected[a], projected[b], projected[d], color);
             Triangle(projected[a], projected[d], projected[c], color);
+            // The underside, seen from below (only when the view is turned under the stock, or through a hole).
+            if (!cutBelow && cp >= 0) continue;
+            var udx = (under[b] + under[d] - under[a] - under[c]) / (2 * cell);
+            var udy = (under[c] + under[d] - under[a] - under[b]) / (2 * cell);
+            var underColor = Shade(udx, udy, -1, ColorOf(DeviationUnder(a, b, c, d), f));
+            Triangle(projectedUnder[a], projectedUnder[b], projectedUnder[d], underColor);
+            Triangle(projectedUnder[a], projectedUnder[d], projectedUnder[c], underColor);
         }
-        // Sides of the stock block down to the bottom.
+        // Sides of the stock block from the top down to the underside.
         void Side(int from, int to, double x0, double y0, double x1, double y1, double nxs, double nys)
         {
-            var bottom0 = Project(x0, y0, f.Bottom);
-            var bottom1 = Project(x1, y1, f.Bottom);
+            var bottom0 = projectedUnder[from];
+            var bottom1 = projectedUnder[to];
             var color = Shade(nxs, nys, 0, (150, 140, 120));
             Triangle(projected[from], projected[to], bottom1, color);
             Triangle(projected[from], bottom1, bottom0, color);
@@ -288,8 +338,9 @@ public sealed class SimulationView : Control
                 var q = Project(tip.X - f.X0 - f.Cell / 2 + dx, tip.Y - f.Y0 - f.Cell / 2 + dy, zz);
                 return new Point(q.X, q.Y);
             }
+            var flip = ToolFromBelow ? -1 : 1;
             lines.AddRange(ToolOutline(simTool, Math.Max(4 * simTool.Radius, (f.Top - f.Bottom) * 1.5), (cy, -sy))
-                .Select(l => (Screen(l.From.X, l.From.Y, tip.Z + l.From.Z), Screen(l.To.X, l.To.Y, tip.Z + l.To.Z))));
+                .Select(l => (Screen(l.From.X, l.From.Y, tip.Z + flip * l.From.Z), Screen(l.To.X, l.To.Y, tip.Z + flip * l.To.Z))));
             lines.RemoveAll(l => !double.IsFinite(l.Item1.X + l.Item1.Y + l.Item2.X + l.Item2.Y));
         }
         return (pixels, lines);

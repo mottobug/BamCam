@@ -22,7 +22,54 @@ public sealed class Plugin : IBamCamPlugin
     {
         host.AddOperation<TrochoPocketOp>(TrochoGenerator.Pocket);
         host.AddOperation<TrochoProfileOp>(TrochoGenerator.Profile);
+        host.AddOperation<TrochoRough3DOp>(TrochoGenerator.Rough3D);
     }
+}
+
+/// <summary>
+/// Trochoidal 3D roughing (only in BamCam, not in matmill or CamBam): the areas of Waterline Rough, cleared at each
+/// level with matmill's slices instead of offset rings. It is a 3D profile, so surfaces, boundary, taper, back face,
+/// mold and the 3D simulation work as there; the scanline settings are hidden.
+/// </summary>
+public sealed class TrochoRough3DOp : Profile3DOp
+{
+    public override string XmlName => "MOPTrochorough3d";
+    public override string DisplayType => "Trochoidal 3D Rough (matmill)";
+
+    public TrochoRough3DOp()
+    {
+        // As the trochoidal pocket: small engagement, climb milling.
+        StepOver = new(0.2);
+        MillingDirection = new(BamCam.Core.Cam.MillingDirection.Climb);
+    }
+
+    [Param(80, "Step Over", XmlName = "Min_stepover"), DisplayName("Minimum Stepover"),
+     Description("Minimum allowed stepover as a share of the nominal stepover (0.05 - 0.95). Larger values may leave uncut corners.")]
+    public CamParam<double> MinStepover { get; set; } = new(0.9);
+
+    [Param(81, "Feedrates", XmlName = "Chord_feedrate"), DisplayName("Chord Feedrate"),
+     Description("The feed rate to use for the chords and movements inside the milled area. If 0 use cutting feedrate.")]
+    public CamParam<double> ChordFeedrate { get; set; } = new(0);
+
+    [Param(82, "Feedrates", XmlName = "Spiral_feedrate"), DisplayName("Spiral Feedrate"),
+     Description("The feed rate to use for the spiral opening each area. If 0 use cutting feedrate.")]
+    public CamParam<double> SpiralFeedrate { get; set; } = new(0);
+
+    [Param(83, "Options", XmlName = "Should_smooth_chords"), DisplayName("Smooth Chords"),
+     Description("Replace straight chords with smooth arcs to form a continuous toolpath. Not applied to the mixed milling direction.")]
+    public CamParam<bool> SmoothChords { get; set; } = new(false);
+
+    public override IReadOnlySet<string> HiddenParameters => Hidden;
+
+    // Scanline settings, the offset ring fill and what matmill does itself (links, lead out) do not apply.
+    private static readonly HashSet<string> Hidden =
+    [
+        nameof(Profile3DMethod), nameof(Resolution), nameof(StartCorner), nameof(BackFaceCulling), nameof(PlaneSliceOnly),
+        nameof(ScanlineGradientThreshold), nameof(Additive), nameof(ScanAngle), nameof(RegionFillStyle), nameof(StepoverFeedrate),
+        nameof(LeadOutMove), nameof(CollisionDetection), nameof(MaxCrossoverDistance), nameof(CutOrdering),
+    ];
+
+    public override bool NeedsToolDiameter => true;
 }
 
 /// <summary>What both operations share (matmill's Trochomop).</summary>
@@ -162,6 +209,77 @@ internal static class TrochoGenerator
         return trajectories;
     });
 
+    /// <summary>
+    /// Trochoidal 3D roughing: level by level from the top, each area of the level cleared with a trochoidal pocket.
+    /// Between areas and levels the tool goes up to the clearance plane: a straight link at the height of a level could
+    /// run into the model.
+    /// </summary>
+    public static void Rough3D(ToolpathContext ctx, TrochoRough3DOp op, Toolpath tp)
+    {
+        var messages = Logger.Collect();
+        var tooNarrow = 0;
+        try
+        {
+            if (ctx.ToolDiameter <= 0) throw new Problem("tool diameter is zero");
+            if (op.StepOver.Value <= 0 || op.StepOver.Value > 1) throw new Problem("stepover should be > 0 and <= 1");
+            if (ctx.WaterlineAreas(op, out var problem) is not { } waterLevels)
+            {
+                tp.Warnings.Add(problem!);
+                return;
+            }
+
+            var direction = Direction(op.MillingDirection.Value, op.SpindleDirection.Value);
+            var levels = new List<Level>();
+            var position = op.StartXY ?? Pt.Undefined;
+            foreach (var waterLevel in waterLevels)
+            {
+                var left = waterLevel.Areas.ToList();
+                while (left.Count > 0)
+                {
+                    ctx.Cancel.ThrowIfCancellationRequested();
+                    // The nearest area next (the first one nearest to the start point, if there is one).
+                    var here = position;
+                    var area = here.IsUndefined() ? left[0] : left.MinBy(a => a.Outer.DistanceTo(here))!;
+                    left.Remove(area);
+                    var gen = new Pocket_generator(new Contour(area.Outer), [.. area.Holes.Select(h => new Contour(h))])
+                    {
+                        General_tolerance = Tolerance(ctx),
+                        Tool_d = ctx.ToolDiameter,
+                        Max_ted = ctx.ToolDiameter * op.StepOver.Value,
+                        Min_ted = ctx.ToolDiameter * op.StepOver.Value * Math.Clamp(op.MinStepover.Value, 0.05, 0.95),
+                        Startpoint = position,
+                        Startpoint_is_a_hint = true,
+                        Margin = 0, // Roughing Clearance is in the areas already
+                        Mill_direction = direction,
+                        Should_smooth_chords = direction != RotationDirection.Unknown && op.SmoothChords.Value,
+                        Cancel = ctx.Cancel,
+                    };
+                    // An area narrower than the tool plus a little (a strip along the model) gives no medial tree.
+                    if (gen.run() is not { Count: > 0 } trajectory)
+                    {
+                        tooNarrow++;
+                        continue;
+                    }
+                    levels.Add(new Level(trajectory, waterLevel.Z, waterLevel.Top));
+                    position = trajectory[^1].LastPoint;
+                }
+            }
+            // What matmill says about an area too narrow for the tool is in the count below.
+            messages.RemoveAll(m => m is "failed to build tree" or "failed to choose tree start point");
+            if (tooNarrow > 0)
+                messages.Add(BamCam.Core.Localization.Tr.F("{0} area(s) too narrow for trochoidal slices were left out; a finishing pass or Waterline Rough with a smaller tool clears them.", tooNarrow));
+            if (levels.Count > 0) Emit(ctx, op, op.ChordFeedrate.Value, op.SpiralFeedrate.Value, op.LeadInMove.Value, tp, levels, linkDistance: 0);
+        }
+        catch (Problem problem)
+        {
+            messages.Add(problem.Message);
+        }
+        finally
+        {
+            foreach (var m in messages.Distinct()) tp.Warnings.Add($"{op.Name}: {m}");
+        }
+    }
+
     /// <summary>A message for the user that ends the calculation.</summary>
     private sealed class Problem(string message) : Exception(message);
 
@@ -173,13 +291,15 @@ internal static class TrochoGenerator
     /// Direction of the slices. Their material lies outside the arc, as at the wall of a pocket: with a clockwise
     /// spindle, climb milling runs counter-clockwise. Mixed (or the spindle off) lets each slice choose.
     /// </summary>
-    private static RotationDirection Direction(TrochoOp op)
+    private static RotationDirection Direction(MillingDirection milling, SpindleDirection spindle)
     {
-        if (op.MillingDirection.Value == MillingDirection.Mixed || op.SpindleDirection.Value == SpindleDirection.Off)
+        if (milling == MillingDirection.Mixed || spindle == SpindleDirection.Off)
             return RotationDirection.Unknown;
-        var ccw = (op.MillingDirection.Value == MillingDirection.Climb) == (op.SpindleDirection.Value == SpindleDirection.CW);
+        var ccw = (milling == MillingDirection.Climb) == (spindle == SpindleDirection.CW);
         return ccw ? RotationDirection.CCW : RotationDirection.CW;
     }
+
+    private static RotationDirection Direction(TrochoOp op) => Direction(op.MillingDirection.Value, op.SpindleDirection.Value);
 
     private static void SetDirection(Pocket_generator gen, TrochoOp op)
     {
@@ -381,7 +501,7 @@ internal static class TrochoGenerator
                 throw new Problem("stepover should be > 0 and <= 1");
 
             var found = trajectories();
-            if (found.Count > 0) Emit(ctx, op, tp, Order(ctx, op, found));
+            if (found.Count > 0) Emit(ctx, op, op.ChordFeedrate.Value, op.SpiralFeedrate.Value, op.LeadInMove.Value, tp, Order(ctx, op, found));
         }
         catch (Problem problem)
         {
@@ -424,14 +544,17 @@ internal static class TrochoGenerator
         return levels;
     }
 
-    private static void Emit(ToolpathContext ctx, TrochoOp op, Toolpath tp, List<Level> levels)
+    /// <param name="linkDistance">Largest distance linked through the cleared area at the level above instead of over the
+    /// clearance plane; null = Max Crossover Distance.</param>
+    private static void Emit(ToolpathContext ctx, MachineOp op, double chordFeedrate, double spiralFeedrate, LeadMove? leadIn, Toolpath tp, List<Level> levels,
+        double? linkDistance = null)
     {
         var cutFeed = ctx.CutFeed;
-        var chordFeed = op.ChordFeedrate.Value > 0 ? op.ChordFeedrate.Value : cutFeed;
-        var spiralFeed = op.SpiralFeedrate.Value > 0 ? op.SpiralFeedrate.Value : cutFeed;
-        var lead = op.LeadInMove.Value ?? LeadMove.None;
+        var chordFeed = chordFeedrate > 0 ? chordFeedrate : cutFeed;
+        var spiralFeed = spiralFeedrate > 0 ? spiralFeedrate : cutFeed;
+        var lead = leadIn ?? LeadMove.None;
         var leadFeed = lead.LeadMoveFeedrate > 0 ? lead.LeadMoveFeedrate : cutFeed;
-        var threshold = op.MaxCrossoverDistance.Value * ctx.ToolDiameter;
+        var threshold = linkDistance ?? op.MaxCrossoverDistance.Value * ctx.ToolDiameter;
         Point3? at = null;
 
         foreach (var level in levels)

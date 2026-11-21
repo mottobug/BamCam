@@ -516,6 +516,7 @@ public sealed class SimulationWindow : Window
             var m = _moves[_done - 1];
             _current.Text = $"{m.Op.Name} · {Describe(m.Move)}";
             _view.Tool = (m.End, MillingSimulation.ToolOf(_doc, m.Op));
+            _view.ToolFromBelow = m.FromBelow;
         }
         _view.InvalidateVisual();
     }
@@ -552,6 +553,14 @@ public sealed class SimulationWindow : Window
         {
             if (float.IsNaN(f.Target[k])) continue;
             var e = f.Z[k] - f.Target[k];
+            if (e > _view.Tolerance) { rest++; maxRest = Math.Max(maxRest, e); }
+            else if (e < -_view.Tolerance) gouge++;
+        }
+        for (var k = 0; k < f.Z.Length; k++)
+        {
+            // The underside of back face operations: material left below its target is rest material.
+            if (float.IsNaN(f.TargetLow[k])) continue;
+            var e = f.TargetLow[k] - f.Low[k];
             if (e > _view.Tolerance) { rest++; maxRest = Math.Max(maxRest, e); }
             else if (e < -_view.Tolerance) gouge++;
         }
@@ -604,6 +613,13 @@ public sealed class SimulationWindow : Window
     }
 
     /// <summary>Diagnostic: jumps back and forth and steps single moves, as a user would (--window simulation).</summary>
+    /// <summary>Diagnostics (--sim-view below): the stock seen from below.</summary>
+    public void ViewFromBelow()
+    {
+        RunTo(Count);
+        _view.ViewFromBelow();
+    }
+
     public async Task ExerciseAsync()
     {
         var random = new Random(1);

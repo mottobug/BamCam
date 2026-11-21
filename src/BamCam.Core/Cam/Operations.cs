@@ -102,7 +102,7 @@ public sealed class DrillOp : DepthOp
 }
 
 /// <summary>3D surface machining of triangle meshes (scanline and waterline strategies).</summary>
-public sealed class Profile3DOp : AreaOp
+public class Profile3DOp : AreaOp
 {
     public override string XmlName => "surface3d";
     public override string DisplayType => "3D Profile";

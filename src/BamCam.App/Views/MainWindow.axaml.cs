@@ -460,6 +460,12 @@ public partial class MainWindow : Window
                 {
                     await Task.Delay(6000); // simulation runs on a worker thread
                     await simulation.ExerciseAsync();
+                    // --sim-view below: then from below (the underside cut by back face operations).
+                    if (options.TryGetValue("--sim-view", out var simView) && simView == "below")
+                    {
+                        simulation.ViewFromBelow();
+                        await Task.Delay(3000);
+                    }
                 }
                 // --transform sx,sy,sz,rx,ry,rz,mx,my,mz: enters these values for all objects and applies them, as a user would.
                 if (extra is NumericTransformWindow numeric && options.TryGetValue("--transform", out var transformValues))

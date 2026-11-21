@@ -210,9 +210,16 @@ finer and slower. At most 4000 cells fit along a side; a smaller size is enlarge
 simulation itself; by default it is half a cell. **Add to Drawing** puts the material as it is at the move shown on a
 new layer as a surface (a closed mesh through the centres of the cells, with sides and bottom), for example for a 3D
 profile; **Save STL...** writes the same mesh as a binary STL file. Fields with more than a million triangles are
-thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms. The simulation is 3-axis
-(no undercuts). Plasma cuts through the stock as wide as its kerf (without stock the sheet is as thick as in the
-cut data, else 1); the drag knife is not shown.
+thinned to every second or third cell. Left drag rotates, right drag moves, the wheel zooms; dragged down past the
+side view, it looks at the stock from below. The simulation is 3-axis (no undercuts). Plasma cuts through the stock
+as wide as its kerf (without stock the sheet is as thick as in the cut data, else 1); the drag knife is not shown.
+**Both sides:** 3D profiles with *Back Face* are cut with the part turned over. The simulation turns their moves back
+and cuts the stock from below, so front and back operations simulated together show the part as it comes off the
+machine, cut free where both sides meet; the tool of a back face move is drawn pointing up. Rest material on the
+underside is coloured like on top. The stock has one height for the top and one for the underside per cell.
+Example: `examples_to_test/3D profile (pebble).cb`, a pebble roughed trochoidally and finished on both sides, with a
+waterline rough to compare (off) and the mould of it as a part of its own (off: select the part to simulate it alone).
+The pebble is computed by BamCam's tests, so the file has no third-party content.
 
 **Other simulators** (Machining ▸ Open in CutViewer / NC Viewer / CAMotics, or the eye in the toolbar, from the G-Code
 Viewer plugin that comes with BamCam): they simulate the G-code the post processor writes, an independent check. CutViewer and NC Viewer run in
@@ -279,6 +286,15 @@ Special operations:
   matmill's names, so CamBam drawings with matmill operations open in BamCam, and drawings from BamCam open in CamBam
   with matmill installed. Example: `examples_to_test/Trochoidal pocket.cb`. BamCam's own earlier trochoidal pocket
   is gone; drawings with it keep it unchanged in the file, but it is no longer cut.
+  **Trochoidal 3D Rough (matmill)** (Machining menu; only in BamCam, neither matmill nor CamBam have it) roughs a 3D
+  model like the 3D profile *Waterline Rough*, but clears each level with matmill's slices instead of offset rings:
+  a large *Depth Increment* with a small *Step Over* (default 0.2), e.g. for the cavity of a mould. Select the surfaces
+  as for a 3D profile; it is one, so boundary method, margin and taper, clip area, back face, *Mold*, *Roughing
+  Clearance* and the 3D simulation work as there (the scanline settings are hidden). Level by level from the top, each
+  free area is opened with a spiral and cleared to the model; between areas and levels the tool goes up to the
+  clearance plane, since a straight link could run into the model. An area too narrow for the tool plus a little (a
+  strip along the model) is left out, and the message window counts these: a finishing pass or *Waterline Rough* with
+  a smaller tool clears them. It takes longer to calculate than *Waterline Rough* (a few seconds for a large model).
 - **V-engrave** (Machining ▸ V-Engrave, toolbar button with the V) for signs and lettering: select text, regions or
   closed polylines, set the *V Angle* of the bit (and its *Tip Diameter* if it has a flat tip) and the *Target
   Depth*. The bit follows the centre lines of each shape and goes exactly as deep as the shape is wide, so the cone

@@ -37,7 +37,11 @@ public static class ToolpathGenerator
         if (!CheckTool(ctx, op, tp)) return tp;
         try
         {
-            switch (op)
+            // Plugin generators first: a plugin operation may derive from a built-in one (e.g. matmill's trochoidal 3D
+            // roughing from the 3D profile) and still has its own toolpath.
+            if (Generators.TryGetValue(op.GetType(), out var pluginGenerator))
+                pluginGenerator(new ToolpathContext(ctx), op, tp);
+            else switch (op)
             {
                 case ProfileOp p: ProfileGenerator.Generate(ctx, p, tp); break;
                 case PocketOp p: PocketGenerator.Generate(ctx, p, tp); break;
@@ -67,8 +71,7 @@ public static class ToolpathGenerator
                     break;
                 }
                 default:
-                    if (Generators.TryGetValue(op.GetType(), out var generator)) generator(new ToolpathContext(ctx), op, tp);
-                    else tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType)));
+                    tp.Warnings.Add(Tr.F("{0}: toolpath generation for '{1}' is not supported yet.", op.Name, Tr.T(op.DisplayType)));
                     break;
             }
         }
@@ -177,6 +180,15 @@ public sealed class ToolpathContext
 
     /// <summary>Depth levels from just below the stock surface down to the target depth (Depth Increment, Final Depth Increment).</summary>
     public List<double> DepthLevels(DepthOp op) => _ctx.Levels(op);
+
+    /// <summary>
+    /// For an operation derived from <see cref="Profile3DOp"/>: the areas to rough at each water level, as Waterline
+    /// Rough clears them (surfaces of the operation, boundary, taper, back face, mold, Roughing Clearance). Each area is
+    /// a pocket outline: cleared with the tool centre a tool radius inside it, the tool stays clear of the model.
+    /// Null when there is nothing to machine; <paramref name="problem"/> then says why (with the operation name).
+    /// </summary>
+    public IReadOnlyList<WaterlineLevel>? WaterlineAreas(Profile3DOp op, out string? problem) =>
+        Profile3DGenerator.WaterlineAreas(_ctx, op, out problem);
 }
 
 /// <summary>Resolved inputs shared by the generators.</summary>

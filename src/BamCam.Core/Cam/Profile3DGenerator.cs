@@ -4,6 +4,12 @@ using BamCam.Core.Model;
 
 namespace BamCam.Core.Cam;
 
+/// <summary>
+/// One water level of a 3D roughing: its Z, the level above it (or the stock surface) and the areas to clear there,
+/// as pocket outlines (see <see cref="ToolpathContext.WaterlineAreas"/>).
+/// </summary>
+public sealed record WaterlineLevel(double Z, double Top, IReadOnlyList<Shape> Areas);
+
 internal static class Profile3DGenerator
 {
     public static void Generate(GenContext ctx, Profile3DOp op, Toolpath tp)
@@ -16,23 +22,9 @@ internal static class Profile3DGenerator
             return;
         }
 
-        var triangles = CollectTriangles(ctx, op, op.PrimitiveIds).ToList();
-        if (triangles.Count == 0)
+        if (Prepare(ctx, op, out var problem) is not var (mesh, boundary))
         {
-            ctx.Warnings.Add(Tr.F("{0}: 3D profiles need surface (mesh) objects.", op.Name));
-            ctx.Finish(tp);
-            return;
-        }
-        triangles = TransformForSide(op, triangles);
-
-        var dia = ctx.ToolDiameter;
-        var mesh = new Mesh(triangles, Math.Max(dia, 1));
-        ctx.Cancel.ThrowIfCancellationRequested();
-        var boundary = Boundary(ctx, op, mesh);
-        ctx.Cancel.ThrowIfCancellationRequested();
-        if (boundary.Count == 0)
-        {
-            ctx.Warnings.Add(Tr.F("{0}: the machining boundary is empty.", op.Name));
+            ctx.Warnings.Add(problem!);
             ctx.Finish(tp);
             return;
         }
@@ -53,6 +45,55 @@ internal static class Profile3DGenerator
         }
         mb.Retract();
         ctx.Finish(tp);
+    }
+
+    /// <summary>The surface mesh (back face and mold applied) and the boundary of the tool centre, or the reason why not.</summary>
+    private static (Mesh Mesh, List<Path2> Boundary)? Prepare(GenContext ctx, Profile3DOp op, out string? problem)
+    {
+        problem = null;
+        var triangles = CollectTriangles(ctx, op, op.PrimitiveIds).ToList();
+        if (triangles.Count == 0)
+        {
+            problem = Tr.F("{0}: 3D profiles need surface (mesh) objects.", op.Name);
+            return null;
+        }
+        triangles = TransformForSide(op, triangles);
+
+        var mesh = new Mesh(triangles, Math.Max(ctx.ToolDiameter, 1));
+        ctx.Cancel.ThrowIfCancellationRequested();
+        var boundary = Boundary(ctx, op, mesh);
+        ctx.Cancel.ThrowIfCancellationRequested();
+        if (boundary.Count == 0)
+        {
+            problem = Tr.F("{0}: the machining boundary is empty.", op.Name);
+            return null;
+        }
+        return (mesh, boundary);
+    }
+
+    /// <summary>
+    /// The areas a roughing tool may clear at each water level, as for Waterline Rough: within the (tapered) boundary,
+    /// away from the model above the level by the tool radius plus Roughing Clearance. They are pocket outlines: a tool
+    /// centre a tool radius inside them stays clear of the model. Null with a reason when there is nothing to machine.
+    /// </summary>
+    internal static List<WaterlineLevel>? WaterlineAreas(GenContext ctx, Profile3DOp op, out string? problem)
+    {
+        if (Prepare(ctx, op, out problem) is not var (mesh, boundary)) return null;
+        // The outlines of a faceted model have very many points, which makes a medial axis slow: they are simplified by
+        // up to this much, and the model is kept that much further away, so that the simplification cannot cut into it.
+        var simplify = 0.02 * ctx.ToolDiameter;
+        var grow = ctx.ToolRadius + op.RoughingClearance.Value + simplify;
+        var silhouettes = new MeshSilhouettes(mesh, ctx.Cancel);
+        var levels = new List<WaterlineLevel>();
+        var top = ctx.StockSurface;
+        foreach (var z in WaterLevels(ctx, op, mesh))
+        {
+            ctx.Cancel.ThrowIfCancellationRequested();
+            var centre = Polygons.Difference(TaperedBoundary(ctx, op, boundary, z), Polygons.Offset(silhouettes.Above(z), grow));
+            levels.Add(new WaterlineLevel(z, top, Polygons.BuildShapes(Polygons.Offset(centre, ctx.ToolRadius, simplify: simplify))));
+            top = z;
+        }
+        return levels;
     }
 
     // ------------------------------------------------------------------ input geometry

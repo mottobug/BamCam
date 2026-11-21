@@ -1730,6 +1730,8 @@
   "The trochoidal pocket comes from the plugin Trochoidal Milling (matmill); switch it on in Tools > Plugins.": "Die trochoidale Tasche kommt aus dem Plugin Trochoidal Milling (matmill); es lässt sich unter Extras > Plugins einschalten.",
   "Trochoidal Pocket (matmill)": "Trochoidale Tasche (matmill)",
   "Trochoidal Profile (matmill)": "Trochoidales Profil (matmill)",
+  "Trochoidal 3D Rough (matmill)": "Trochoidales 3D-Schruppen (matmill)",
+  "{0} area(s) too narrow for trochoidal slices were left out; a finishing pass or Waterline Rough with a smaller tool clears them.": "{0} Fläche(n) zu schmal für trochoidale Bögen wurden ausgelassen; ein Schlichtgang oder Waterline Rough mit kleinerem Werkzeug räumt sie aus.",
   "Spiral Feedrate": "Vorschub der Spirale",
   "Smooth Chords": "Sehnen glätten",
   "Show Chords": "Sehnen anzeigen",

@@ -426,7 +426,7 @@ public class MatmillPluginTests
     }
 
     [Fact]
-    public void The_plugin_adds_both_operations_to_the_machining_menu()
+    public void The_plugin_adds_its_operations_to_the_machining_menu()
     {
         var manager = new PluginManager();
         var info = PluginManager.Inspect(typeof(Plugin).Assembly.Location)!;
@@ -436,7 +436,7 @@ public class MatmillPluginTests
         manager.Load(info, new Version(1, 0), _ => { });
 
         Assert.Equal(PluginState.Loaded, info.State);
-        Assert.Equal(["Trochoidal Pocket (matmill)", "Trochoidal Profile (matmill)"], manager.Operations.Select(o => o.DisplayType).Order());
+        Assert.Equal(["Trochoidal 3D Rough (matmill)", "Trochoidal Pocket (matmill)", "Trochoidal Profile (matmill)"], manager.Operations.Select(o => o.DisplayType).Order());
     }
 
     [Fact]
