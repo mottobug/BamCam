@@ -51,8 +51,36 @@ jumps to the object point. Selecting has the normal arrow.
 
 - polyline / line: `25` = segment length towards the cursor, `25<30` = 25 at 30° (counter-clockwise from +X),
   `<90` = direction only; Enter places the point, so you can draw by keyboard;
-- circle: the diameter; rectangle: `40x20`;
+- circle and flat spiral: the diameter; rectangle and ellipse: `40x20`;
 - hold **Shift** to snap the direction to 15° steps; Backspace corrects the value.
+
+**More shapes** (Draw ▸ More):
+
+- **Ellipse:** two corners of the rectangle round it, like the rectangle. It becomes a closed polyline of arcs
+  (within 0.005 mm of the true ellipse), with points at the ends of both axes.
+- **Tangent:** select two circles, arcs or single points (a point list with one point), then choose Tangent. The
+  lines touching both are shown; the one nearest to the cursor is highlighted, a click draws it. On an arc only the
+  lines touching the arc itself are offered.
+- **Flat Spiral:** asks for the stepover and the direction, then the centre and the radius are clicked like a
+  circle (or the diameter is typed). The spiral is made of half circles from the centre out to the radius, so its
+  turns are at most a stepover apart (slightly less so that it ends exactly on the radius), and ends with one full
+  circle there, for example to engrave or to clear a round pocket with an engrave operation.
+- **Spiral Path / Trochoidal Path:** select the lines, arcs or polylines to follow first. Both ask for the stepover,
+  the radius and the direction. The spiral path is a circle going round while it moves along the line by a stepover
+  per turn (a looped line). The trochoidal path puts a full circle every stepover along the line (and one at its
+  end), joined by short straight lines, a chain of arcs to cut a slot wider than the tool with an engrave operation.
+
+**Point patterns** (Draw ▸ Point List), for drilling or as markers; the point list goes to the active layer:
+
+- *Divide Geometry*: a number of points evenly along the selected shapes, e.g. a bolt circle;
+- *Step Around Geometry*: a point every step along each shape from its start (an open shape also gets its end);
+- *Fill Geometry*: a grid of points a step apart inside the selected closed shapes, centred on them; holes (shapes
+  inside shapes) stay empty. *Offset Fill Geometry* moves every other row by half a step;
+- *Centers*: one point in the centre of each object; *Extents*: the four corners and the centre of each object's
+  bounding box.
+
+Edit ▸ Transform ▸ **Center (Of Points)** moves the selection so that the average of its points lies on the origin;
+*Center (Extents)* uses the middle of its bounding box.
 
 **Snapping:** the toolbar buttons with the red dot switch snap to grid (`Ctrl+G`) and snap to objects. View ▸ Object
 Snap Modes chooses the points: end points (square marker), mid points (triangle), circle centres (circle),

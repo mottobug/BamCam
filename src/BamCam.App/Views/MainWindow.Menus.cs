@@ -259,6 +259,7 @@ public partial class MainWindow
         Item("_Array Copy...", ArrayCopy),
         Item("_Polar Array Copy...", PolarArrayCopy),
         Item("_Center (Extents)", CenterExtents),
+        Item("Center (Of _Points)", CenterOfPoints),
         AlignSubmenu(),
         Item("Apply Transformations", ApplyTransformations),
     ];
@@ -311,7 +312,11 @@ public partial class MainWindow
         Sub("Point _List",
             Item("_Draw", () => View.SetTool(new PointListTool())),
             Item("Di_vide Geometry...", DividePoints),
-            Item("_Centers", CenterPoints)),
+            Item("_Step Around Geometry...", () => _ = StepAroundPoints()),
+            Item("_Fill Geometry...", () => _ = FillPoints(offsetRows: false)),
+            Item("_Offset Fill Geometry...", () => _ = FillPoints(offsetRows: true)),
+            Item("_Centers", CenterPoints),
+            Item("_Extents", ExtentsPoints)),
         Item("_Text...", DrawText),
         Item("Text on Pol_yline", TextOnPolyline),
         Item("Script O_bject", NewScriptObject),
@@ -320,6 +325,12 @@ public partial class MainWindow
             Item("Extrude _Solid...", () => _ = DrawExtrude(solid: true)),
             Item("_Fill", DrawFill)),
         Item("Fill Re_gion...", () => _ = DrawFillRegion()),
+        Sub("_More",
+            Item("_Ellipse", DrawEllipse),
+            Item("_Tangent", DrawTangent),
+            Item("_Flat Spiral...", () => _ = DrawFlatSpiral()),
+            Item("S_piral Path...", () => _ = DrawPathAlong(trochoidal: false)),
+            Item("T_rochoidal Path...", () => _ = DrawPathAlong(trochoidal: true))),
         .. PluginMenuItems("Draw"),
     ];
 

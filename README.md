@@ -161,7 +161,8 @@ break objects at their intersections or at points, intersection points, set the 
 arc fit, remove overlaps,
 align objects (left, centre, right, top, middle, bottom) to the last or first selected object, the selection,
 the drawing, the origin or the stock, text along a polyline (Draw ▸ Text on Polyline, start point clicked on the guide),
-divide geometry/centers, cut/copy/paste (also between instances), undo/redo.
+ellipse, tangent lines, flat spiral, spiral and trochoidal paths along a shape,
+point lists by divide / step around / fill / offset fill geometry, centres and extents, cut/copy/paste (also between instances), undo/redo.
 
 **CAM:**
 - **Profile:** inside/outside (open shapes are cut beside the line: outside to the right of its point order, inside to
