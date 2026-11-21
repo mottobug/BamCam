@@ -18,17 +18,13 @@ public static class CadOps
     /// </summary>
     public static List<(Entity Source, List<PolylineEntity> Pieces)> BreakAtIntersections(IReadOnlyList<Entity> entities)
     {
-        var breakable = entities
-            .Where(e => e is PolylineEntity or LineEntity or ArcEntity or CircleEntity or RectEntity or SplineEntity)
-            .Select(e => (Entity: e, Paths: e.ToPaths().ToList()))
-            .Where(x => x.Paths.Count == 1)
-            .ToList();
+        var breakable = Breakable(entities);
         var result = new List<(Entity, List<PolylineEntity>)>();
-        foreach (var (entity, paths) in breakable)
+        foreach (var (entity, path) in breakable)
         {
-            var others = breakable.Where(x => x.Entity != entity).Select(x => x.Paths[0]).ToList();
-            if (TrimExtend.Break(paths[0], others) is { Count: > 0 } pieces &&
-                !(pieces.Count == 1 && !paths[0].Closed))
+            var others = breakable.Where(x => x.Entity != entity).Select(x => x.Path).ToList();
+            if (TrimExtend.Break(path, others) is { Count: > 0 } pieces &&
+                !(pieces.Count == 1 && !path.Closed))
                 result.Add((entity, pieces.Select(p => new PolylineEntity(p)).ToList()));
         }
         return result;
@@ -219,6 +215,184 @@ public static class CadOps
             if (p.Points.Count == 0 || Point3.Distance(p.Points[^1].Point, v.Point) > tol) p.Points.Add(v);
         if (p.Closed && p.Points.Count > 1 && Point3.Distance(p.Points[^1].Point, p.Points[0].Point) <= tol)
             p.Points.RemoveAt(p.Points.Count - 1);
+    }
+
+    /// <summary>The shapes Break at Intersections and Break at Points can split: one path each.</summary>
+    private static List<(Entity Entity, Path2 Path)> Breakable(IEnumerable<Entity> entities) => entities
+        .Where(e => e is PolylineEntity or LineEntity or ArcEntity or CircleEntity or RectEntity or SplineEntity)
+        .Select(e => (Entity: e, Paths: e.ToPaths().ToList()))
+        .Where(x => x.Paths.Count == 1)
+        .Select(x => (x.Entity, x.Paths[0]))
+        .ToList();
+
+    /// <summary>
+    /// Polyline ▸ Break at Points: splits the selected shapes at the points of the point lists among
+    /// <paramref name="entities"/> that lie on them (within <paramref name="tolerance"/>). Returns, for each shape
+    /// that was split, its pieces; a closed shape with one point on it becomes one open piece starting there.
+    /// </summary>
+    public static List<(Entity Source, List<PolylineEntity> Pieces)> BreakAtPoints(IReadOnlyList<Entity> entities, double tolerance)
+    {
+        var points = entities.OfType<PointListEntity>().SelectMany(p => p.WorldPoints()).Select(p => p.XY).ToList();
+        var result = new List<(Entity, List<PolylineEntity>)>();
+        if (points.Count == 0) return result;
+        foreach (var (entity, path) in Breakable(entities))
+            if (TrimExtend.BreakAt(path, points, tolerance) is { Count: > 0 } pieces &&
+                !(pieces.Count == 1 && !path.Closed))
+                result.Add((entity, pieces.Select(p => new PolylineEntity(p)).ToList()));
+        return result;
+    }
+
+    /// <summary>
+    /// Edit ▸ Intersection Points: the points where the shapes among <paramref name="entities"/> cross or touch each
+    /// other or themselves, each place once.
+    /// </summary>
+    public static List<Point3> IntersectionPoints(IEnumerable<Entity> entities)
+    {
+        var paths = entities.Where(e => e is not (PointListEntity or TextEntity))
+            .SelectMany(e => e.ToPaths()).Where(p => p.SegmentCount > 0).ToList();
+        var segments = paths.Select(p => p.Segments().ToList()).ToList();
+        var found = new List<Point3>();
+        void Add(Point2 p, double z)
+        {
+            if (!found.Any(f => Point2.Distance(f.XY, p) < 1e-6)) found.Add(p.ToPoint3(z));
+        }
+        for (var a = 0; a < segments.Count; a++)
+        {
+            var sa = segments[a];
+            for (var i = 0; i < sa.Count; i++)
+            {
+                // With itself: all but the neighbouring segments, whose joints are not crossings.
+                for (var j = i + 2; j < sa.Count; j++)
+                {
+                    if (paths[a].Closed && i == 0 && j == sa.Count - 1) continue;
+                    foreach (var p in ObjectSnap.Intersections(sa[i], sa[j])) Add(p, sa[i].Start.Z);
+                }
+                for (var b = a + 1; b < segments.Count; b++)
+                foreach (var s in segments[b])
+                foreach (var p in ObjectSnap.Intersections(sa[i], s)) Add(p, sa[i].Start.Z);
+            }
+        }
+        return found;
+    }
+
+    /// <summary>
+    /// Polyline ▸ Set Start Point: the closed polyline starts at the point of it nearest to <paramref name="world"/>
+    /// (a vertex within <paramref name="tolerance"/>, else a new vertex there). False for an open polyline.
+    /// </summary>
+    public static bool SetStartPoint(PolylineEntity p, Point2 world, double tolerance)
+    {
+        if (!p.Closed) return false;
+        if (TrimExtend.StartAt(p.ToPaths().First(), world, tolerance) is not { } path) return false;
+        p.Points.Clear();
+        p.Points.AddRange(path.Vertices);
+        p.Transform = Matrix4.Identity;
+        return true;
+    }
+
+    /// <summary>
+    /// Polyline ▸ Arc Fit: runs of straight segments that lie on a circle within <paramref name="tolerance"/> become
+    /// arcs; arcs already in the polyline stay. Returns the segment count before and after.
+    /// </summary>
+    public static (int Before, int After) ArcFit(PolylineEntity p, double tolerance)
+    {
+        var path = p.LocalPath;
+        var before = path.SegmentCount;
+        var fitted = ArcFitRuns(path, tolerance);
+        if (fitted.SegmentCount >= before) return (before, before);
+        p.Points.Clear();
+        p.Points.AddRange(fitted.Vertices);
+        return (before, fitted.SegmentCount);
+    }
+
+    /// <summary>Fits arcs to each run of straight segments between the arcs of the path.</summary>
+    private static Path2 ArcFitRuns(Path2 path, double tolerance)
+    {
+        if (path.Vertices.All(v => Math.Abs(v.Bulge) < 1e-12)) return ArcFitter.Fit(path, tolerance);
+        var v = path.Vertices.ToList();
+        if (path.Closed)
+        {
+            // Start at an arc and walk once round to it: every run of lines lies between two arcs.
+            var k = v.FindIndex(x => Math.Abs(x.Bulge) >= 1e-12);
+            v = [.. v.Skip(k), .. v.Take(k), v[k] with { Bulge = 0 }];
+        }
+        var result = new List<Vertex>();
+        var i = 0;
+        while (i < v.Count - 1)
+        {
+            if (Math.Abs(v[i].Bulge) >= 1e-12)
+            {
+                result.Add(v[i]);
+                i++;
+                continue;
+            }
+            var j = i;
+            while (j < v.Count - 1 && Math.Abs(v[j].Bulge) < 1e-12) j++;
+            var run = ArcFitter.Fit(new Path2(v.Skip(i).Take(j - i + 1).ToList(), false), tolerance);
+            result.AddRange(run.Vertices.Take(run.Count - 1));
+            i = j;
+        }
+        if (!path.Closed) result.Add(v[^1]);
+        return new Path2(result, path.Closed);
+    }
+
+    /// <summary>
+    /// Polyline ▸ Remove Overlaps: the path without the places where it runs back over itself (a straight segment
+    /// followed by one going back along the same line, the "Z" glitches of some exports). Returns the number of
+    /// points removed; 0 leaves the path as it is.
+    /// </summary>
+    public static (Path2 Path, int Removed) RemoveOverlaps(Path2 path, double tolerance)
+    {
+        var v = WithoutRepeats(path.Vertices.ToList(), path.Closed, tolerance);
+        var removed = path.Count - v.Count;
+        var changed = true;
+        while (changed && v.Count > (path.Closed ? 3 : 2))
+        {
+            changed = false;
+            var n = v.Count;
+            for (var i = path.Closed ? 0 : 1; i < (path.Closed ? n : n - 1); i++)
+            {
+                var prev = v[(i - 1 + n) % n];
+                var cur = v[i];
+                var next = v[(i + 1) % n];
+                if (Math.Abs(prev.Bulge) > 1e-12 || Math.Abs(cur.Bulge) > 1e-12) continue;
+                var d1 = cur.XY - prev.XY;
+                var d2 = next.XY - cur.XY;
+                var l1 = d1.Length;
+                var l2 = d2.Length;
+                if (l1 < tolerance || l2 < tolerance) continue;
+                // Back along the same line: opposite direction and the next point within tolerance of the line.
+                if (Point2.Dot(d1, d2) >= 0) continue;
+                if (Math.Abs(d1.X * d2.Y - d1.Y * d2.X) / Math.Max(l1, l2) > tolerance) continue;
+                v.RemoveAt(i);
+                removed++;
+                v = WithoutRepeats(v, path.Closed, tolerance, ref removed);
+                changed = true;
+                break;
+            }
+        }
+        return (removed == 0 ? path : new Path2(v, path.Closed), removed);
+    }
+
+    private static List<Vertex> WithoutRepeats(List<Vertex> v, bool closed, double tolerance)
+    {
+        var removed = 0;
+        return WithoutRepeats(v, closed, tolerance, ref removed);
+    }
+
+    private static List<Vertex> WithoutRepeats(List<Vertex> v, bool closed, double tolerance, ref int removed)
+    {
+        var result = new List<Vertex>();
+        foreach (var x in v)
+        {
+            if (result.Count > 0 && Point2.Distance(result[^1].XY, x.XY) <= tolerance) { removed++; continue; }
+            result.Add(x);
+        }
+        if (closed && result.Count > 1 && Point2.Distance(result[^1].XY, result[0].XY) <= tolerance)
+        {
+            result.RemoveAt(result.Count - 1);
+            removed++;
+        }
+        return result;
     }
 
     /// <summary>Bounding box of a set of entities.</summary>

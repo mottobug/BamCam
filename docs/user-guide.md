@@ -72,6 +72,20 @@ quadrants (diamond) and intersections (cross).
   Space switches fillet / chamfer / corner overcut, `-` gives an inverted fillet, Esc ends;
 - **break at intersections** (Edit menu): select objects that cross; each line, arc, circle, rectangle, polyline or
   spline is split into separate polylines where it crosses another selected object (or itself);
+- **intersection points** (Edit menu): a point list with the places where the selected objects cross or touch each
+  other (or themselves), to snap to or to drill;
+- **polyline tools** (Edit ▸ Polyline), for imported drawings in particular:
+  - *Set Start Point*: select one closed polyline, then click where it should start. A point near a corner takes the
+    corner, anywhere else on the outline a new point is added.
+  - *Break at Points*: select shapes and one or more point lists (for example from Draw ▸ Point List ▸ Divide
+    Geometry or Intersection Points); the shapes are split at the points that lie on them. A closed shape with one
+    point on it is opened there.
+  - *Arc Fit*: asks for a tolerance (default 0.01 mm) and turns runs of short straight segments that lie on a circle
+    within it into arcs, as from DXF, SVG or STL slices. Arcs already in the polyline stay. Fewer segments give
+    smoother toolpaths with G2 / G3 instead of many short G1 moves.
+  - *Remove Overlaps*: removes the places where a polyline runs back over itself (a spike or a "Z" step along a
+    line), which some exports produce. The cleaned polylines are copies on the active layer; the originals stay
+    unchanged for comparison;
 - **trim / extend** (`Ctrl` + `+`): click the boundaries (or just press Enter for all objects), then click a line
   near its end to extend it, Shift+click a piece to trim it;
 - **hide** single objects (right-click > Hide): they are no longer drawn, picked, snapped to or selected, but

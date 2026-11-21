@@ -104,10 +104,7 @@ public static class TrimExtend
     /// </summary>
     public static List<Path2>? Break(Path2 path, IReadOnlyList<Path2> cutters, bool self = true)
     {
-        // Without zero-length segments (repeated points, a closed path whose last point repeats the first): their
-        // joints would count as crossings of the path with itself.
-        path = new Path2(path.Vertices.Where((v, i) =>
-            i + 1 < path.Count ? !v.XY.AlmostEquals(path.Vertices[i + 1].XY, 1e-9) : !(path.Closed && v.XY.AlmostEquals(path.Vertices[0].XY, 1e-9))), path.Closed);
+        path = WithoutZeroLengthSegments(path);
         if (path.SegmentCount == 0) return null;
         var segments = path.Segments().ToList();
         var n = segments.Count;
@@ -130,6 +127,59 @@ public static class TrimExtend
                 }
             }
         }
+        return Split(path, segments, cuts);
+    }
+
+    /// <summary>
+    /// Splits <paramref name="path"/> at the <paramref name="points"/> that lie on it (within
+    /// <paramref name="tolerance"/>), as <see cref="Break"/> does at crossings. Null when no point lies on the path.
+    /// </summary>
+    public static List<Path2>? BreakAt(Path2 path, IEnumerable<Point2> points, double tolerance)
+    {
+        path = WithoutZeroLengthSegments(path);
+        if (path.SegmentCount == 0) return null;
+        var segments = path.Segments().ToList();
+        var cuts = new List<Position>();
+        foreach (var p in points)
+        {
+            var at = Nearest(segments, p);
+            if (Point2.Distance(p, PointAt(segments[at.Segment], at.T)) <= tolerance) cuts.Add(at);
+        }
+        return Split(path, segments, cuts);
+    }
+
+    /// <summary>
+    /// The closed <paramref name="path"/> starting at the point of it nearest to <paramref name="point"/>: a new
+    /// vertex there unless one is already (within <paramref name="tolerance"/>). Null for an open path.
+    /// </summary>
+    public static Path2? StartAt(Path2 path, Point2 point, double tolerance)
+    {
+        if (!path.Closed) return null;
+        path = WithoutZeroLengthSegments(path);
+        if (path.SegmentCount < 2) return null;
+        var vertex = path.Vertices.Select((v, i) => (v, i)).MinBy(x => Point2.Distance(x.v.XY, point));
+        if (Point2.Distance(vertex.v.XY, point) <= tolerance)
+            return new Path2(path.Vertices.Skip(vertex.i).Concat(path.Vertices.Take(vertex.i)), true);
+        var segments = path.Segments().ToList();
+        var n = segments.Count;
+        var at = Nearest(segments, point);
+        var open = Concat(Piece(segments, at, new Position(n - 1, 1)), Piece(segments, new Position(0, 0), at));
+        // The last vertex repeats the first.
+        return new Path2(open.Vertices.Take(open.Count - 1), true);
+    }
+
+    /// <summary>
+    /// Without zero-length segments (repeated points, a closed path whose last point repeats the first): their joints
+    /// would count as crossings of the path with itself.
+    /// </summary>
+    private static Path2 WithoutZeroLengthSegments(Path2 path) =>
+        new(path.Vertices.Where((v, i) =>
+            i + 1 < path.Count ? !v.XY.AlmostEquals(path.Vertices[i + 1].XY, 1e-9) : !(path.Closed && v.XY.AlmostEquals(path.Vertices[0].XY, 1e-9))), path.Closed);
+
+    /// <summary>The path cut into open pieces at <paramref name="cuts"/>; null without a cut inside it.</summary>
+    private static List<Path2>? Split(Path2 path, List<Segment> segments, List<Position> cuts)
+    {
+        var n = segments.Count;
         const double eps = 1e-7;
         // The same place may come from two segments (a crossing at a joint) or two cutters: one cut.
         var values = cuts.Select(c => c.Value).Select(v => path.Closed && v > n - eps ? 0 : v)
