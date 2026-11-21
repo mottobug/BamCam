@@ -177,6 +177,9 @@ public sealed class PlasmaOp : MachineOp, IInchDefaults
     [Param(79, "Lead Moves"), Browsable(false)]
     public CamParam<string> ShapeStarts { get; set; } = new("");
 
+    /// <summary>The start points belong to this operation's shapes, so Paste Format keeps them.</summary>
+    protected override bool KeepsOnPasteFormat(string name) => name == nameof(ShapeStarts);
+
     /// <summary>The start points of <see cref="ShapeStarts"/> by object id (several per object, e.g. for the outlines of a text).</summary>
     public List<(int Id, Point2 Point)> ReadShapeStarts()
     {

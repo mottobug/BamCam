@@ -540,16 +540,23 @@ public partial class MainWindow
 
     private void PasteFormat()
     {
-        if (_clipboardOp == null || _session.Inspected is not MachineOp target || target.GetType() != _clipboardOp.GetType()) return;
-        _session.Execute(T("Paste format"), () =>
+        if (_clipboardOp == null)
         {
-            foreach (var (name, p, _) in _clipboardOp.Parameters())
-            {
-                var t = target.FindParameter(name)!;
-                t.State = p.State;
-                t.BoxedValue = p.CloneParam().BoxedValue;
-            }
-        });
+            Log(T("Paste Format: first copy a machining operation (right-click ▸ Copy)."));
+            return;
+        }
+        if (_session.Inspected is not MachineOp target)
+        {
+            Log(T("Paste Format: select the machining operation that gets the settings."));
+            return;
+        }
+        if (target.GetType() != _clipboardOp.GetType())
+        {
+            Log(F("Paste Format: the copied operation ({0}) does not fit {1} ({2}). The settings only fit an operation of the same type.",
+                T(_clipboardOp.DisplayType), target.Name, T(target.DisplayType)));
+            return;
+        }
+        _session.Execute(T("Paste format"), () => target.PasteFormatFrom(_clipboardOp));
     }
 
     // ------------------------------------------------------------------ CAM

@@ -327,6 +327,25 @@ public abstract class MachineOp
         return doc.Machining.ToolNumber;
     }
 
+    /// <summary>
+    /// Paste Format: takes all parameter values and states of <paramref name="source"/> (same type), except those tied
+    /// to this operation's own objects (<see cref="KeepsOnPasteFormat"/>).
+    /// </summary>
+    public void PasteFormatFrom(MachineOp source)
+    {
+        if (source.GetType() != GetType()) throw new ArgumentException("Paste Format needs an operation of the same type.", nameof(source));
+        foreach (var (name, p, _) in source.Parameters())
+        {
+            if (KeepsOnPasteFormat(name)) continue;
+            var t = FindParameter(name)!;
+            t.State = p.State;
+            t.BoxedValue = p.CloneParam().BoxedValue;
+        }
+    }
+
+    /// <summary>Parameters that belong to the operation's objects and so stay as they are on Paste Format.</summary>
+    protected virtual bool KeepsOnPasteFormat(string name) => false;
+
     /// <summary>All parameters in canonical order. Name is the file element name.</summary>
     public IEnumerable<(string Name, ICamParam Param, ParamAttribute Info)> Parameters()
     {
