@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CADFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Version="0.9.8.0" Name="Thread milling and tapping">
+  <layers>
+    <layer name="Default" color="127,255,0">
+      <ModificationCount>0</ModificationCount>
+      <objects>
+        <circle id="1" c="15,15,0" d="8.5">
+          <mat m="Identity" />
+        </circle>
+        <circle id="2" c="40,15,0" d="10.2">
+          <mat m="Identity" />
+        </circle>
+        <circle id="3" c="70,15,0" d="16">
+          <mat m="Identity" />
+        </circle>
+        <points id="4">
+          <mat m="Identity" />
+          <pts>
+            <p>95,8</p>
+            <p>95,22</p>
+          </pts>
+        </points>
+      </objects>
+    </layer>
+  </layers>
+  <MachiningOptions>
+    <OutFile></OutFile>
+    <RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>
+    <FastPlungeHeight>0.2</FastPlungeHeight>
+    <Stock>
+      <Material>Aluminium</Material>
+      <PMin>-10,-10,-20</PMin>
+      <PMax>110,40</PMax>
+      <Color>255,165,0</Color>
+    </Stock>
+    <ToolDiameter>0</ToolDiameter>
+    <ToolNumber>0</ToolNumber>
+    <ToolProfile>Unspecified</ToolProfile>
+  </MachiningOptions>
+  <parts>
+    <part Name="Thread milling and tapping">
+      <machineops>
+        <mop xsi:type="BamCamThreadMill">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">8000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>M10 internal, bottom up</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-12</TargetDepth>
+          <DepthIncrement state="Value">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <ThreadType state="Value">Internal</ThreadType>
+          <ThreadDiameter state="Value">10</ThreadDiameter>
+          <Pitch state="Value">1.5</Pitch>
+          <ThreadDepth state="Default">0</ThreadDepth>
+          <ThreadHand state="Default">Right</ThreadHand>
+          <CutDirection state="Value">BottomUp</CutDirection>
+          <RadialPasses state="Default">1</RadialPasses>
+          <CutterLength state="Default">0</CutterLength>
+        </mop>
+        <mop xsi:type="BamCamThreadMill">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">8000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>2</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">8</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>M12 left hand, top down, two radial passes</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-10</TargetDepth>
+          <DepthIncrement state="Value">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <ThreadType state="Value">Internal</ThreadType>
+          <ThreadDiameter state="Value">12</ThreadDiameter>
+          <Pitch state="Value">1.75</Pitch>
+          <ThreadDepth state="Default">0</ThreadDepth>
+          <ThreadHand state="Value">Left</ThreadHand>
+          <CutDirection state="Value">TopDown</CutDirection>
+          <RadialPasses state="Value">2</RadialPasses>
+          <CutterLength state="Default">0</CutterLength>
+        </mop>
+        <mop xsi:type="BamCamThreadMill">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">8000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>3</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">8</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>M16 external thread on a boss</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-8</TargetDepth>
+          <DepthIncrement state="Value">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <ThreadType state="Value">External</ThreadType>
+          <ThreadDiameter state="Value">16</ThreadDiameter>
+          <Pitch state="Value">2</Pitch>
+          <ThreadDepth state="Default">0</ThreadDepth>
+          <ThreadHand state="Default">Right</ThreadHand>
+          <CutDirection state="Default">BottomUp</CutDirection>
+          <RadialPasses state="Default">1</RadialPasses>
+          <CutterLength state="Default">0</CutterLength>
+        </mop>
+        <mop xsi:type="BamCamTap">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">300</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>4</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>M6 tapping (rigid, G84)</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-10</TargetDepth>
+          <DepthIncrement state="Value">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <Pitch state="Value">1</Pitch>
+          <RetractHeight state="Value">3</RetractHeight>
+          <Dwell state="Default">0</Dwell>
+          <FeedFactor state="Default">100</FeedFactor>
+        </mop>
+      </machineops>
+      <Stock>
+        <PMin>0,0</PMin>
+        <PMax>0,0</PMax>
+        <Color>0,0,0</Color>
+      </Stock>
+      <ToolProfile>Unspecified</ToolProfile>
+      <Nesting>
+        <BasePoint>0,0</BasePoint>
+      </Nesting>
+    </part>
+  </parts>
+  <ActiveLayer>Default</ActiveLayer>
+  <ActivePart>Thread milling and tapping</ActivePart>
+</CADFile>

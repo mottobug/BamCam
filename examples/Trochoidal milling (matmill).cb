@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CADFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Version="0.9.8.0" Name="Trochoidal milling (matmill)">
+  <layers>
+    <layer name="Default" color="127,255,0">
+      <ModificationCount>0</ModificationCount>
+      <objects>
+        <rect id="1" Closed="true" w="70" h="60" radius="4">
+          <mat m="Identity" />
+          <pts>
+            <p>4,0,0</p>
+            <p b="0.41421356237309503">66,0,0</p>
+            <p>70,4,0</p>
+            <p b="0.41421356237309503">70,56,0</p>
+            <p>66,60,0</p>
+            <p b="0.41421356237309503">4,60,0</p>
+            <p>0,56,0</p>
+            <p b="0.41421356237309503">0,4,0</p>
+          </pts>
+        </rect>
+        <circle id="2" c="35,30,0" d="20">
+          <mat m="Identity" />
+        </circle>
+        <rect id="3" Closed="true" p="95,5,0" w="50" h="50">
+          <mat m="Identity" />
+          <pts>
+            <p>95,5,0</p>
+            <p>145,5,0</p>
+            <p>145,55,0</p>
+            <p>95,55,0</p>
+          </pts>
+        </rect>
+        <rect id="4" Closed="true" p="110,20,0" w="20" h="20">
+          <mat m="Identity" />
+          <pts>
+            <p>110,20,0</p>
+            <p>130,20,0</p>
+            <p>130,40,0</p>
+            <p>110,40,0</p>
+          </pts>
+        </rect>
+      </objects>
+    </layer>
+  </layers>
+  <MachiningOptions>
+    <OutFile></OutFile>
+    <RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>
+    <FastPlungeHeight>0.2</FastPlungeHeight>
+    <Stock>
+      <Material>Aluminium</Material>
+      <PMin>-25,-25,-12</PMin>
+      <PMax>165,85</PMax>
+      <Color>255,165,0</Color>
+    </Stock>
+    <ToolDiameter>0</ToolDiameter>
+    <ToolNumber>0</ToolNumber>
+    <ToolProfile>Unspecified</ToolProfile>
+  </MachiningOptions>
+  <parts>
+    <part Name="Trochoidal milling (matmill)">
+      <machineops>
+        <mop xsi:type="MOPTrochopock">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+            <prim>2</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Pocket round an island (mixed direction, spiral lead-in)</Name>
+          <TargetDepth state="Value">-10</TargetDepth>
+          <DepthIncrement state="Value">5</DepthIncrement>
+          <StepOver state="Value">0.15</StepOver>
+          <MillingDirection state="Value">Mixed</MillingDirection>
+          <LeadInMove state="Value">
+            <LeadInType>Spiral</LeadInType>
+            <SpiralAngle>3</SpiralAngle>
+            <TangentRadius>0</TangentRadius>
+            <LeadInFeedrate>0</LeadInFeedrate>
+          </LeadInMove>
+          <Chord_feedrate state="Value">2000</Chord_feedrate>
+          <Spiral_feedrate state="Value">500</Spiral_feedrate>
+        </mop>
+        <mop xsi:type="MOPTrochoprof">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>3</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Outside slot, smooth chords</Name>
+          <TargetDepth state="Value">-10</TargetDepth>
+          <DepthIncrement state="Value">10</DepthIncrement>
+          <InsideOutside state="Value">Outside</InsideOutside>
+          <StepOver state="Value">0.2</StepOver>
+          <CutWidth state="Value">12</CutWidth>
+          <MillingDirection state="Value">Climb</MillingDirection>
+          <Should_smooth_chords state="Value">True</Should_smooth_chords>
+        </mop>
+        <mop xsi:type="MOPTrochoprof">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>4</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Inside, inside corners cleared</Name>
+          <TargetDepth state="Value">-10</TargetDepth>
+          <DepthIncrement state="Value">10</DepthIncrement>
+          <InsideOutside state="Value">Inside</InsideOutside>
+          <StepOver state="Value">0.2</StepOver>
+          <CutWidth state="Value">8</CutWidth>
+          <Clear_inside_corners state="Value">True</Clear_inside_corners>
+        </mop>
+      </machineops>
+      <Stock>
+        <PMin>0,0</PMin>
+        <PMax>0,0</PMax>
+        <Color>0,0,0</Color>
+      </Stock>
+      <ToolProfile>Unspecified</ToolProfile>
+      <Nesting>
+        <BasePoint>0,0</BasePoint>
+      </Nesting>
+    </part>
+  </parts>
+  <ActiveLayer>Default</ActiveLayer>
+  <ActivePart>Trochoidal milling (matmill)</ActivePart>
+</CADFile>

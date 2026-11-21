@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CADFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Version="0.9.8.0" Name="V-Engrave">
+  <layers>
+    <layer name="Default" color="127,255,0">
+      <ModificationCount>0</ModificationCount>
+      <objects>
+        <text id="1" p1="5,15,0" p2="5,15,0" Height="20" Font="Arial" align="bottom,left" style="bold">
+          <mat m="Identity" />BamCam</text>
+        <pline id="2" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p>140,52,0</p>
+            <p>134.709932729368,37.2811529493745,0</p>
+            <p>119.076756641507,36.7983738762488,0</p>
+            <p>131.440491353344,27.2188470506255,0</p>
+            <p>127.068724449566,12.2016261237512,0</p>
+            <p>140,21,0</p>
+            <p>152.931275550434,12.2016261237512,0</p>
+            <p>148.559508646656,27.2188470506255,0</p>
+            <p>160.923243358493,36.7983738762488,0</p>
+            <p>145.290067270632,37.2811529493745,0</p>
+          </pts>
+        </pline>
+      </objects>
+    </layer>
+  </layers>
+  <MachiningOptions>
+    <OutFile></OutFile>
+    <RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>
+    <FastPlungeHeight>0.2</FastPlungeHeight>
+    <Stock>
+      <Material>Oak</Material>
+      <PMin>-5,-5,-10</PMin>
+      <PMax>165,65</PMax>
+      <Color>255,165,0</Color>
+    </Stock>
+    <ToolDiameter>0</ToolDiameter>
+    <ToolNumber>0</ToolNumber>
+    <ToolProfile>Unspecified</ToolProfile>
+  </MachiningOptions>
+  <parts>
+    <part Name="V-Engrave">
+      <machineops>
+        <mop xsi:type="BamCamVEngrave">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Lettering, 60 degree bit</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-3</TargetDepth>
+          <DepthIncrement state="Default">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <VAngle state="Value">60</VAngle>
+          <TipDiameter state="Default">0</TipDiameter>
+          <ClearFlatAreas state="Default">True</ClearFlatAreas>
+          <FlatStepover state="Default">0.2</FlatStepover>
+          <Resolution state="Value">0.1</Resolution>
+        </mop>
+        <mop xsi:type="BamCamVEngrave">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>2</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Star, flat bottom at 2 mm cleared</Name>
+          <Transform state="Default" m="Identity" />
+          <TargetDepth state="Value">-2</TargetDepth>
+          <DepthIncrement state="Default">0</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <VAngle state="Value">90</VAngle>
+          <TipDiameter state="Value">0.2</TipDiameter>
+          <ClearFlatAreas state="Value">True</ClearFlatAreas>
+          <FlatStepover state="Value">0.3</FlatStepover>
+          <Resolution state="Default">0.05</Resolution>
+        </mop>
+      </machineops>
+      <Stock>
+        <PMin>0,0</PMin>
+        <PMax>0,0</PMax>
+        <Color>0,0,0</Color>
+      </Stock>
+      <ToolProfile>Unspecified</ToolProfile>
+      <Nesting>
+        <BasePoint>0,0</BasePoint>
+      </Nesting>
+    </part>
+  </parts>
+  <ActiveLayer>Default</ActiveLayer>
+  <ActivePart>V-Engrave</ActivePart>
+</CADFile>

@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CADFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Version="0.9.8.0" Name="Plasma">
+  <layers>
+    <layer name="Default" color="127,255,0">
+      <ModificationCount>0</ModificationCount>
+      <objects>
+        <pline id="1" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p>0,0,0</p>
+            <p>160,0,0</p>
+            <p>160,30,0</p>
+            <p>60,80,0</p>
+            <p>0,80,0</p>
+          </pts>
+        </pline>
+        <circle id="2" c="20,20,0" d="16">
+          <mat m="Identity" />
+        </circle>
+        <circle id="3" c="20,60,0" d="16">
+          <mat m="Identity" />
+        </circle>
+        <circle id="4" c="130,15,0" d="10">
+          <mat m="Identity" />
+        </circle>
+        <rect id="5" Closed="true" p="60,10,0" w="40" h="10" radius="5">
+          <mat m="Identity" />
+          <pts>
+            <p>65,10,0</p>
+            <p b="0.41421356237309503">95,10,0</p>
+            <p>100,15,0</p>
+            <p b="0.41421356237309503">100,15,0</p>
+            <p>95,20,0</p>
+            <p b="0.41421356237309503">65,20,0</p>
+            <p>60,15,0</p>
+            <p b="0.41421356237309503">60,15,0</p>
+          </pts>
+        </rect>
+        <circle id="6" c="45,40,0" d="5">
+          <mat m="Identity" />
+        </circle>
+      </objects>
+    </layer>
+  </layers>
+  <MachiningOptions>
+    <OutFile></OutFile>
+    <RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>
+    <FastPlungeHeight>0.2</FastPlungeHeight>
+    <PostProcessor>GRBL Plasma</PostProcessor>
+    <Stock>
+      <Material>Mild steel</Material>
+      <PMin>-10,-10,-3</PMin>
+      <PMax>170,90</PMax>
+      <Color>255,165,0</Color>
+    </Stock>
+    <ToolDiameter>0</ToolDiameter>
+    <ToolNumber>0</ToolNumber>
+    <ToolProfile>Unspecified</ToolProfile>
+  </MachiningOptions>
+  <parts>
+    <part Name="Plasma">
+      <machineops>
+        <mop xsi:type="BamCamPlasma">
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Value">Off</SpindleDirection>
+          <SpindleSpeed state="Value">0</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+            <prim>2</prim>
+            <prim>3</prim>
+            <prim>4</prim>
+            <prim>5</prim>
+            <prim>6</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">0</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">2200</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Bracket (arc leads, probing, THC)</Name>
+          <Transform state="Default" m="Identity" />
+          <CutData state="Default" />
+          <KerfWidth state="Value">1.5</KerfWidth>
+          <KerfSide state="Default">Automatic</KerfSide>
+          <CutDirection state="Default">Part On Right</CutDirection>
+          <HeightControl state="Value">Probe</HeightControl>
+          <PierceHeight state="Value">3.8</PierceHeight>
+          <PierceDelay state="Value">0.4</PierceDelay>
+          <CutHeight state="Value">1.5</CutHeight>
+          <UseThc state="Value">True</UseThc>
+          <ProbeStartHeight state="Default">5</ProbeStartHeight>
+          <ProbeDepth state="Default">10</ProbeDepth>
+          <ProbeFeedrate state="Default">300</ProbeFeedrate>
+          <SwitchOffset state="Default">0</SwitchOffset>
+          <LeadIn state="Value">Arc</LeadIn>
+          <LeadInLength state="Value">5</LeadInLength>
+          <LeadOut state="Value">Line</LeadOut>
+          <LeadOutLength state="Value">2</LeadOutLength>
+          <Overcut state="Value">1</Overcut>
+          <SmallHoleSize state="Value">8</SmallHoleSize>
+          <SmallHoleFeedrate state="Value">1200</SmallHoleFeedrate>
+          <ShapeStarts state="Value">1:100,0;5:60,15</ShapeStarts>
+        </mop>
+      </machineops>
+      <Stock>
+        <PMin>0,0</PMin>
+        <PMax>0,0</PMax>
+        <Color>0,0,0</Color>
+      </Stock>
+      <ToolProfile>Unspecified</ToolProfile>
+      <Nesting>
+        <BasePoint>0,0</BasePoint>
+      </Nesting>
+    </part>
+  </parts>
+  <ActiveLayer>Default</ActiveLayer>
+  <ActivePart>Plasma</ActivePart>
+</CADFile>
