@@ -140,6 +140,11 @@ public partial class MainWindow
     /// <summary>A new, empty drawing using the configured units and layer colour.</summary>
     private CadDocument NewDocument()
     {
+        if (!string.IsNullOrWhiteSpace(_settings.DrawingTemplate))
+        {
+            if (FromTemplate(_settings.DrawingTemplate) is { } fromTemplate) return fromTemplate;
+            Log(F("Drawing Template '{0}' could not be read; starting with an empty drawing.", _settings.DrawingTemplate));
+        }
         var doc = CadDocument.CreateNew();
         doc.Units = _settings.DrawingUnits;
         foreach (var l in doc.Layers) l.Color = _settings.DefaultLayerColor;

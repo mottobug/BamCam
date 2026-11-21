@@ -1907,6 +1907,23 @@
   "Counter-clockwise (CCW)": "Gegen den Uhrzeigersinn (CCW)",
   "Clockwise (CW)": "Im Uhrzeigersinn (CW)",
 
+  // Vorlagen, Originalgröße, Deckkraft, G-Code-Ordner
+  "New from _Template...": "Neu aus _Vorlage...",
+  "New from Template": "Neu aus Vorlage",
+  "New drawing from the template {0}.": "Neue Zeichnung aus der Vorlage {0}.",
+  "Could not read {0}: {1}": "{0} konnte nicht gelesen werden: {1}",
+  "Drawing Template": "Zeichnungsvorlage",
+  "A .cb drawing that File > New starts from (post processor, stock, styles, layers, objects and operations). Empty = an empty drawing. The template file itself is never changed; File > New from Template chooses one each time.": "Eine .cb-Zeichnung, von der Datei > Neu ausgeht (Postprozessor, Rohteil, Stile, Layer, Objekte und Bearbeitungen). Leer = eine leere Zeichnung. Die Vorlagendatei selbst wird nie verändert; Datei > Neu aus Vorlage wählt jedes Mal eine aus.",
+  "Drawing Template '{0}' could not be read; starting with an empty drawing.": "Die Zeichnungsvorlage '{0}' konnte nicht gelesen werden; es geht mit einer leeren Zeichnung weiter.",
+  "Zoom Actua_l Size": "Ori_ginalgröße",
+  "Window O_pacity...": "Fenster-_Deckkraft...",
+  "Window Opacity": "Fenster-Deckkraft",
+  "Opacity in % (10 to 100):": "Deckkraft in % (10 bis 100):",
+  "Window Opacity: this system does not let the windows behind shine through.": "Fenster-Deckkraft: Dieses System lässt die Fenster dahinter nicht durchscheinen.",
+  "Browse Gcode Folder": "G-Code-Ordner öffnen",
+  "No G-code folder yet: save the drawing or use Produce Gcode first.": "Noch kein G-Code-Ordner: Speichern Sie die Zeichnung oder erzeugen Sie zuerst G-Code.",
+  "The G-code folder {0} does not exist yet.": "Der G-Code-Ordner {0} existiert noch nicht.",
+
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",
   "Y": "Y",

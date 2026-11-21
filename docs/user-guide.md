@@ -431,6 +431,21 @@ BamCam reads and writes CamBam drawings (`.cb`) and post processors (`.cbpp`), i
 Values and objects BamCam does not know are kept when a file is saved again. Objects of plugins and script objects
 are also saved as plain polylines, so CamBam (and BamCam without the plugin) can still open and machine them.
 
+**Templates:** any drawing can serve as a template, for example one with your post processor, stock, machining
+origin, layers, a frame or standard operations. *File ▸ New from Template* chooses one (it starts in the `templates`
+folder of the system folder) and opens an untitled copy; the template itself is never changed, and the G-code file
+name of its Machining stays. Tools ▸ Options ▸ Files ▸ *Drawing Template* makes File ▸ New always start from one.
+
+**Opening `.cb` files by double-click:** the Windows installer offers it as an option (off by default, since CamBam may
+already open them). The Linux package registers the file type when installed (`install.sh`), and on macOS BamCam is
+offered under *Open With* for `.cb` files.
+
+**More in the menus:** View ▸ *Zoom Actual Size* shows the drawing at about its real size on the screen (1 mm as
+1 mm, taking the screen at the 96 units per inch the system scales to). View ▸ *Window Opacity* makes the main window
+see-through (10 to 100 %), for example to trace a picture shown by another program behind it; it is not stored.
+Machining ▸ *Browse Gcode Folder* (also in the right-click menu of Machining) opens the folder of the G-code file in
+the file manager.
+
 **SVG** (from Inkscape, Illustrator, Affinity and others; File ▸ Open, File ▸ Insert File or drag and drop): the drawing
 keeps its real size (plain numbers are pixels at 96 per inch) and its place on the page, whose lower left corner
 becomes the origin. Inkscape layers become layers (in files of other programs the named top-level groups); objects

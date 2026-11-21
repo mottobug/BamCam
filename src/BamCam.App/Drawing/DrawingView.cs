@@ -153,6 +153,13 @@ public sealed partial class DrawingView : Control, IToolHost
         ZoomToFit();
     }
 
+    /// <summary>Zooms about the middle of the view to <paramref name="scale"/> screen units per drawing unit.</summary>
+    public void ZoomTo(double scale)
+    {
+        if (scale <= 0 || _view.Scale <= 0) return;
+        ZoomBy(scale / _view.Scale);
+    }
+
     public void ZoomBy(double factor)
     {
         _view.ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), factor);

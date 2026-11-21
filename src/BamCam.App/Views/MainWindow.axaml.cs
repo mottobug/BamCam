@@ -129,6 +129,15 @@ public partial class MainWindow : Window
         Deactivated += (_, _) => View.SpaceReleased();
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
+        // macOS hands a double-clicked drawing to the running app as an event, not on the command line.
+        if (Avalonia.Application.Current?.TryGetFeature(typeof(Avalonia.Controls.ApplicationLifetimes.IActivatableLifetime))
+            is Avalonia.Controls.ApplicationLifetimes.IActivatableLifetime activatable)
+            activatable.Activated += async (_, e) =>
+            {
+                if (e is Avalonia.Controls.ApplicationLifetimes.FileActivatedEventArgs files &&
+                    files.Files.FirstOrDefault()?.TryGetLocalPath() is { } path && await ConfirmDiscard())
+                    OpenPath(path);
+            };
         Closing += OnClosing;
         Closed += (_, _) => SaveSettings();
 

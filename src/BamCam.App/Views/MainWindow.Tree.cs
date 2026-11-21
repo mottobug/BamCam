@@ -383,6 +383,7 @@ public partial class MainWindow
                 Add(T("Generate Toolpaths"), () => GenerateToolpaths());
                 Add(T("Produce Gcode"), () => _ = ProduceGCode(PostScope.All));
                 Add(T("Edit Gcode"), EditGCode);
+                Add(T("Browse Gcode Folder"), BrowseGCodeFolder);
                 Sep();
                 Add(T("New Part"), NewPart);
                 Add(T("Set Machining Origin"), () => View.SetTool(new PickPointTool(T("Select machining origin"),

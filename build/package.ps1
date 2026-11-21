@@ -124,6 +124,17 @@ elseif ($Rid -like "linux-*") {
         "Categories=Graphics;Engineering;",
         "MimeType=application/x-bamcam-drawing;"
     )
+    # The file type behind the MimeType above: *.cb drawings open with BamCam (double-click, "Open with").
+    Write-TextLf (Join-Path $stage "bamcam-mime.xml") @(
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">',
+        '  <mime-type type="application/x-bamcam-drawing">',
+        '    <comment>BamCam / CamBam drawing</comment>',
+        '    <glob pattern="*.cb"/>',
+        '    <icon name="bamcam"/>',
+        '  </mime-type>',
+        '</mime-info>'
+    )
     Write-TextLf (Join-Path $stage "install.sh") @(
         "#!/bin/sh",
         "# Installs BamCam for the current user (~/.local), or system-wide with: sudo ./install.sh --system",
@@ -131,7 +142,9 @@ elseif ($Rid -like "linux-*") {
         "SRC=`$(cd `"`$(dirname `"`$0`")`" && pwd)",
         "if [ `"`$1`" = `"--system`" ]; then PREFIX=/opt/bamcam; SHARE=/usr/share; BIN=/usr/local/bin;",
         "else PREFIX=`"`$HOME/.local/opt/bamcam`"; SHARE=`"`$HOME/.local/share`"; BIN=`"`$HOME/.local/bin`"; fi",
-        "mkdir -p `"`$PREFIX`" `"`$SHARE/applications`" `"`$SHARE/icons/hicolor/256x256/apps`" `"`$BIN`"",
+        "mkdir -p `"`$PREFIX`" `"`$SHARE/applications`" `"`$SHARE/icons/hicolor/256x256/apps`" `"`$SHARE/mime/packages`" `"`$BIN`"",
+        "cp `"`$SRC/bamcam-mime.xml`" `"`$SHARE/mime/packages/bamcam.xml`"",
+        "command -v update-mime-database >/dev/null 2>&1 && update-mime-database `"`$SHARE/mime`" || true",
         "cp -R `"`$SRC/bamcam`" `"`$PREFIX/`"",
         "chmod +x `"`$PREFIX/bamcam/BamCam`"",
         "cp `"`$SRC/bamcam.png`" `"`$SHARE/icons/hicolor/256x256/apps/bamcam.png`"",
@@ -191,7 +204,14 @@ elseif ($Rid -like "osx-*") {
         "  <key>CFBundleVersion</key>", "  <string>$Version</string>",
         "  <key>CFBundleShortVersionString</key>", "  <string>$Version</string>",
         '  <key>LSMinimumSystemVersion</key>', '  <string>12.0</string>',
-        '  <key>NSHighResolutionCapable</key>', '  <true/>'
+        '  <key>NSHighResolutionCapable</key>', '  <true/>',
+        # .cb drawings: BamCam is offered in "Open With" without taking them from another program (rank Alternate).
+        '  <key>CFBundleDocumentTypes</key>', '  <array>', '    <dict>',
+        '      <key>CFBundleTypeName</key>', '      <string>BamCam drawing</string>',
+        '      <key>CFBundleTypeExtensions</key>', '      <array><string>cb</string></array>',
+        '      <key>CFBundleTypeRole</key>', '      <string>Editor</string>',
+        '      <key>LSHandlerRank</key>', '      <string>Alternate</string>',
+        '    </dict>', '  </array>'
     ) + $iconEntry + @('</dict>', '</plist>'))
 
     if (Get-Command codesign -ErrorAction SilentlyContinue) {

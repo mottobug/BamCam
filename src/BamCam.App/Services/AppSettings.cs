@@ -107,6 +107,9 @@ public sealed class AppSettings
     [Category("Files"), DisplayName("File Backups"), Description("Number of name.b1 … name.bN backups kept when saving.")]
     public int FileBackups { get; set; } = 3;
     [Category("Files"), DisplayName("Recent Files Count")] public int MaxRecentFiles { get; set; } = 10;
+    [Category("Files"), DisplayName("Drawing Template"),
+     Description("A .cb drawing that File > New starts from (post processor, stock, styles, layers, objects and operations). Empty = an empty drawing. The template file itself is never changed; File > New from Template chooses one each time.")]
+    public string DrawingTemplate { get; set; } = "";
     [Category("Files"), DisplayName("DXF Export Version"),
      Description("R2000 keeps splines as splines; R12 is read by older programs (splines and texts become polylines).")]
     public BamCam.IO.Dxf.DxfVersion DxfExportVersion { get; set; } = BamCam.IO.Dxf.DxfVersion.R2000;

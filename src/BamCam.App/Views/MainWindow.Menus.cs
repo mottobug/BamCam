@@ -122,6 +122,7 @@ public partial class MainWindow
 
         MainMenu.Items.Add(Sub("_File",
             Item("_New", NewDrawing, "Ctrl+N"),
+            Item("New from _Template...", NewFromTemplate),
             Item("_Open...", OpenDialog, "Ctrl+O"),
             Item("_Save", () => _ = Save(), "Ctrl+S"),
             Item("Save _As...", () => _ = SaveAs(), "Ctrl+Shift+S"),
@@ -271,6 +272,7 @@ public partial class MainWindow
         [
             Item("_Reset", () => View.ResetView(), "Home"),
             Item("Zoom To _Fit", () => View.ZoomToFit()),
+            Item("Zoom Actua_l Size", ZoomActualSize),
             "-",
             Item("_XY Plane", () => View.SetStandardView("XY"), "Ctrl+1", (Key.D1, KeyModifiers.Control), (Key.NumPad1, KeyModifiers.Control)),
             Item("X_Z Plane", () => View.SetStandardView("XZ"), "Ctrl+2", (Key.D2, KeyModifiers.Control), (Key.NumPad2, KeyModifiers.Control)),
@@ -289,6 +291,7 @@ public partial class MainWindow
             Check("Holding Tab Drag Toolpath Refresh", () => s.TabDragToolpathRefresh, v => s.TabDragToolpathRefresh = v),
             Item("Toolpath View _Filter...", ShowToolpathFilter, "Ctrl+F"),
             Item("Show All Ob_jects", ShowAllObjects),
+            Item("Window O_pacity...", () => _ = SetWindowOpacity()),
             "-",
             Check("Snap to _Grid", () => s.SnapToGrid, v => s.SnapToGrid = v, "Ctrl+G"),
             Check("Snap to _Objects", () => s.SnapToObjects, v => s.SnapToObjects = v),
@@ -360,6 +363,7 @@ public partial class MainWindow
         Item("3D _Simulation...", () => _ = ShowSimulation(), "Ctrl+Shift+T"),
         Item("Produce G_code", () => _ = ProduceGCode(MenuPostScope()), "Ctrl+W"),
         Item("Edit Gcode", EditGCode),
+        Item("Browse Gcode Folder", BrowseGCodeFolder),
         .. PluginMenuItems("Machining"),
     ];
     private bool HandleShortcut(Key key, KeyModifiers mods)
