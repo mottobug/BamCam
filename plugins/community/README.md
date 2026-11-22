@@ -1,36 +1,42 @@
-# Community plugins
+**WrapGCode: a plugin for BamCam to wrap a GCode file for a 4th axis**
 
-Plugins written by BamCam users, shared here so that others can find and use them.
+**Purpose**:
 
-**Use at your own risk.** They are checked to build and to do what they say, but they are not tested like BamCam
-itself. A plugin runs with the same rights as BamCam, and BamCam asks once before it loads one. Please report problems
-as an [issue](https://github.com/mottobug/BamCam/issues) with the plugin's name in the title.
+WrapGCode is intended to be used to create GCode to run on a 4th Axis CNC machine.  This allows the GCode to be created on a 3 axis machine, then converted to a 4-axis machine by replacing all the Xaxis (linear) commands with Aaxis (rotational commands.
 
-## Using a plugin
+**Copyright**:
 
-Every [BamCam release](https://github.com/mottobug/BamCam/releases) has a ZIP file per community plugin, named
-`community-<Author>.<Name>-<version>.zip`. Install it with **Tools ▸ Plugins ▸ Install from ZIP...** and restart
-BamCam.
+MIT LIcence, developed by Geoffrey G Roy (geoff@cadplan.com.au)
 
-## The plugins
+**Assumptions**:
 
-| Plugin | Author | What it does |
-|---|---|---|
-| [Example (Square)](BamCam.Example) | BamCam project | Example: Draw ▸ Square (Example) draws a square around the origin. Shows what a community plugin looks like. |
+1. The 4th axis is fixed on the machine bed aligned with the Y-axis, so that the X-axis commands are converted into A-0axis commands.
 
-## Adding or changing a plugin
+2. The Z-origin is set to be the centre of rotation of the A-axis
 
-See [Sharing a plugin](../../docs/plugins.md#sharing-a-plugin) for the steps, done entirely on the GitHub website.
+3. The objects used to create the required surface are defined in the X-Y plane and set to a height to match their distance from the centre of rotation (Z=0).
 
-The rules in short:
+4. The minimum and maximum X values created in the G-Code are used to scale the defined cutting paths to a part or a whole circular shape.
 
-- **One folder per plugin**, named `<Author>.<Name>`, for example `GeoffRoy.Revolve`. Start from a copy of
-  [`_Template`](_Template).
-- **Source code only.** No DLLs or other built files: the build makes the plugin from the source, so everyone can see
-  what it does.
-- **A `README.md`** in the folder: what the plugin does, how to use it, the author, the version and the licence. Add a
-  line for it to the table above.
-- **A licence that lets others use and change it**, MIT like BamCam if you have no other wish.
-- **Changes** come as a pull request, like the first version. Raise `<Version>` in the `.csproj` with each change.
+5. Several MOPs can be used, to be executed in the required sequence.
 
-A plugin that many people use and that has proved itself can later come with BamCam itself, with its author's consent.
+6. The generated G-Code must not contain any G2/G3 (Arc) commands
+
+**Operation:**
+
+1. The MOPs for all the objects used to create the required surface are created in the correct sequence.  The MOPs may be of any type.
+
+2. Set the Postprocessor.Options parameters: "Arc Output"" to "Convert to Lines" and set the "Arc To LInes Tolerance" to a suitable value (default is 0.01), as required. Or, run the "Arcs To Lines" plugin on the entities included in the MOPs making up the surface before generating the G-Code.
+
+3. The 3D-Simulator can be used to view the results of the unwrapped surface.
+
+4. The G-Code is then created and saved into a local file.
+
+5. The plugin is then run to do the wrapping.
+
+6. The plugin asks for three parameter values:
+      (a)  The start angle for the wrapping (deg)
+      (b)  The finish angle for the wrapping (deg)
+      (c)  The direction of wrapping (CW or ACW)
+
+7. The wrapping is completed, and a new GCode file created with a name like: <inputfile>__wrapped.nc.
