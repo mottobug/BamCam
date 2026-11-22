@@ -17,6 +17,7 @@ BamCam.
 | Plugin | Author | What it does |
 |---|---|---|
 | [Example (Square)](BamCam.Example) | BamCam project | Example: Draw ▸ Square (Example) draws a square around the origin. Shows what a community plugin looks like. |
+| [Wrap G-Code](GeoffRoy.WrapGCode) | Geoffrey G Roy | Plugins ▸ Wrap G-Code (X to A): turns a G-code file for a 4th axis by replacing the X values with A angles between a start and an end angle. |
 
 ## Adding or changing a plugin
 
