@@ -380,6 +380,18 @@ public static class SketchCommands
         var bad = added.Where(id => r.Conflicting.Contains(id) || r.Redundant.Contains(id)).ToList();
         if (bad.Count == 0) return r;
 
+        // A new constraint that repeats an older "point on object" it includes (a midpoint of that line, a coincidence
+        // with an end of it) replaces that one instead of being refused.
+        var superseded = bad.Where(id => !r.Conflicting.Contains(id))
+            .SelectMany(id => Superseded(s, s.Constraint(id)!)).Where(id => !added.Contains(id)).Distinct().ToList();
+        if (superseded.Count > 0)
+        {
+            s.Constraints.RemoveAll(c => superseded.Contains(c.Id));
+            var replaced = SketchSolver.Solve(s);
+            if (!added.Any(id => replaced.Conflicting.Contains(id) || replaced.Redundant.Contains(id))) return replaced;
+            s.Constraints = backup.Clone().Constraints;
+        }
+
         // Back to the positions before, then drop or turn into reference what did not fit.
         Restore(s, backup);
         var dims = bad.Select(s.Constraint).Where(c => c is { IsDimension: true }).Cast<SketchConstraint>().ToList();
@@ -390,6 +402,26 @@ public static class SketchCommands
             ? T("The dimension would over-constrain the sketch: it is shown as a reference dimension.")
             : T("The constraint contradicts the others or is already given by them: it was not added.");
         return SketchSolver.Solve(s);
+    }
+
+    /// <summary>
+    /// The "point on object" constraints that <paramref name="c"/> includes: a midpoint puts the point on its line, a
+    /// coincidence with an end of a line or arc (or with a point already on it) puts the other point there too.
+    /// </summary>
+    private static IEnumerable<int> Superseded(Sketch s, SketchConstraint c)
+    {
+        var onObject = s.Constraints.Where(o => o.Kind == ConstraintKind.PointOnObject && o.Refs.Length == 2 && o.Id != c.Id).ToList();
+        if (c.Kind == ConstraintKind.Midpoint && c.Refs.Length == 2)
+            return onObject.Where(o => o.Refs[0] == c.Refs[0] && o.Refs[1] == c.Refs[1]).Select(o => o.Id);
+        if (c.Kind != ConstraintKind.Coincident || c.Refs.Length != 2) return [];
+        bool EndOf(int point, int geo) => s.Geo(geo) is { } g
+            && (g.Kind == SketchGeometryKind.Line && g.Points.Contains(point) || g.Kind == SketchGeometryKind.Arc && g.Points.Skip(1).Contains(point));
+        var (a, b) = (c.Refs[0], c.Refs[1]);
+        // The second point on an object the first one is an end of or lies on; the first point on an object the
+        // second one is an end of (when both lie on the same object, only the second one's goes).
+        return onObject.Where(o => o.Refs[0] == b && (EndOf(a, o.Refs[1]) || onObject.Any(q => q.Refs[0] == a && q.Refs[1] == o.Refs[1]))
+                                   || o.Refs[0] == a && EndOf(b, o.Refs[1]))
+            .Select(o => o.Id);
     }
 
     /// <summary>Puts the positions, radii and constraints of <paramref name="from"/> back into <paramref name="s"/>.</summary>

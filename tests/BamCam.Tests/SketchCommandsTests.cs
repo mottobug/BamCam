@@ -105,6 +105,60 @@ public class SketchCommandsTests
         Assert.Single(s.Constraints);
     }
 
+    [Fact]
+    public void Midpoint_replaces_a_point_on_the_same_line()
+    {
+        var s = Sketch.CreateNew();
+        var vertical = s.AddLine(new(0, 0), new(0, 40));
+        var horizontal = s.AddLine(new(0, 10), new(30, 10));
+        var on = s.AddConstraint(ConstraintKind.PointOnObject, [horizontal.Points[0], vertical.Id]);
+        s.AddConstraint(ConstraintKind.Horizontal, [horizontal.Id]);
+        SketchSolver.Solve(s);
+        var made = SketchCommands.AddConstraint(s, ConstraintKind.Midpoint, [horizontal.Points[0], vertical.Id], out _);
+        var r = SketchCommands.Settle(s, made, out var error);
+        Assert.Null(error);
+        Assert.True(r.Solved);
+        Assert.Null(s.Constraint(on.Id));
+        Assert.NotNull(s.Constraint(Assert.Single(made)));
+        var middle = (s.P(vertical.Points[0]) + s.P(vertical.Points[1])) / 2;
+        Assert.True(s.P(horizontal.Points[0]).AlmostEquals(middle, 1e-9));
+        Assert.Equal(middle.Y, s.P(horizontal.Points[1]).Y, 9);
+    }
+
+    [Fact]
+    public void Coincident_with_an_end_replaces_a_point_on_that_line()
+    {
+        var s = Sketch.CreateNew();
+        var line = s.AddLine(new(0, 0), new(40, 0));
+        var p = s.AddPointGeometry(new(10, 0));
+        var on = s.AddConstraint(ConstraintKind.PointOnObject, [p.Points[0], line.Id]);
+        SketchSolver.Solve(s);
+        var made = SketchCommands.AddConstraint(s, ConstraintKind.Coincident, [line.Points[1], p.Points[0]], out _);
+        var r = SketchCommands.Settle(s, made, out var error);
+        Assert.Null(error);
+        Assert.True(r.Solved);
+        Assert.Null(s.Constraint(on.Id));
+        Assert.True(s.P(p.Points[0]).AlmostEquals(s.P(line.Points[1]), 1e-9));
+    }
+
+    [Fact]
+    public void Refused_midpoint_keeps_the_point_on_the_line()
+    {
+        var s = Sketch.CreateNew();
+        var vertical = s.AddLine(new(0, 0), new(0, 40));
+        var p = s.AddPointGeometry(new(0, 10));
+        var on = s.AddConstraint(ConstraintKind.PointOnObject, [p.Points[0], vertical.Id]);
+        s.AddConstraint(ConstraintKind.Fix, [p.Points[0]], [0, 10]);
+        s.AddConstraint(ConstraintKind.Fix, [vertical.Points[0]], [0, 0]);
+        s.AddConstraint(ConstraintKind.Fix, [vertical.Points[1]], [0, 40]);
+        SketchSolver.Solve(s);
+        var made = SketchCommands.AddConstraint(s, ConstraintKind.Midpoint, [p.Points[0], vertical.Id], out _);
+        SketchCommands.Settle(s, made, out var error);
+        Assert.NotNull(error);
+        Assert.NotNull(s.Constraint(on.Id));
+        Assert.Null(s.Constraint(Assert.Single(made)));
+    }
+
     /// <summary>A fully constrained 60 x 30 rectangle with its lower left corner on the origin.</summary>
     private static (Sketch S, SketchGeometry[] Lines) Rectangle()
     {
