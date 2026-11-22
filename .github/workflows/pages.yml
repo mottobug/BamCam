@@ -30,9 +30,9 @@ jobs:
           cp -r site/. _site/
           cp docs/screenshots/*.png _site/screenshots/
           cp src/BamCam.App/Assets/bamcam.png _site/
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
