@@ -27,11 +27,12 @@ public partial class MainWindow
         if (_screenshotMode) return;
         if (!_settings.UpdateCheckAsked)
         {
-            var answer = await Dialogs.Ask(this, T("Updates"),
-                T("Should BamCam check once a day at start whether a new version is available?\n\nOnly the list of versions is requested from GitHub; nothing about you or your drawings is sent. You can change this in Tools > Options."),
-                withCancel: false);
+            var answer = await Dialogs.Choose(this, T("Updates"),
+                T("Should BamCam check once a day at start whether a new version is available?\n\nOnly the list of versions is requested from GitHub; nothing about you or your drawings is sent. You can change this in Tools > Options, and Help > Also Offer Betas switches the betas on or off."),
+                T("Yes, finished releases only"), T("Yes, also betas (test versions, newest features)"), T("No"));
             _settings.UpdateCheckAsked = true;
-            _settings.CheckForUpdates = answer == true;
+            _settings.CheckForUpdates = answer is 0 or 1;
+            _settings.UpdatePrereleases = answer == 1;
             SaveSettings();
         }
         if (!_settings.CheckForUpdates) return;
@@ -127,6 +128,18 @@ public partial class MainWindow
         var items = new List<object>();
         if (_availableUpdate is { } release) items.Add(Item(F("_Update to {0}...", release.Version), ShowUpdate));
         items.Add(Item("Check for _Updates...", () => _ = CheckForUpdates(manual: true)));
+        // Betas too: switched on, the check runs again at once (when checking is on) instead of the next day.
+        items.Add(Check("Also Offer _Betas", () => _settings.UpdatePrereleases, on =>
+        {
+            _settings.UpdatePrereleases = on;
+            _settings.LastUpdateCheck = null;
+            if (!on && _availableUpdate is { Prerelease: true })
+            {
+                _availableUpdate = null;
+                BuildMenu();
+            }
+            if (on && _settings.CheckForUpdates) _ = CheckForUpdates(manual: false);
+        }));
         return items.ToArray();
     }
 }

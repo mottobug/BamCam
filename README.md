@@ -289,11 +289,13 @@ drawings saved with a CamBam plugin operation keep opening with the port.
 
 ## Updates
 
-At the first start BamCam asks whether it may check for new versions. If allowed, it asks GitHub at most once a
-day (in the background, at start) for the list of releases and mentions a newer one in the message window and in
-the Help menu, with its release notes and a link to the download page. Only the version list is requested; nothing
-about you or your drawings is sent. **Help ▸ Check for Updates** checks at once; Tools ▸ Options switches the daily
-check and test versions on or off. BamCam does not download or install anything by itself.
+At the first start BamCam asks whether it may check for new versions: finished releases only, also betas, or not at
+all. If allowed, it asks GitHub at most once a day (in the background, at start) for the list of releases and
+mentions a newer one in the message window and in the Help menu, with its release notes and a link to the download
+page. Only the version list is requested; nothing about you or your drawings is sent. **Help ▸ Check for Updates**
+checks at once; **Help ▸ Also Offer Betas** switches the betas (test versions such as `0.9.4-beta.1`) on or off, and
+Tools ▸ Options holds both settings. A finished release counts as newer than its betas. BamCam does not download or
+install anything by itself.
 
 ## Settings
 Tools ▸ Options (or System ▸ Configuration) edits the application settings:
