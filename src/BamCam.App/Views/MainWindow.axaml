@@ -49,6 +49,28 @@
     <StreamGeometry x:Key="IconSnapDot">M9.5,12 A2.5,2.5 0 1 1 14.5,12 A2.5,2.5 0 1 1 9.5,12 Z</StreamGeometry>
     <StreamGeometry x:Key="IconSnapObjects">M4,13 A8,8 0 1 1 20,13 A8,8 0 1 1 4,13 Z</StreamGeometry>
     <StreamGeometry x:Key="IconSnapObjectsDot">M15.2,7.3 A2.5,2.5 0 1 1 20.2,7.3 A2.5,2.5 0 1 1 15.2,7.3 Z</StreamGeometry>
+    <!-- Sketch mode -->
+    <StreamGeometry x:Key="IconSkSelect">M6,3 L6,19 L10,15.5 L13,21.5 L15.5,20.3 L12.6,14.4 L18,14 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSkLine">M4,20 L20,4 M2.5,18.5 L5.5,21.5 M5.5,18.5 L2.5,21.5 M18.5,2.5 L21.5,5.5 M21.5,2.5 L18.5,5.5</StreamGeometry>
+    <StreamGeometry x:Key="IconSkPoint">M12,8 A4,4 0 1 1 11.99,8 Z M12,2 L12,6 M12,18 L12,22 M2,12 L6,12 M18,12 L22,12</StreamGeometry>
+    <StreamGeometry x:Key="IconSkConstruction">M3,21 L5.5,18.5 M7.5,16.5 L10,14 M12,12 L14.5,9.5 M16.5,7.5 L19,5 M20.5,3.5 L21,3</StreamGeometry>
+    <StreamGeometry x:Key="IconSkCoincident">M2,20 L12,12 L22,19 M12,8.5 A3.5,3.5 0 1 1 11.99,8.5 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSkHorizontal">M7,3 L7,12 M15,3 L15,12 M7,7.5 L15,7.5 M2,18 L22,18</StreamGeometry>
+    <StreamGeometry x:Key="IconSkVertical">M3,4 L7.5,14 L12,4 M19,2 L19,22</StreamGeometry>
+    <StreamGeometry x:Key="IconSkParallel">M3,15 L15,3 M9,21 L21,9</StreamGeometry>
+    <StreamGeometry x:Key="IconSkPerpendicular">M3,20 L21,20 M12,20 L12,3 M12,14 L18,14 L18,20</StreamGeometry>
+    <StreamGeometry x:Key="IconSkTangent">M2,9 L22,9 M12,9 A6,6 0 1 1 11.99,9 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSkEqual">M4,8 L20,8 M4,16 L20,16</StreamGeometry>
+    <StreamGeometry x:Key="IconSkMidpoint">M2,19 L22,5 M9.5,15.5 L12,9.5 L14.5,15.5 Z</StreamGeometry>
+    <StreamGeometry x:Key="IconSkSymmetric">M12,2 L12,5 M12,8 L12,11 M12,14 L12,17 M12,20 L12,22 M3,9.5 L8,14.5 M8,9.5 L3,14.5 M16,9.5 L21,14.5 M21,9.5 L16,14.5</StreamGeometry>
+    <StreamGeometry x:Key="IconSkFix">M6,11 L18,11 L18,21 L6,21 Z M8.5,11 L8.5,7.5 C8.5,2.5 15.5,2.5 15.5,7.5 L15.5,11 M12,14.5 L12,17.5</StreamGeometry>
+    <StreamGeometry x:Key="IconSkDimension">M5,19 L19,5 M5,19 L5,13.5 M5,19 L10.5,19 M19,5 L13.5,5 M19,5 L19,10.5</StreamGeometry>
+    <StreamGeometry x:Key="IconSkDimX">M3,5 L3,19 M21,5 L21,19 M3,12 L21,12 M3,12 L7,9 M3,12 L7,15 M21,12 L17,9 M21,12 L17,15</StreamGeometry>
+    <StreamGeometry x:Key="IconSkDimY">M5,3 L19,3 M5,21 L19,21 M12,3 L12,21 M12,3 L9,7 M12,3 L15,7 M12,21 L9,17 M12,21 L15,17</StreamGeometry>
+    <StreamGeometry x:Key="IconSkRadius">M12,3 A9,9 0 1 1 11.99,3 Z M12,12 L18.4,5.6 M18.4,5.6 L14.2,6.4 M18.4,5.6 L17.6,9.8</StreamGeometry>
+    <StreamGeometry x:Key="IconSkFillet">M4,21 L4,13 A9,9 0 0 1 13,4 L21,4 M4,4 L8,4 M4,4 L4,8</StreamGeometry>
+    <StreamGeometry x:Key="IconSkChamfer">M4,21 L4,11 L11,4 L21,4 M4,4 L6.5,4 M4,4 L4,6.5</StreamGeometry>
+    <StreamGeometry x:Key="IconSkDelete">M5,5 L19,19 M19,5 L5,19</StreamGeometry>
   </Window.Resources>
 
   <DockPanel>
@@ -89,9 +111,15 @@
 
       <!-- Right: prompt line, drawing view, messages -->
       <Grid x:Name="RightGrid" Grid.Column="2" RowDefinitions="Auto,*,4,110">
-        <Border Grid.Row="0" Background="#FFFFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2" x:Name="PromptBar" IsVisible="False">
-          <TextBlock x:Name="PromptText" TextWrapping="Wrap" />
-        </Border>
+        <StackPanel Grid.Row="0">
+          <Border Background="#FFFFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2" x:Name="PromptBar" IsVisible="False">
+            <TextBlock x:Name="PromptText" TextWrapping="Wrap" />
+          </Border>
+          <!-- Sketch mode: drawing, constraint and dimension commands -->
+          <Border Background="{StaticResource ChromeBrush}" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="4,2" x:Name="SketchBar" IsVisible="False">
+            <WrapPanel x:Name="SketchBarPanel" Orientation="Horizontal" />
+          </Border>
+        </StackPanel>
         <d:DrawingView Grid.Row="1" x:Name="View" />
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
         <DockPanel Grid.Row="3">

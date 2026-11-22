@@ -116,6 +116,7 @@ public static class ParametricEntities
     private static readonly Dictionary<string, Func<ParametricEntity>> Types = new(StringComparer.Ordinal)
     {
         [ScriptEntity.Type] = () => new ScriptEntity(),
+        [SketchEntity.Type] = () => new SketchEntity(),
     };
 
     public static void Register(string type, Func<ParametricEntity> create) => Types[type] = create;

@@ -35,11 +35,20 @@ public static class Dialogs
         return p;
     }
 
-    /// <summary>Asks for a text value; remembers the last value per prompt.</summary>
-    public static async Task<string?> Prompt(Window owner, string title, string label, string? defaultValue = null)
+    /// <summary>Diagnostics: answers for the next text prompts (instead of showing them).</summary>
+    public static Queue<string>? DiagnosticTexts { get; set; }
+
+    /// <summary>Asks for a text value; remembers the last value per prompt unless <paramref name="remember"/> is false.</summary>
+    public static async Task<string?> Prompt(Window owner, string title, string label, string? defaultValue = null, bool remember = true)
     {
+        if (DiagnosticTexts is { Count: > 0 } texts)
+        {
+            var answer = texts.Dequeue();
+            DiagnosticLog?.Invoke($"{title}: {label} -> {answer}");
+            return answer;
+        }
         var key = title + "|" + label;
-        var box = new TextBox { Text = LastValues.GetValueOrDefault(key, defaultValue ?? "") };
+        var box = new TextBox { Text = remember ? LastValues.GetValueOrDefault(key, defaultValue ?? "") : defaultValue ?? "" };
         var ok = new Button { Content = T("OK"), IsDefault = true };
         var cancel = new Button { Content = T("Cancel"), IsCancel = true };
         var panel = new StackPanel { Spacing = 6 };
@@ -52,7 +61,7 @@ public static class Dialogs
         cancel.Click += (_, _) => win.Close();
         win.Opened += (_, _) => { box.Focus(); box.SelectAll(); };
         await win.ShowDialog(owner);
-        if (result != null) LastValues[key] = result;
+        if (result != null && remember) LastValues[key] = result;
         return result;
     }
 

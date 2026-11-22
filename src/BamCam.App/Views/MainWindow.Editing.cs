@@ -67,6 +67,7 @@ public partial class MainWindow
     private void EditInView(Entity entity)
     {
         if (entity is TextEntity t) _ = EditTextEntity(t);
+        else if (entity is SketchEntity sketch) StartSketch(sketch);
         else View.SetTool(new EditPointsTool(entity));
     }
 

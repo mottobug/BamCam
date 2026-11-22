@@ -154,6 +154,11 @@ to objects (end points, mid points, circle centres, quadrants and intersections,
 View ▸ Object Snap Modes; toggle buttons in the toolbar); exact sizes by typing while drawing (segment length and
 angle as `25<30`, circle diameter, rectangle width x height; Shift snaps the direction to 15° steps); full right-click context menu on objects.
 
+**Sketches** (parametric): lines, arcs, circles and points with geometric constraints (coincident, horizontal,
+vertical, parallel, perpendicular, tangent, equal, midpoint, symmetric, fix) and driving dimensions (lengths,
+distances, radii, diameters, angles) whose values can be formulas of the sketch's variables; drawn in a sketch mode
+in the drawing that shows what is fully determined, with BamCam's own constraint solver.
+
 **CAD:** move, rotate, mirror, resize, array and polar array copy, center, join, offset, open offset,
 explode, union/subtract/intersection, convert to polyline/region, reverse/clean polylines,
 fillet / chamfer / corner overcut at polyline corners, trim / extend lines and arcs against boundaries,

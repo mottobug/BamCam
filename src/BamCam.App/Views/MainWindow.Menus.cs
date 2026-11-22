@@ -312,6 +312,7 @@ public partial class MainWindow
         Item("_Spline", () => View.SetTool(new SplineTool())),
         Item("_Circle", () => View.SetTool(new CircleTool())),
         Item("_Rectangle", () => View.SetTool(new RectangleTool())),
+        Item("S_ketch", NewSketch),
         Sub("Point _List",
             Item("_Draw", () => View.SetTool(new PointListTool())),
             Item("Di_vide Geometry...", DividePoints),

@@ -31,6 +31,12 @@ public partial class MainWindow
 
     private void Undo()
     {
+        // In the sketch mode: the steps of the sketch.
+        if (View.Tool is Sketching.SketchTool sketch)
+        {
+            sketch.Undo();
+            return;
+        }
         if (!_session.CanUndo) return;
         _session.Undo();
         SetStatus(T("Undo"));
@@ -38,6 +44,11 @@ public partial class MainWindow
 
     private void Redo()
     {
+        if (View.Tool is Sketching.SketchTool sketch)
+        {
+            sketch.Redo();
+            return;
+        }
         if (!_session.CanRedo) return;
         _session.Redo();
         SetStatus(T("Redo"));

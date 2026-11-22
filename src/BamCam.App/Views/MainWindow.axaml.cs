@@ -313,7 +313,16 @@ public partial class MainWindow : Window
                 File.WriteAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bamcam-context.txt"), dump);
             }
             // --tool line|polyline|circle|rectangle: starts a drawing tool (toolbar highlight).
-            if (options.TryGetValue("--tool", out var toolName))
+            // --tool sketch: the first sketch of the drawing in the sketch mode; sketch-line, sketch-rectangle,
+            // sketch-circle, sketch-arc: a new sketch with that drawing mode.
+            if (options.TryGetValue("--tool", out var sketchTool) && sketchTool.StartsWith("sketch"))
+            {
+                if (sketchTool == "sketch" && _session.Document.AllEntities().OfType<SketchEntity>().FirstOrDefault() is { } first) StartSketch(first);
+                else NewSketch();
+                if (View.Tool is Sketching.SketchTool st && sketchTool.Split('-') is [_, var mode])
+                    st.SetMode(Enum.Parse<Sketching.SketchMode>(mode, ignoreCase: true));
+            }
+            else if (options.TryGetValue("--tool", out var toolName))
                 View.SetTool(toolName switch
                 {
                     "line" => new PolylineTool(linesOnly: true),
@@ -331,8 +340,16 @@ public partial class MainWindow : Window
             if (options.TryGetValue("--click", out var clicks))
             {
                 // One or more drawing coordinates "x,y;x,y", optionally prefixed with "ctrl:".
+                if (options.TryGetValue("--texts", out var texts)) Dialogs.DiagnosticTexts = new Queue<string>(texts.Split('|'));
                 foreach (var c in clicks.Split(';', StringSplitOptions.RemoveEmptyEntries))
                 {
+                    // "key:D": a key for the tool (e.g. a sketch command) between the clicks.
+                    if (c.StartsWith("key:"))
+                    {
+                        View.ForwardKeyToTool(Enum.Parse<Key>(c[4..], ignoreCase: true), KeyModifiers.None);
+                        await Task.Delay(150);
+                        continue;
+                    }
                     var ctrl = c.StartsWith("ctrl:");
                     var v = c.Replace("ctrl:", "").Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
                     try
@@ -512,6 +529,9 @@ public partial class MainWindow : Window
                 using var bmp = new Avalonia.Media.Imaging.RenderTargetBitmap(size);
                 bmp.Render(this);
                 bmp.Save(path);
+                // In the sketch mode: the sketch and its messages beside the picture.
+                if (View.Tool is Sketching.SketchTool activeSketch)
+                    File.WriteAllText(path + ".sketch.json", activeSketch.Entity.Data + "\n\n" + Messages.Text);
                 if (_filterWindow is { } fw)
                 {
                     using var fbmp = new Avalonia.Media.Imaging.RenderTargetBitmap(new Avalonia.PixelSize((int)fw.Bounds.Width, (int)fw.Bounds.Height));

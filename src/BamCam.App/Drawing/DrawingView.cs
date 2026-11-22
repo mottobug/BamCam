@@ -206,6 +206,11 @@ public sealed partial class DrawingView : Control, IToolHost
             EntityDoubleClicked?.Invoke(this, hit);
             return;
         }
+        if (props.IsLeftButtonPressed && e.ClickCount == 2 && _tool is not SelectTool && _tool.DoubleClick(pos, Snap(_view.ToWorld(pos), pos)))
+        {
+            InvalidateVisual();
+            return;
+        }
 
         if (props.IsLeftButtonPressed && e.ClickCount == 1 && BeginTabDrag(pos))
         {

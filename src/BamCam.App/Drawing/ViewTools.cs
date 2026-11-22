@@ -52,6 +52,9 @@ public abstract class ViewTool
     /// <summary>Returns true if the key was handled.</summary>
     public virtual bool KeyDown(Key key, KeyModifiers mods) => false;
 
+    /// <summary>A left double-click (after the press of its first click); true when the tool used it.</summary>
+    public virtual bool DoubleClick(Point screen, Point2 world) => false;
+
     /// <summary>
     /// Keys without modifiers go to the tool before BamCam's single-letter shortcuts (P, C, R …), for tools that use
     /// letters themselves (plugin tools).

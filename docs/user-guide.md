@@ -193,6 +193,43 @@ larger end mill leaves material in the gaps or at the root, and profiles and poc
 Keep in mind that a milled gear is only as accurate as the machine, and check it before relying on it. Also a plugin that
 comes with BamCam.
 
+**Sketches** (Draw ▸ Sketch, double-click a sketch to edit it): lines, rectangles, circles, arcs and points held in place
+by constraints and dimensions, so that changing a dimension or a variable reshapes the part. A sketch is one drawing
+object; its outlines (lines and arcs that meet are joined, circles closed) are what profiles, pockets and the other
+operations machine, and drawings also store them as plain polylines, so CamBam shows them.
+
+- **The sketch mode** shows a bar above the drawing. Draw with *Line* (`L`, a chain: Enter or Esc ends it, clicking an
+  existing point closes it), *Rectangle* (`R`), *Circle* (`C`: centre, then a point on it), *Arc* (`A`: centre, start,
+  end, counter-clockwise) and *Point* (`P`). A click on an existing point of the sketch joins the new point to it, a click
+  on a line or circle puts it on that; lines drawn within 2° of horizontal or vertical get that constraint.
+  *Construction* (`X`) makes the selected or the next geometry construction geometry (dashed): it helps with constraints
+  but is not part of the outlines. The cross is the sketch origin, fixed at 0, 0.
+- **Select** (`S`): click points, lines, circles, constraint symbols or dimensions (Ctrl or Shift adds), or drag a box.
+  Dragging a point or a line moves it and everything that depends on it; dragging a circle changes its radius; dragging
+  a dimension moves its label. `Del` deletes the selection, `Ctrl+Z` / `Ctrl+Y` undo and redo the steps of the sketch.
+- **Constraints** for the selection: *Coincident* (`K`; two points on one place, or points on a line, circle or arc),
+  *Horizontal* (`H`), *Vertical* (`V`), *Parallel*, *Perpendicular*, *Tangent* (`T`), *Equal* (`E`, lengths or radii),
+  *Midpoint* (`M`), *Symmetric* (two points and the line of symmetry) and *Fix* (`F`). A constraint that contradicts
+  others or that they already give is not added; the message window says why.
+- **Fillet** (`G`) and **Chamfer** (`N`): select corners (points where two lines meet, or two lines that meet) and give
+  the radius or the length cut off each line, a number or a formula. The lines are shortened and joined by a tangent
+  arc or a straight chamfer; the radius or chamfer length becomes a dimension you can change later. The old corner
+  stays as a construction point on both lines, and what held it (dimensions, a corner on the origin, the length of
+  a side) holds it still, so the size of the part does not change.
+- **Dimensions** (`D`): one line → its length, two points → their distance, a point and a line → the distance between
+  them, a circle → its diameter (*Radius* for the radius), an arc → its radius, two lines → the angle between them (or
+  their distance when they are parallel). *Horizontal Dim.* and *Vertical Dim.* measure along X or Y only; their labels
+start with `X` or `Y` (e.g. `X 60`), while a direct distance has no mark. To dimension from the origin, select the
+cross together with a point or line. The value may be
+  a formula of the sketch's **variables** (*Variables...*, one per line: `Width = 60`, `Height = Width / 3 + 5`;
+  `+ - * / ^`, parentheses, `sqrt`, `abs`, `min`, `max`, `round`, `sin`, `cos`, `tan` and their inverses in degrees,
+  `pi`). Double-click a dimension to change it; an empty value makes it a reference dimension, shown in parentheses,
+  which only measures. A dimension that would over-constrain the sketch becomes a reference dimension by itself.
+- **Colours:** green = fully determined, blue = can still move, red = constraints that contradict or repeat each other;
+  the bar and the property *Constraint Status* say how many degrees of freedom are left.
+- **Finish** (Enter, or Esc with nothing selected) keeps the sketch as one undo step; **Cancel** drops the changes of this
+  session. Move, rotate and copy a sketch like any other object.
+
 **Scripts menu:** your own C# scripts as `.csx` files, run with a click. They can read and change the whole drawing.
 New, edit, check and run them in the script editor, or copy files into the script folder. Before a file runs for the
 first time BamCam shows its text; see [scripts.md](scripts.md#scripts-of-the-scripts-menu).
