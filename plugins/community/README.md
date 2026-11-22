@@ -17,6 +17,7 @@ BamCam.
 | Plugin | Author | What it does |
 |---|---|---|
 | [Example (Square)](BamCam.Example) | BamCam project | Example: Draw ▸ Square (Example) draws a square around the origin. Shows what a community plugin looks like. |
+| GeoffRoy.WrapGCode|Geoffrey Roy|GCode wrapper|
 
 ## Adding or changing a plugin
 
