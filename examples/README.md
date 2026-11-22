@@ -22,4 +22,5 @@ third parties. The tests check that every operation in them makes its toolpath w
 | `Turning.cb` | Facing, roughing and finishing with constant surface speed (G96), a relief groove, a thread M16 x 2, drilling with pecks and boring (internal turning) |
 | `Trochoidal milling (matmill).cb` | Trochoidal pocket round an island (mixed direction), an outside slot with smooth chords, inside with the inside corners cleared |
 | `NC file.cb` | A G-code file (`NC file (spiral).nc`) put into the job before a profile |
+| `Sketch (mounting plate).cb` | Two parametric sketches (double-click to edit): a plate with rounded corners and its holes, sized by the variables `Width`, `Height`, `Corner`, `Edge`, `Hole` and `Bore`; an inside profile for the holes, an outside profile with tabs for the outline |
 | `3D profile (pebble).cb` | Trochoidal and waterline roughing, rest roughing, waterline and scanline finishing, the back face with the part turned over, and the mould of it |

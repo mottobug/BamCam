@@ -66,6 +66,8 @@ public sealed partial class SketchTool : ViewTool
 
     public SketchSolveResult Result => _result;
 
+    public override BoundingBox? ExtraBounds => _entity.Bounds();
+
     // ------------------------------------------------------------------ coordinates
 
     private Point2 ToLocal(Point2 world)

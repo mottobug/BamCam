@@ -52,6 +52,9 @@ public abstract class ViewTool
     /// <summary>Returns true if the key was handled.</summary>
     public virtual bool KeyDown(Key key, KeyModifiers mods) => false;
 
+    /// <summary>What the tool shows beyond the drawing, for Zoom To Fit (e.g. the sketch being edited, hidden meanwhile).</summary>
+    public virtual BoundingBox? ExtraBounds => null;
+
     /// <summary>A left double-click (after the press of its first click); true when the tool used it.</summary>
     public virtual bool DoubleClick(Point screen, Point2 world) => false;
 

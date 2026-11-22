@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CADFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" Version="0.9.8.0" Name="Sketch (mounting plate)">
+  <layers>
+    <layer name="Default" color="127,255,0">
+      <ModificationCount>0</ModificationCount>
+      <objects>
+        <pline id="1" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p>0,52,0</p>
+            <p b="0.4142135623730953">0,8,0</p>
+            <p>8,0,0</p>
+            <p b="0.41421356237309515">92,0,0</p>
+            <p>100,8,0</p>
+            <p b="0.41421356237309503">100,52,0</p>
+            <p>92,60,0</p>
+            <p b="0.41421356237309515">8,60,0</p>
+          </pts>
+          <BamCamObject type="bamcam.sketch" m="Identity">
+            <param name="Data">{"Points":[{"Id":1,"X":0,"Y":0,"Locked":true},{"Id":4,"X":8.000000000000002,"Y":0,"Locked":false},{"Id":5,"X":92,"Y":0,"Locked":false},{"Id":7,"X":100,"Y":8.000000000000002,"Locked":false},{"Id":8,"X":100,"Y":52,"Locked":false},{"Id":10,"X":92,"Y":60,"Locked":false},{"Id":11,"X":8.000000000000002,"Y":60,"Locked":false},{"Id":13,"X":0,"Y":52,"Locked":false},{"Id":14,"X":0,"Y":8.000000000000002,"Locked":false},{"Id":27,"X":0,"Y":0,"Locked":false},{"Id":31,"X":7.999999999999998,"Y":7.999999999999998,"Locked":false},{"Id":32,"X":0,"Y":8.000000000000002,"Locked":false},{"Id":33,"X":8.000000000000002,"Y":0,"Locked":false},{"Id":40,"X":100,"Y":0,"Locked":false},{"Id":44,"X":92,"Y":7.999999999999998,"Locked":false},{"Id":45,"X":92,"Y":0,"Locked":false},{"Id":46,"X":100,"Y":8.000000000000002,"Locked":false},{"Id":53,"X":100,"Y":60,"Locked":false},{"Id":57,"X":92,"Y":52,"Locked":false},{"Id":58,"X":100,"Y":52,"Locked":false},{"Id":59,"X":92,"Y":60,"Locked":false},{"Id":66,"X":0,"Y":60,"Locked":false},{"Id":70,"X":7.999999999999998,"Y":52,"Locked":false},{"Id":71,"X":8.000000000000002,"Y":60,"Locked":false},{"Id":72,"X":-1.7763568394002505E-15,"Y":52,"Locked":false}],"Geometry":[{"Id":2,"Kind":"Point","Points":[1],"Radius":0,"Construction":true},{"Id":3,"Kind":"Line","Points":[4,5],"Radius":0,"Construction":false},{"Id":6,"Kind":"Line","Points":[7,8],"Radius":0,"Construction":false},{"Id":9,"Kind":"Line","Points":[10,11],"Radius":0,"Construction":false},{"Id":12,"Kind":"Line","Points":[13,14],"Radius":0,"Construction":false},{"Id":26,"Kind":"Point","Points":[27],"Radius":0,"Construction":true},{"Id":30,"Kind":"Arc","Points":[31,32,33],"Radius":0,"Construction":false},{"Id":39,"Kind":"Point","Points":[40],"Radius":0,"Construction":true},{"Id":43,"Kind":"Arc","Points":[44,45,46],"Radius":0,"Construction":false},{"Id":52,"Kind":"Point","Points":[53],"Radius":0,"Construction":true},{"Id":56,"Kind":"Arc","Points":[57,58,59],"Radius":0,"Construction":false},{"Id":65,"Kind":"Point","Points":[66],"Radius":0,"Construction":true},{"Id":69,"Kind":"Arc","Points":[70,71,72],"Radius":0,"Construction":false}],"Constraints":[{"Id":19,"Kind":"Horizontal","Refs":[3],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":20,"Kind":"Horizontal","Refs":[9],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":21,"Kind":"Vertical","Refs":[6],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":22,"Kind":"Vertical","Refs":[12],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":23,"Kind":"Coincident","Refs":[27,1],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":24,"Kind":"Distance","Refs":[27,40],"Data":[],"Expression":"Width","Reference":false,"LabelX":0,"LabelY":-9},{"Id":25,"Kind":"Distance","Refs":[40,53],"Data":[],"Expression":"Height","Reference":false,"LabelX":10,"LabelY":0},{"Id":28,"Kind":"PointOnObject","Refs":[27,3],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":29,"Kind":"PointOnObject","Refs":[27,12],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":34,"Kind":"Coincident","Refs":[32,14],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":35,"Kind":"Coincident","Refs":[33,4],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":36,"Kind":"Tangent","Refs":[3,30],"Data":[1,2],"Reference":false,"LabelX":0,"LabelY":0},{"Id":37,"Kind":"Tangent","Refs":[12,30],"Data":[1,1],"Reference":false,"LabelX":0,"LabelY":0},{"Id":38,"Kind":"Radius","Refs":[30],"Data":[],"Expression":"Corner","Reference":false,"LabelX":-14.14213562373095,"LabelY":-14.14213562373095},{"Id":41,"Kind":"PointOnObject","Refs":[40,6],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":42,"Kind":"PointOnObject","Refs":[40,3],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":47,"Kind":"Coincident","Refs":[45,5],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":48,"Kind":"Coincident","Refs":[46,7],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":49,"Kind":"Tangent","Refs":[6,43],"Data":[1,2],"Reference":false,"LabelX":0,"LabelY":0},{"Id":50,"Kind":"Tangent","Refs":[3,43],"Data":[1,1],"Reference":false,"LabelX":0,"LabelY":0},{"Id":51,"Kind":"Radius","Refs":[43],"Data":[],"Expression":"Corner","Reference":false,"LabelX":14.14213562373095,"LabelY":-14.14213562373095},{"Id":54,"Kind":"PointOnObject","Refs":[53,9],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":55,"Kind":"PointOnObject","Refs":[53,6],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":60,"Kind":"Coincident","Refs":[58,8],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":61,"Kind":"Coincident","Refs":[59,10],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":62,"Kind":"Tangent","Refs":[9,56],"Data":[1,2],"Reference":false,"LabelX":0,"LabelY":0},{"Id":63,"Kind":"Tangent","Refs":[6,56],"Data":[1,1],"Reference":false,"LabelX":0,"LabelY":0},{"Id":64,"Kind":"Radius","Refs":[56],"Data":[],"Expression":"Corner","Reference":false,"LabelX":14.14213562373095,"LabelY":14.14213562373095},{"Id":67,"Kind":"PointOnObject","Refs":[66,12],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":68,"Kind":"PointOnObject","Refs":[66,9],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":73,"Kind":"Coincident","Refs":[71,11],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":74,"Kind":"Coincident","Refs":[72,13],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":75,"Kind":"Tangent","Refs":[12,69],"Data":[1,2],"Reference":false,"LabelX":0,"LabelY":0},{"Id":76,"Kind":"Tangent","Refs":[9,69],"Data":[1,1],"Reference":false,"LabelX":0,"LabelY":0},{"Id":77,"Kind":"Radius","Refs":[69],"Data":[],"Expression":"Corner","Reference":false,"LabelX":-14.14213562373095,"LabelY":14.14213562373095}],"Variables":[{"Name":"Width","Expression":"100"},{"Name":"Height","Expression":"60"},{"Name":"Corner","Expression":"8"},{"Name":"Edge","Expression":"10"},{"Name":"Hole","Expression":"6.5"},{"Name":"Bore","Expression":"Height / 2"}],"NextId":78}</param>
+          </BamCamObject>
+        </pline>
+        <pline id="2" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p b="1">13.25,10,0</p>
+            <p b="1">6.75,10,0</p>
+          </pts>
+          <BamCamObject type="bamcam.sketch" m="Identity">
+            <param name="Data">{"Points":[{"Id":1,"X":0,"Y":0,"Locked":true},{"Id":4,"X":10,"Y":10,"Locked":false},{"Id":9,"X":90,"Y":10,"Locked":false},{"Id":14,"X":90,"Y":50,"Locked":false},{"Id":19,"X":10,"Y":50,"Locked":false},{"Id":24,"X":50,"Y":30,"Locked":false}],"Geometry":[{"Id":2,"Kind":"Point","Points":[1],"Radius":0,"Construction":true},{"Id":3,"Kind":"Circle","Points":[4],"Radius":3.25,"Construction":false},{"Id":8,"Kind":"Circle","Points":[9],"Radius":3.25,"Construction":false},{"Id":13,"Kind":"Circle","Points":[14],"Radius":3.25,"Construction":false},{"Id":18,"Kind":"Circle","Points":[19],"Radius":3.25,"Construction":false},{"Id":23,"Kind":"Circle","Points":[24],"Radius":15,"Construction":false}],"Constraints":[{"Id":5,"Kind":"HorizontalDistance","Refs":[1,4],"Data":[1],"Expression":"Edge","Reference":false,"LabelX":0,"LabelY":-11},{"Id":6,"Kind":"VerticalDistance","Refs":[1,4],"Data":[1],"Expression":"Edge","Reference":false,"LabelX":-11,"LabelY":0},{"Id":7,"Kind":"Diameter","Refs":[3],"Data":[],"Expression":"Hole","Reference":false,"LabelX":16,"LabelY":8},{"Id":10,"Kind":"HorizontalDistance","Refs":[1,9],"Data":[1],"Expression":"Width - Edge","Reference":false,"LabelX":0,"LabelY":-11},{"Id":11,"Kind":"VerticalDistance","Refs":[1,9],"Data":[1],"Expression":"Edge","Reference":false,"LabelX":61,"LabelY":0},{"Id":12,"Kind":"Equal","Refs":[3,8],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":15,"Kind":"HorizontalDistance","Refs":[1,14],"Data":[1],"Expression":"Width - Edge","Reference":false,"LabelX":0,"LabelY":41},{"Id":16,"Kind":"VerticalDistance","Refs":[1,14],"Data":[1],"Expression":"Height - Edge","Reference":false,"LabelX":61,"LabelY":0},{"Id":17,"Kind":"Equal","Refs":[3,13],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":20,"Kind":"HorizontalDistance","Refs":[1,19],"Data":[1],"Expression":"Edge","Reference":false,"LabelX":0,"LabelY":41},{"Id":21,"Kind":"VerticalDistance","Refs":[1,19],"Data":[1],"Expression":"Height - Edge","Reference":false,"LabelX":-11,"LabelY":0},{"Id":22,"Kind":"Equal","Refs":[3,18],"Data":[],"Reference":false,"LabelX":0,"LabelY":0},{"Id":25,"Kind":"HorizontalDistance","Refs":[1,24],"Data":[1],"Expression":"Width / 2","Reference":false,"LabelX":0,"LabelY":-31},{"Id":26,"Kind":"VerticalDistance","Refs":[1,24],"Data":[1],"Expression":"Height / 2","Reference":false,"LabelX":-45,"LabelY":0},{"Id":27,"Kind":"Diameter","Refs":[23],"Data":[],"Expression":"Bore","Reference":false,"LabelX":18,"LabelY":14}],"Variables":[{"Name":"Width","Expression":"100"},{"Name":"Height","Expression":"60"},{"Name":"Corner","Expression":"8"},{"Name":"Edge","Expression":"10"},{"Name":"Hole","Expression":"6.5"},{"Name":"Bore","Expression":"Height / 2"}],"NextId":28}</param>
+          </BamCamObject>
+        </pline>
+        <pline id="3" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p b="1">93.25,10,0</p>
+            <p b="1">86.75,10,0</p>
+          </pts>
+          <BamCamObjectPart of="2" />
+        </pline>
+        <pline id="4" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p b="1">93.25,50,0</p>
+            <p b="1">86.75,50,0</p>
+          </pts>
+          <BamCamObjectPart of="2" />
+        </pline>
+        <pline id="5" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p b="1">13.25,50,0</p>
+            <p b="1">6.75,50,0</p>
+          </pts>
+          <BamCamObjectPart of="2" />
+        </pline>
+        <pline id="6" Closed="true">
+          <mat m="Identity" />
+          <pts>
+            <p b="1">65,30,0</p>
+            <p b="1">35,30,0</p>
+          </pts>
+          <BamCamObjectPart of="2" />
+        </pline>
+      </objects>
+    </layer>
+  </layers>
+  <MachiningOptions>
+    <OutFile></OutFile>
+    <RebuildToolpathBeforePost>IfNeeded</RebuildToolpathBeforePost>
+    <FastPlungeHeight>0.2</FastPlungeHeight>
+    <Stock>
+      <Material>Aluminium</Material>
+      <PMin>-5,-5,-6</PMin>
+      <PMax>105,65</PMax>
+      <Color>255,165,0</Color>
+    </Stock>
+    <ToolDiameter>0</ToolDiameter>
+    <ToolNumber>0</ToolNumber>
+    <ToolProfile>Unspecified</ToolProfile>
+  </MachiningOptions>
+  <parts>
+    <part Name="Sketch (mounting plate)">
+      <machineops>
+        <profile>
+          <TargetDepth state="Value">-6</TargetDepth>
+          <DepthIncrement state="Value">2</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <CutOrdering state="Default">DepthFirst</CutOrdering>
+          <CutWidth state="Default">0</CutWidth>
+          <StepOver state="Default">0.4</StepOver>
+          <StepoverFeedrate state="Default">Plunge Feedrate</StepoverFeedrate>
+          <InsideOutside state="Value">Inside</InsideOutside>
+          <MillingDirection state="Default">Conventional</MillingDirection>
+          <CollisionDetection state="Default">True</CollisionDetection>
+          <CornerOvercut state="Default">False</CornerOvercut>
+          <LeadInMove state="Value">
+            <LeadInType>Spiral</LeadInType>
+            <SpiralAngle>5</SpiralAngle>
+            <TangentRadius>0</TangentRadius>
+            <LeadInFeedrate>0</LeadInFeedrate>
+          </LeadInMove>
+          <LeadOutMove state="Default" />
+          <HoldingTabs state="Default">
+            <TabMethod>None</TabMethod>
+            <Width>3</Width>
+            <Height>3</Height>
+            <MinimumTabs>3</MinimumTabs>
+            <MaximumTabs>6</MaximumTabs>
+            <TabDistance>40</TabDistance>
+            <SizeThreshold>4</SizeThreshold>
+            <UseLeadIns>False</UseLeadIns>
+            <TabStyle>Triangle</TabStyle>
+          </HoldingTabs>
+          <SideProfile state="Default" />
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>2</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">3</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Holes and bore (inside)</Name>
+        </profile>
+        <profile>
+          <TargetDepth state="Value">-6</TargetDepth>
+          <DepthIncrement state="Value">2</DepthIncrement>
+          <FinalDepthIncrement state="Default">0</FinalDepthIncrement>
+          <CutOrdering state="Default">DepthFirst</CutOrdering>
+          <CutWidth state="Default">0</CutWidth>
+          <StepOver state="Default">0.4</StepOver>
+          <StepoverFeedrate state="Default">Plunge Feedrate</StepoverFeedrate>
+          <InsideOutside state="Value">Outside</InsideOutside>
+          <MillingDirection state="Default">Conventional</MillingDirection>
+          <CollisionDetection state="Default">True</CollisionDetection>
+          <CornerOvercut state="Default">False</CornerOvercut>
+          <LeadInMove state="Default" />
+          <LeadOutMove state="Default" />
+          <HoldingTabs state="Value">
+            <TabMethod>Automatic</TabMethod>
+            <Width>6</Width>
+            <Height>1.5</Height>
+            <MinimumTabs>4</MinimumTabs>
+            <MaximumTabs>4</MaximumTabs>
+            <TabDistance>0</TabDistance>
+            <SizeThreshold>0</SizeThreshold>
+            <UseLeadIns>False</UseLeadIns>
+            <TabStyle>Triangle</TabStyle>
+          </HoldingTabs>
+          <SideProfile state="Default" />
+          <StockSurface state="Value">0</StockSurface>
+          <RoughingClearance state="Default">0</RoughingClearance>
+          <ClearancePlane state="Value">10</ClearancePlane>
+          <SpindleDirection state="Default">CW</SpindleDirection>
+          <SpindleSpeed state="Value">18000</SpindleSpeed>
+          <SpindleRange state="Default">0</SpindleRange>
+          <VelocityMode state="Default">Undefined</VelocityMode>
+          <primitive>
+            <prim>1</prim>
+          </primitive>
+          <WorkPlane state="Default">XY</WorkPlane>
+          <OptimisationMode state="Default">Experimental</OptimisationMode>
+          <RoughingFinishing state="Default">Roughing</RoughingFinishing>
+          <ToolDiameter state="Value">6</ToolDiameter>
+          <ToolNumber state="Default">0</ToolNumber>
+          <ToolProfile state="Default">EndMill</ToolProfile>
+          <PlungeFeedrate state="Value">200</PlungeFeedrate>
+          <CutFeedrate state="Value">800</CutFeedrate>
+          <MaxCrossoverDistance state="Default">0.7</MaxCrossoverDistance>
+          <StartPoint state="Default" />
+          <CustomMOPHeader state="Default" />
+          <CustomMOPFooter state="Default" />
+          <Name>Outline (outside, tabs)</Name>
+        </profile>
+      </machineops>
+      <Stock>
+        <PMin>0,0</PMin>
+        <PMax>0,0</PMax>
+        <Color>0,0,0</Color>
+      </Stock>
+      <ToolProfile>Unspecified</ToolProfile>
+      <Nesting>
+        <BasePoint>0,0</BasePoint>
+      </Nesting>
+    </part>
+  </parts>
+  <ActiveLayer>Default</ActiveLayer>
+  <ActivePart>Sketch (mounting plate)</ActivePart>
+</CADFile>

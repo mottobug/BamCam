@@ -317,7 +317,17 @@ public partial class MainWindow : Window
             // sketch-circle, sketch-arc: a new sketch with that drawing mode.
             if (options.TryGetValue("--tool", out var sketchTool) && sketchTool.StartsWith("sketch"))
             {
-                if (sketchTool == "sketch" && _session.Document.AllEntities().OfType<SketchEntity>().FirstOrDefault() is { } first) StartSketch(first);
+                // sketch:2 = the second sketch of the drawing.
+                var number = sketchTool.StartsWith("sketch:") && int.TryParse(sketchTool[7..], out var n) ? n : 1;
+                if ((sketchTool == "sketch" || sketchTool.StartsWith("sketch:"))
+                    && _session.Document.AllEntities().OfType<SketchEntity>().Skip(number - 1).FirstOrDefault() is { } existing)
+                {
+                    StartSketch(existing);
+                    // Fitted once the sketch bar takes its room, with space for the dimensions round the outline.
+                    await Task.Delay(300);
+                    View.ZoomToFit();
+                    View.ZoomBy(0.8);
+                }
                 else NewSketch();
                 if (View.Tool is Sketching.SketchTool st && sketchTool.Split('-') is [_, var mode])
                     st.SetMode(Enum.Parse<Sketching.SketchMode>(mode, ignoreCase: true));

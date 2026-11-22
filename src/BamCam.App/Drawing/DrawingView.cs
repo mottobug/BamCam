@@ -130,6 +130,7 @@ public sealed partial class DrawingView : Control, IToolHost
         if (_session == null) return;
         var box = _session.Document.Bounds();
         foreach (var tp in _session.Toolpaths.Values) box = box.Union(tp.Bounds());
+        if (_tool.ExtraBounds is { } extra) box = box.Union(extra);
         if (box.IsEmpty) box = BoundingBox.FromCorners(Settings.GridMin, Settings.GridMax);
         _view.Fit(box, Bounds.Size);
         InvalidateVisual();

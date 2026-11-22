@@ -48,13 +48,24 @@ BamCam needs a system supported by .NET 10; on Windows that is Windows 10 versio
   <tr>
     <td><a href="docs/screenshots/thread-milling.png"><img src="docs/screenshots/thread-milling.png" alt="Thread milling: four internal M8 threads, an external M16 thread and an M6 tapped hole"></a></td>
     <td><a href="docs/screenshots/trochoidal-pocket.png"><img src="docs/screenshots/trochoidal-pocket.png" alt="Trochoidal pocket around an island"></a></td>
-    <td></td>
+    <td><a href="docs/screenshots/sketch-dimensions.png"><img src="docs/screenshots/sketch-dimensions.png" alt="Sketch mode: holes positioned by X and Y dimensions with formulas of variables"></a></td>
   </tr>
   <tr>
     <td>Thread milling: four M8 internal threads bottom up, an M16 external thread top down in two passes, and an M6
         hole tapped with G84 (<code>examples_to_test/Thread milling.cb</code>)</td>
     <td>Trochoidal pocket around an island with the matmill plugin: arcs along the centre lines, chords between them
         (<code>examples_to_test/Trochoidal pocket.cb</code>)</td>
+    <td>Sketch mode: holes placed by X / Y dimensions whose values are formulas of variables (<code>Width - Edge</code>);
+        green = fully constrained (<code>examples/Sketch (mounting plate).cb</code>)</td>
+  </tr>
+  <tr>
+    <td><a href="docs/screenshots/sketch-fillets.png"><img src="docs/screenshots/sketch-fillets.png" alt="Sketch of a plate with rounded corners and driving dimensions"></a></td>
+    <td><a href="docs/screenshots/sketch-toolpaths.png"><img src="docs/screenshots/sketch-toolpaths.png" alt="Toolpaths of the sketched plate"></a></td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>The plate outline: width, height and corner radius are variables; the corners were rounded with Fillet</td>
+    <td>Profiles of both sketches: change a variable and the toolpaths follow</td>
     <td></td>
   </tr>
 </table>

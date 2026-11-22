@@ -517,10 +517,111 @@ public class ExampleDrawingsTests
         return doc;
     }
 
+    /// <summary>
+    /// Sketches: a mounting plate whose size, corner radius and holes are driving dimensions of variables. The outline
+    /// and the holes are two sketches, as an outside and an inside profile cut them.
+    /// </summary>
+    private static CadDocument Sketches()
+    {
+        var doc = New("Sketch (mounting plate)", new Point3(-5, -5, -6), new Point3(105, 65, 0), "Aluminium");
+        List<BamCam.Core.Sketching.SketchVariable> Vars() =>
+        [
+            new() { Name = "Width", Expression = "100" }, new() { Name = "Height", Expression = "60" },
+            new() { Name = "Corner", Expression = "8" }, new() { Name = "Edge", Expression = "10" },
+            new() { Name = "Hole", Expression = "6.5" }, new() { Name = "Bore", Expression = "Height / 2" },
+        ];
+
+        // The outline: a rectangle on the origin with rounded corners.
+        var plate = BamCam.Core.Sketching.Sketch.CreateNew();
+        plate.Variables = Vars();
+        Point2[] c = [new(0, 0), new(100, 0), new(100, 60), new(0, 60)];
+        var l = new BamCam.Core.Sketching.SketchGeometry[4];
+        for (var i = 0; i < 4; i++) l[i] = plate.AddLine(c[i], c[(i + 1) % 4]);
+        for (var i = 0; i < 4; i++) plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Coincident, [l[i].Points[1], l[(i + 1) % 4].Points[0]]);
+        plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Horizontal, [l[0].Id]);
+        plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Horizontal, [l[2].Id]);
+        plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Vertical, [l[1].Id]);
+        plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Vertical, [l[3].Id]);
+        plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Coincident, [l[0].Points[0], BamCam.Core.Sketching.Sketch.OriginId]);
+        var w = plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Distance, [l[0].Id], expression: "Width");
+        (w.LabelX, w.LabelY) = (0, -9);
+        var h = plate.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Distance, [l[1].Id], expression: "Height");
+        (h.LabelX, h.LabelY) = (10, 0);
+        BamCam.Core.Sketching.SketchSolver.Solve(plate);
+        var round = BamCam.Core.Sketching.SketchCommands.RoundCorners(plate, l.Select(x => x.Points[0]).ToList(), "Corner", chamfer: false, out _);
+        BamCam.Core.Sketching.SketchCommands.Settle(plate, round, out _);
+        var plateSketch = new SketchEntity();
+        plateSketch.SetSketch(plate);
+        var plateId = Add(doc, plateSketch);
+
+        // The holes: four in the corners, Edge from the sides, and a bore in the middle.
+        var holes = BamCam.Core.Sketching.Sketch.CreateNew();
+        holes.Variables = Vars();
+        var first = (BamCam.Core.Sketching.SketchGeometry?)null;
+        foreach (var (x, y, ex, ey) in new[] { (10.0, 10.0, "Edge", "Edge"), (90.0, 10.0, "Width - Edge", "Edge"), (90.0, 50.0, "Width - Edge", "Height - Edge"), (10.0, 50.0, "Edge", "Height - Edge") })
+        {
+            var hole = holes.AddCircle(new(x, y), 3.25);
+            var dx = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.HorizontalDistance, [BamCam.Core.Sketching.Sketch.OriginId, hole.Points[0]], [1], ex);
+            var dy = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.VerticalDistance, [BamCam.Core.Sketching.Sketch.OriginId, hole.Points[0]], [1], ey);
+            (dx.LabelX, dx.LabelY) = (0, y < 30 ? -y / 2 - 6 : 66 - y / 2);
+            (dy.LabelX, dy.LabelY) = (x < 50 ? -x / 2 - 6 : 106 - x / 2, 0);
+            if (first == null)
+            {
+                var d = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Diameter, [hole.Id], expression: "Hole");
+                (d.LabelX, d.LabelY) = (16, 8);
+                first = hole;
+            }
+            else
+            {
+                holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Equal, [first.Id, hole.Id]);
+            }
+        }
+        var bore = holes.AddCircle(new(50, 30), 15);
+        var bx = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.HorizontalDistance, [BamCam.Core.Sketching.Sketch.OriginId, bore.Points[0]], [1], "Width / 2");
+        var by = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.VerticalDistance, [BamCam.Core.Sketching.Sketch.OriginId, bore.Points[0]], [1], "Height / 2");
+        // The bore's dimensions a step further out than the holes'.
+        (bx.LabelX, bx.LabelY) = (0, -31);
+        (by.LabelX, by.LabelY) = (-45, 0);
+        var bd = holes.AddConstraint(BamCam.Core.Sketching.ConstraintKind.Diameter, [bore.Id], expression: "Bore");
+        (bd.LabelX, bd.LabelY) = (18, 14);
+        BamCam.Core.Sketching.SketchSolver.Solve(holes);
+        var holesSketch = new SketchEntity();
+        holesSketch.SetSketch(holes);
+        var holesId = Add(doc, holesSketch);
+
+        Op<ProfileOp>(doc, "Holes and bore (inside)", 3, [holesId], op =>
+        {
+            Depth(op, -6, 2);
+            op.InsideOutside.Set(InsideOutside.Inside);
+            op.LeadInMove.Set(new LeadMove(LeadMoveType.Spiral, 5));
+        });
+        Op<ProfileOp>(doc, "Outline (outside, tabs)", 6, [plateId], op =>
+        {
+            Depth(op, -6, 2);
+            op.InsideOutside.Set(InsideOutside.Outside);
+            op.HoldingTabs.Set(new HoldingTabSettings(TabMethod.Automatic, 6, 1.5, 4, 4, 0, 0, false, TabStyle.Triangle));
+        });
+        return doc;
+    }
+
+    [Fact]
+    public void Sketch_example_is_fully_constrained_and_follows_its_variables()
+    {
+        var doc = Sketches();
+        var sketches = doc.AllEntities().OfType<SketchEntity>().ToList();
+        Assert.Equal(2, sketches.Count);
+        foreach (var s in sketches)
+            Assert.Equal(BamCam.Core.Sketching.SketchStatus.FullyConstrained, BamCam.Core.Sketching.SketchSolver.Solve(s.GetSketch()).Status);
+        var holes = sketches[1].GetSketch();
+        holes.Variables.Single(v => v.Name == "Width").Expression = "120";
+        Assert.True(BamCam.Core.Sketching.SketchSolver.Solve(holes).Solved);
+        Assert.Equal(110, holes.Geometry.Where(g => g.Kind == BamCam.Core.Sketching.SketchGeometryKind.Circle).Max(g => holes.P(g.Points[0]).X), 6);
+    }
+
     public static IEnumerable<object[]> Examples() =>
     [
         ["Profile"], ["Pocket"], ["Engrave"], ["V-Engrave"], ["Drilling"], ["Thread milling and tapping"], ["Drag knife"], ["Plasma"],
-        ["Turning"], ["Trochoidal milling (matmill)"], ["NC file"],
+        ["Turning"], ["Trochoidal milling (matmill)"], ["NC file"], ["Sketch (mounting plate)"],
     ];
 
     private static CadDocument Build(string name) => name switch
@@ -536,6 +637,7 @@ public class ExampleDrawingsTests
         "Turning" => Turning(),
         "Trochoidal milling (matmill)" => Trochoidal(),
         "NC file" => NcFile(),
+        "Sketch (mounting plate)" => Sketches(),
         _ => throw new ArgumentException(name),
     };
 

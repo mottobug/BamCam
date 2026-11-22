@@ -189,7 +189,7 @@ public sealed partial class SketchTool
         };
         var text = c.Reference ? $"({prefix}{valueText})"
             : plainNumber || expr.Length == 0 ? prefix + valueText
-            : $"{prefix}{expr} = {valueText}";
+            : $"{prefix.TrimEnd()} {expr} = {valueText}".TrimStart();
 
         Point2 labelAt;
         switch (c.Kind)

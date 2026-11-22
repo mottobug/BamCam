@@ -111,7 +111,7 @@ footer p { margin: 6px 0; }
 <main>
 <div class="wrap hero">
   <h1>Free CAD/CAM software for your CNC machine</h1>
-  <p class="lead">BamCam draws or imports your parts, creates the toolpaths for milling, V-carving, drilling,
+  <p class="lead">BamCam draws your parts, also as parametric sketches with constraints and dimensions, or imports them, creates the toolpaths for milling, V-carving, drilling,
     thread milling, plasma, drag knife and the lathe, simulates them in 3D and writes the G-code for your machine.
     Open source, for Windows, Linux and macOS, and compatible with CamBam <code>.cb</code> files.</p>
   <div class="buttons">
@@ -132,6 +132,7 @@ footer p { margin: 6px 0; }
     <p class="sub">From the drawing to G-code in one program.</p>
     <div class="grid">
       <div class="card"><h3>Drawing and CAD</h3><p>Lines, arcs, polylines, splines, text and point lists with object snaps and typed sizes. Offset, booleans, fillet, trim, arrays, text on a path.</p></div>
+      <div class="card"><h3>Parametric sketches</h3><p>Constraints (coincident, parallel, tangent, symmetric …) and driving dimensions whose values can be formulas of variables: change the width and the part follows. Fillets and chamfers, colours show what is fully determined.</p></div>
       <div class="card"><h3>Import and export</h3><p>DXF (splines stay splines), SVG, STL, images as height maps or traced outlines, G-code back-plot. DXF export R2000 and R12.</p></div>
       <div class="card"><h3>Profile and pocket</h3><p>Inside and outside profiles with holding tabs, lead-ins and corner overcut; pockets with islands, offset or hatch fill.</p></div>
       <div class="card"><h3>Trochoidal milling</h3><p>High speed clearing of pockets, slots and 3D models with the matmill plugin: a large depth of cut with a small stepover.</p></div>
@@ -152,6 +153,12 @@ footer p { margin: 6px 0; }
     <h2>Screenshots</h2>
     <p class="sub">Every picture links to its full size.</p>
     <div class="gallery">
+      <figure><a href="screenshots/sketch-dimensions.png"><img loading="lazy" src="screenshots/sketch-dimensions.png" alt="Sketch mode: holes placed by X and Y dimensions with formulas of variables"></a>
+        <figcaption>Parametric sketch: dimensions as formulas of variables</figcaption></figure>
+      <figure><a href="screenshots/sketch-fillets.png"><img loading="lazy" src="screenshots/sketch-fillets.png" alt="Sketch of a plate with rounded corners"></a>
+        <figcaption>Sketch with filleted corners, fully constrained</figcaption></figure>
+      <figure><a href="screenshots/sketch-toolpaths.png"><img loading="lazy" src="screenshots/sketch-toolpaths.png" alt="Toolpaths of the sketched plate"></a>
+        <figcaption>Profiles of the sketched plate</figcaption></figure>
       <figure><a href="screenshots/battery-bridge-toolpaths.png"><img loading="lazy" src="screenshots/battery-bridge-toolpaths.png" alt="Battery bridge with pockets and profiles"></a>
         <figcaption>Pockets and profiles with their toolpaths</figcaption></figure>
       <figure><a href="screenshots/trochoidal-pocket.png"><img loading="lazy" src="screenshots/trochoidal-pocket.png" alt="Trochoidal pocket around an island"></a>
