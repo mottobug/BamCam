@@ -137,7 +137,7 @@ public sealed class WrapGCodePlugin : IBamCamPlugin
         
         var rotateDir = await ctx.AskNumber("Wrap G-Code",
             (german ? "Drehrichtung: im UZS(0), GUZS(1)" : "Rotate direction: CW(0), ACW(1)"), 0);
-        if (rMax == null) return;
+        if (rotateDir == null) return;
         bool reverse = false;
         if (rotateDir == 1) reverse = true;
 
