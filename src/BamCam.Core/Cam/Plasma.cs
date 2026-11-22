@@ -126,7 +126,7 @@ public sealed class PlasmaOp : MachineOp, IInchDefaults
     public CamParam<bool> UseThc { get; set; } = new(true);
 
     [Param(68, "Probe"), DisplayName("Probe Start Height"),
-     Description("Height above the stock surface down to which the torch moves fast before probing slowly.")]
+     Description("Height above the stock surface down to which the torch moves fast (G0) before probing slowly; at most the clearance plane, so a larger value starts the probing there.")]
     public CamParam<double> ProbeStartHeight { get; set; } = new(5);
 
     [Param(69, "Probe"), DisplayName("Probe Depth"),

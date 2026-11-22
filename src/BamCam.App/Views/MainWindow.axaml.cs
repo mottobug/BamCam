@@ -74,13 +74,14 @@ public partial class MainWindow : Window
         Properties.ValueChanging += (_, _) =>
         {
             // Configuration edits are not part of the drawing's undo history.
-            if (Properties.SelectedObject is not (AppSettings or Core.Cam.ToolDefinition or Core.Cam.PlasmaCutData)) _session.BeginEdit();
+            if (Properties.SelectedObject is not (AppSettings or Core.Cam.ToolDefinition or Core.Cam.PlasmaCutData or Core.Post.PostProcessorDefinition)) _session.BeginEdit();
         };
         Properties.ValueChanged += (_, key) =>
         {
             if (Properties.SelectedObject is AppSettings) OnSettingsEditedInGrid();
             else if (Properties.SelectedObject is Core.Cam.ToolDefinition tool) OnToolEdited(tool);
             else if (Properties.SelectedObject is Core.Cam.PlasmaCutData cutData) OnCutDataEdited(cutData);
+            else if (Properties.SelectedObject is Core.Post.PostProcessorDefinition post) OnPostEdited(post, key);
             else
             {
                 // Enabled of an operation or part: the same for the others selected with it in the tree (one undo step).

@@ -10,6 +10,8 @@ public enum ArcOutputMode { Normal, ConvertToLines, HelixConvertToLines }
 /// </summary>
 public sealed class PostProcessorDefinition
 {
+    /// <summary>The file name without extension; not edited in the property grid, where edits are saved to that file.</summary>
+    [Browsable(false)]
     public string Name { get; set; } = "Default";
 
     // ---- Main sections ----

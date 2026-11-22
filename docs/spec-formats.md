@@ -939,14 +939,18 @@ Additional macros described in help only: `$arc.i/j/k`, `$arc.radius`, `$arc.sta
 Plasma operations (BamCam's own `BamCamPlasma` MOP) use these post processor templates, category *Plasma*.
 They are BamCam additions, not CamBam properties:
 
-| Template | Default | Written | Registers |
+| Template (element in the `.cbpp` file) | Default | Written | Registers |
 |---|---|---|---|
-| Torch On | `M3` | at the pierce point, after the move to pierce height | – |
-| Pierce Delay | `G4 {$p}` | right after Torch On (not when the delay is 0) | `{$p}` pierce delay in seconds |
-| Torch Off | `M5` | at the end of each cut | – |
-| Torch Probe | `G38.2 {$z} {$f}` | before each pierce with Height Control = Probe | `{$z}` lowest Z, `{$f}` probe feedrate |
-| Torch Probe Set Z | `G92 {$z}` | right after Torch Probe | `{$z}` Z at the trigger point (stock surface minus switch offset) |
-| Torch Height Control On / Off | empty | THC on at cut height, off before Torch Off | – |
+| Torch On (`TorchOn`) | `M3` | at the pierce point, after the move to pierce height | – |
+| Pierce Delay (`PierceDelay`) | `G4 {$p}` | right after Torch On (not when the delay is 0) | `{$p}` pierce delay in seconds |
+| Torch Off (`TorchOff`) | `M5` | at the end of each cut | – |
+| Torch Probe (`TorchProbe`) | `G38.2 {$z} {$f}` | before each pierce with Height Control = Probe | `{$z}` lowest Z, `{$f}` probe feedrate |
+| Torch Probe Set Z (`TorchProbeSetZ`) | `G92 {$z}` | right after Torch Probe | `{$z}` Z at the trigger point (stock surface minus switch offset) |
+| Torch Height Control On / Off (`ThcOn` / `ThcOff`) | empty | THC on at cut height, off before Torch Off | – |
+
+The element names are those BamCam writes; `TorchHeightControlOn` / `TorchHeightControlOff` are read as well. A
+template may have several lines. Before Torch Probe the torch moves fast (G0) to *Probe Start Height* above the stock
+surface, at most to the clearance plane.
 
 Pierce height and cut height are not templates: they are Z moves of the toolpath (rapid down to pierce height,
 Torch On, Pierce Delay, feed down to cut height with the plunge feedrate), written with Rapid and FeedMove. For posts

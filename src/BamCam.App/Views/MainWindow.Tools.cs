@@ -194,6 +194,35 @@ public partial class MainWindow
     private static PlasmaCutTable? TableOf(PlasmaCutData entry) => CamLibraries.PlasmaTables.FirstOrDefault(t => t.Entries.Contains(entry));
 
     /// <summary>A cut data entry was edited: save its table and give the linked plasma operations the new values.</summary>
+    /// <summary>
+    /// A post processor edited in the System tab is saved at once: into its file in BamCam's post folder, or, for a
+    /// built-in post or one of a CamBam installation (whose files stay untouched), as a file of the same name there,
+    /// which from now on takes its place.
+    /// </summary>
+    private void OnPostEdited(Core.Post.PostProcessorDefinition post, string property)
+    {
+        _system.PostSources.TryGetValue(post, out var source);
+        var own = source != null && string.Equals(Path.GetDirectoryName(Path.GetFullPath(source)),
+            Path.GetFullPath(SystemLibrary.PostFolder), StringComparison.OrdinalIgnoreCase);
+        var path = own ? source! : Path.Combine(SystemLibrary.PostFolder, post.Name + ".cbpp");
+        try
+        {
+            Directory.CreateDirectory(SystemLibrary.PostFolder);
+            // The edited value is written even when it equals the default, so the file says what was chosen.
+            post.Explicit.Add(property);
+            IO.Cb.CbppFile.Save(post, path);
+            _system.PostSources[post] = path;
+            if (!own)
+                Log(source == null
+                    ? F("Post processor '{0}' saved to {1}; this copy now takes the place of the built-in one.", post.Name, path)
+                    : F("Post processor '{0}' saved to {1}; this copy now takes the place of the CamBam one, which stays unchanged.", post.Name, path));
+        }
+        catch (Exception ex)
+        {
+            Log(F("Could not save post processor '{0}': {1}", post.Name, ex.Message));
+        }
+    }
+
     private void OnCutDataEdited(PlasmaCutData entry)
     {
         if (TableOf(entry) is not { } table) return;

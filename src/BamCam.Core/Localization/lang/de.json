@@ -1611,7 +1611,7 @@
   "THC": "THC",
   "Switch the torch height control of the machine on after reaching cut height and off before the torch is switched off (Torch Height Control On / Off of the post processor).": "Die Brennerhöhenregelung (THC) der Maschine nach Erreichen der Schnitthöhe ein- und vor dem Ausschalten des Brenners ausschalten (THC Ein / Aus des Postprozessors).",
   "Probe Start Height": "Antast-Starthöhe",
-  "Height above the stock surface down to which the torch moves fast before probing slowly.": "Höhe über der Materialoberfläche, bis zu der der Brenner im Eilgang fährt, bevor er langsam antastet.",
+  "Height above the stock surface down to which the torch moves fast (G0) before probing slowly; at most the clearance plane, so a larger value starts the probing there.": "Höhe über der Materialoberfläche, bis zu der der Brenner im Eilgang (G0) fährt, bevor er langsam antastet; höchstens die Sicherheitsebene, ein größerer Wert beginnt das Antasten dort.",
   "Probe Depth": "Antasttiefe",
   "How far below the stock surface the probing move may go before the machine stops with an error.": "Wie weit die Antastbewegung unter die Materialoberfläche gehen darf, bevor die Maschine mit einem Fehler anhält.",
   "Probe Feedrate": "Antastvorschub",
@@ -1923,6 +1923,11 @@
   "Browse Gcode Folder": "G-Code-Ordner öffnen",
   "No G-code folder yet: save the drawing or use Produce Gcode first.": "Noch kein G-Code-Ordner: Speichern Sie die Zeichnung oder erzeugen Sie zuerst G-Code.",
   "The G-code folder {0} does not exist yet.": "Der G-Code-Ordner {0} existiert noch nicht.",
+
+  // Postprozessoren im System-Tab speichern
+  "Could not save post processor '{0}': {1}": "Postprozessor '{0}' konnte nicht gespeichert werden: {1}",
+  "Post processor '{0}' saved to {1}; this copy now takes the place of the built-in one.": "Postprozessor '{0}' in {1} gespeichert; diese Kopie ersetzt ab jetzt den eingebauten.",
+  "Post processor '{0}' saved to {1}; this copy now takes the place of the CamBam one, which stays unchanged.": "Postprozessor '{0}' in {1} gespeichert; diese Kopie ersetzt ab jetzt den von CamBam, der unverändert bleibt.",
 
   // Achsen- und Kurzbezeichnungen bleiben gleich
   "X": "X",

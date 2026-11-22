@@ -15,6 +15,16 @@ public static class CbppFile
         .Where(p => p.CanWrite && p.Name != nameof(PostProcessorDefinition.Name))
         .ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Other names read for an element: the names the templates have in the property grid (issue 34). Saving
+    /// writes the element names.
+    /// </summary>
+    private static readonly Dictionary<string, string> Aliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["TorchHeightControlOn"] = nameof(PostProcessorDefinition.ThcOn),
+        ["TorchHeightControlOff"] = nameof(PostProcessorDefinition.ThcOff),
+    };
+
     public static PostProcessorDefinition Load(string path)
     {
         var def = Parse(File.ReadAllText(path));
@@ -31,6 +41,7 @@ public static class CbppFile
         {
             var name = el.Name.LocalName;
             var text = el.Value;
+            if (Aliases.TryGetValue(name, out var alias)) name = alias;
             if (!Props.TryGetValue(name, out var prop))
             {
                 def.Unknown[name] = text;
