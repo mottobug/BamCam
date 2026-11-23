@@ -71,7 +71,9 @@ jobs:
         run: |
           $v = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.0.0-ci.${{ github.run_number }}" }
           "version=$v" >> $env:GITHUB_OUTPUT
-      # AppImages (issue 41): appimagetool and the AppImage runtimes from the AppImage project, at fixed versions.
+      # AppImages (issue 41): appimagetool and the AppImage runtimes from the AppImage project, at fixed versions and
+      # checksums. Files of a release can be replaced under the same tag: a changed file stops the build instead of
+      # going into the AppImages. For another version, update the URLs and the checksums together.
       - name: AppImage tools
         if: matrix.name == 'linux'
         run: |
@@ -81,8 +83,12 @@ jobs:
           for arch in x86_64 aarch64; do
             curl -fsSL -o runtime-$arch https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-$arch
           done
+          sha256sum --check --strict <<'EOF'
+          ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0  appimagetool
+          2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d  runtime-x86_64
+          00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444  runtime-aarch64
+          EOF
           chmod +x appimagetool
-          sha256sum appimagetool runtime-*
       - name: Package
         shell: pwsh
         run: |
