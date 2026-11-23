@@ -292,7 +292,24 @@ public sealed partial class SketchTool
                 }
                 break;
             }
-            case SketchMode.Arc when _first is { } center:
+            case SketchMode.Arc when _first is { } start:
+            {
+                if (_second is not { } end)
+                {
+                    dc.DrawLine(pen, ToScreen(start.Pos), ToScreen(_cursor));
+                    break;
+                }
+                if (Arc2.FromThreePoints(start.Pos, _cursor, end.Pos) is { } through)
+                {
+                    var preview = new Sketch();
+                    var g = through.Sweep > 0 ? preview.AddArc(through.Center, start.Pos, end.Pos) : preview.AddArc(through.Center, end.Pos, start.Pos);
+                    DrawPath(dc, view, preview.PathOf(g).Transformed(_m), pen);
+                    Label(dc, "R" + SketchCommands.Format(through.Radius), _cursorScreen + new Point(30, 18), HoverColor, small: true);
+                }
+                else dc.DrawLine(pen, ToScreen(start.Pos), ToScreen(end.Pos));
+                break;
+            }
+            case SketchMode.ArcCenter when _first is { } center:
             {
                 if (_second is not { } start)
                 {

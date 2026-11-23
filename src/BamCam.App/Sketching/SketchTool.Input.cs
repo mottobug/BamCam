@@ -31,6 +31,8 @@ public sealed partial class SketchTool
     private DragKind _drag;
     private Point _pressScreen;
     private Point2 _pressLocal;
+    /// <summary>Where the press was, caught by the grid and object snap (geometry is dragged by snapped steps).</summary>
+    private Point2 _pressSnapped;
     private bool _moved;
     private Hit _pressHit;
     private Dictionary<int, Point2> _dragStart = [];
@@ -236,6 +238,32 @@ public sealed partial class SketchTool
                 }
                 break;
             case SketchMode.Arc:
+                if (_first is not { } arcFrom)
+                {
+                    _first = at;
+                    break;
+                }
+                if (_second is not { } arcTo)
+                {
+                    if (Point2.Distance(arcFrom.Pos, at.Pos) < Pixels(2)) break;
+                    _second = at;
+                    break;
+                }
+                {
+                    // Through the third point; sketch arcs run counter-clockwise, so a clockwise one swaps its ends.
+                    if (Arc2.FromThreePoints(arcFrom.Pos, at.Pos, arcTo.Pos) is not { } through) break;
+                    var (startAt, endAt) = through.Sweep > 0 ? (arcFrom, arcTo) : (arcTo, arcFrom);
+                    Remember();
+                    var added = new List<int>();
+                    var arc = _s.AddArc(through.Center, startAt.Pos, endAt.Pos, ConstructionMode);
+                    Attach(added, arc.Points[1], startAt);
+                    Attach(added, arc.Points[2], endAt with { Pos = _s.P(arc.Points[2]) });
+                    Built(added);
+                    _first = null;
+                    _second = null;
+                }
+                break;
+            case SketchMode.ArcCenter:
                 if (_first is not { } arcCenter)
                 {
                     _first = at;
@@ -277,6 +305,7 @@ public sealed partial class SketchTool
         }
         _pressScreen = screen;
         _pressLocal = ToLocal(Host.View.ToWorld(screen));
+        _pressSnapped = ToLocal(world);
         _moved = false;
         _pressHit = HitAt(screen);
         _drag = DragKind.None;
@@ -328,11 +357,19 @@ public sealed partial class SketchTool
             switch (_drag)
             {
                 case DragKind.Points:
-                    _result = SketchSolver.Solve(_s, _dragStart.ToDictionary(kv => kv.Key, kv => kv.Value + delta));
+                {
+                    // Grid and object snap as when drawing: a single point goes to the snapped position, geometry
+                    // moves by snapped steps.
+                    var snapped = ToLocal(world);
+                    var held = _dragStart.Count == 1
+                        ? _dragStart.ToDictionary(kv => kv.Key, _ => snapped)
+                        : _dragStart.ToDictionary(kv => kv.Key, kv => kv.Value + (snapped - _pressSnapped));
+                    _result = SketchSolver.Solve(_s, held);
                     AfterChange(solve: false, notify: false);
                     break;
+                }
                 case DragKind.Radius when _s.Geo(_dragGeo) is { } circle:
-                    circle.Radius = Math.Max(Point2.Distance(_s.P(circle.Points[0]), _cursor), Pixels(1));
+                    circle.Radius = Math.Max(Point2.Distance(_s.P(circle.Points[0]), ToLocal(world)), Pixels(1));
                     _result = SketchSolver.Solve(_s);
                     AfterChange(solve: false, notify: false);
                     break;

@@ -573,6 +573,9 @@ public partial class MainWindow : Window
 
     private async Task<bool> ConfirmDiscard()
     {
+        // A sketch being edited is kept first (as Finish), so that the question includes it and the next drawing
+        // does not show it any more.
+        if (View.Tool is Sketching.SketchTool) View.EndTool();
         if (!_session.Document.IsModified) return true;
         var answer = await Dialogs.Ask(this, "BamCam", F("Save changes to {0}?", _session.Document.Name));
         if (answer == null) return false;
@@ -739,6 +742,8 @@ public partial class MainWindow : Window
             {
                 doc = CbReader.Load(path);
             }
+            // Opened at start or from the command line without the question: a sketch being edited is kept first.
+            if (View.Tool is Sketching.SketchTool) View.EndTool();
             _session.Replace(doc);
             AddRecentFile(path);
             var ops = doc.Parts.Sum(p => p.Operations.Count);
@@ -875,17 +880,20 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnDrop(object? sender, DragEventArgs e)
+    private async void OnDrop(object? sender, DragEventArgs e)
     {
         var files = e.DataTransfer.TryGetFiles();
         if (files?.FirstOrDefault()?.TryGetLocalPath() is not { } path) return;
         // A dropped script only joins the Scripts menu; it does not run.
         if (Path.GetExtension(path).Equals(ScriptLibrary.Extension, StringComparison.OrdinalIgnoreCase)) _ = AddScriptFile(path);
-        else OpenPath(path);
+        // A dropped drawing replaces this one: unsaved changes are asked about first.
+        else if (await ConfirmDiscard()) OpenPath(path);
     }
 
     private async void OnClosing(object? sender, WindowClosingEventArgs e)
     {
+        // Changes of a sketch being edited count as well.
+        if (!_closingConfirmed && View.Tool is Sketching.SketchTool) View.EndTool();
         if (_closingConfirmed || !_session.Document.IsModified) return;
         e.Cancel = true;
         if (await ConfirmDiscard())

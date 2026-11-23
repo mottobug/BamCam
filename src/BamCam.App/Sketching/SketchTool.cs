@@ -9,8 +9,11 @@ using static BamCam.Core.Localization.Tr;
 
 namespace BamCam.App.Sketching;
 
-/// <summary>What the sketch mode is doing: selecting and dragging, or drawing a kind of geometry.</summary>
-public enum SketchMode { Select, Line, Rectangle, Circle, Arc, Point }
+/// <summary>
+/// What the sketch mode is doing: selecting and dragging, or drawing a kind of geometry. Arc: start, end, a point on
+/// the arc (as Draw ▸ Arc); ArcCenter: centre, start, end.
+/// </summary>
+public enum SketchMode { Select, Line, Rectangle, Circle, Arc, ArcCenter, Point }
 
 /// <summary>
 /// The sketch mode in the drawing view: draws lines, rectangles, circles, arcs and points into a
@@ -60,7 +63,8 @@ public sealed partial class SketchTool : ViewTool
 
     public SketchEntity Entity => _entity;
 
-    public override bool PicksPoints => Mode != SketchMode.Select;
+    // While dragging a point, the snapped point is shown as when drawing.
+    public override bool PicksPoints => Mode != SketchMode.Select || _drag is DragKind.Points or DragKind.Radius;
 
     public override bool WantsPlainKeys => true;
 
@@ -148,7 +152,8 @@ public sealed partial class SketchTool : ViewTool
         SketchMode.Line => _lineStart == null ? T("Sketch line: click the start point") : T("Sketch line: click the next point  [Enter / Esc = end the chain]"),
         SketchMode.Rectangle => _first == null ? T("Sketch rectangle: click the first corner") : T("Sketch rectangle: click the opposite corner"),
         SketchMode.Circle => _first == null ? T("Sketch circle: click the centre") : T("Sketch circle: click a point on the circle"),
-        SketchMode.Arc => _first == null ? T("Sketch arc: click the centre") : _second == null ? T("Sketch arc: click the start point") : T("Sketch arc: click the end point (counter-clockwise)"),
+        SketchMode.Arc => _first == null ? T("Sketch arc: click the start point") : _second == null ? T("Sketch arc: click the end point") : T("Sketch arc: click a point on the arc"),
+        SketchMode.ArcCenter => _first == null ? T("Sketch arc: click the centre") : _second == null ? T("Sketch arc: click the start point") : T("Sketch arc: click the end point (counter-clockwise)"),
         SketchMode.Point => T("Sketch point: click a point"),
         _ => T("Sketch: select and drag geometry; double-click a dimension to change it  [Enter = finish, Del = delete]"),
     }) + "    — " + StatusText;
@@ -385,7 +390,7 @@ public sealed partial class SketchTool : ViewTool
             case Key.L: SetMode(SketchMode.Line); return true;
             case Key.R: SetMode(SketchMode.Rectangle); return true;
             case Key.C: SetMode(SketchMode.Circle); return true;
-            case Key.A: SetMode(SketchMode.Arc); return true;
+            case Key.A: SetMode(mods == KeyModifiers.Shift ? SketchMode.ArcCenter : SketchMode.Arc); return true;
             case Key.P: SetMode(SketchMode.Point); return true;
             case Key.X: ToggleConstruction(); return true;
             case Key.K: Constrain(ConstraintKind.Coincident); return true;

@@ -61,6 +61,7 @@
     <StreamGeometry x:Key="IconSkPerpendicular">M3,20 L21,20 M12,20 L12,3 M12,14 L18,14 L18,20</StreamGeometry>
     <StreamGeometry x:Key="IconSkTangent">M2,9 L22,9 M12,9 A6,6 0 1 1 11.99,9 Z</StreamGeometry>
     <StreamGeometry x:Key="IconSkEqual">M4,8 L20,8 M4,16 L20,16</StreamGeometry>
+    <StreamGeometry x:Key="IconSkArcCenter">M4,18 C4,7 20,7 20,18 M12,15 L12,21 M9,18 L15,18</StreamGeometry>
     <StreamGeometry x:Key="IconSkMidpoint">M2,19 L22,5 M9.5,15.5 L12,9.5 L14.5,15.5 Z</StreamGeometry>
     <StreamGeometry x:Key="IconSkSymmetric">M12,2 L12,5 M12,8 L12,11 M12,14 L12,17 M12,20 L12,22 M3,9.5 L8,14.5 M8,9.5 L3,14.5 M16,9.5 L21,14.5 M21,9.5 L16,14.5</StreamGeometry>
     <StreamGeometry x:Key="IconSkFix">M6,11 L18,11 L18,21 L6,21 Z M8.5,11 L8.5,7.5 C8.5,2.5 15.5,2.5 15.5,7.5 L15.5,11 M12,14.5 L12,17.5</StreamGeometry>

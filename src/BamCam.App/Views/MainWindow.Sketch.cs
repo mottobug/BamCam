@@ -95,7 +95,8 @@ public partial class MainWindow
         ModeButton("IconSkLine", T("Line"), T("Lines in a chain; nearly horizontal or vertical lines get the constraint (L)"), SketchMode.Line);
         ModeButton("IconRect", T("Rectangle"), T("Rectangle with horizontal and vertical sides (R)"), SketchMode.Rectangle);
         ModeButton("IconCircle", T("Circle"), T("Circle: centre, then a point on it (C)"), SketchMode.Circle);
-        ModeButton("IconArc", T("Arc"), T("Arc: centre, start, end, counter-clockwise (A)"), SketchMode.Arc);
+        ModeButton("IconArc", T("Arc"), T("Arc: start, end, then a point on the arc (A)"), SketchMode.Arc);
+        ModeButton("IconSkArcCenter", T("Arc (Centre)"), T("Arc: centre, start, end, counter-clockwise (Shift+A)"), SketchMode.ArcCenter);
         ModeButton("IconSkPoint", T("Point"), T("Point (P)"), SketchMode.Point);
         _constructionButton = new ToggleButton();
         Setup(_constructionButton, "IconSkConstruction", T("Construction"),

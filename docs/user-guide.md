@@ -199,18 +199,21 @@ object; its outlines (lines and arcs that meet are joined, circles closed) are w
 operations machine, and drawings also store them as plain polylines, so CamBam shows them.
 
 - **The sketch mode** shows a bar above the drawing. Draw with *Line* (`L`, a chain: Enter or Esc ends it, clicking an
-  existing point closes it), *Rectangle* (`R`), *Circle* (`C`: centre, then a point on it), *Arc* (`A`: centre, start,
-  end, counter-clockwise) and *Point* (`P`). A click on an existing point of the sketch joins the new point to it, a click
+  existing point closes it), *Rectangle* (`R`), *Circle* (`C`: centre, then a point on it), *Arc* (`A`: start, end,
+  then a point on the arc, as Draw ▸ Arc), *Arc (Centre)* (`Shift+A`: centre, start, end, counter-clockwise) and *Point*
+  (`P`). A click on an existing point of the sketch joins the new point to it, a click
   on a line or circle puts it on that; lines drawn within 2° of horizontal or vertical get that constraint.
   *Construction* (`X`) makes the selected or the next geometry construction geometry (dashed): it helps with constraints
   but is not part of the outlines. The cross is the sketch origin, fixed at 0, 0.
 - **Select** (`S`): click points, lines, circles, constraint symbols or dimensions (Ctrl or Shift adds), or drag a box.
-  Dragging a point or a line moves it and everything that depends on it; dragging a circle changes its radius; dragging
+  Dragging a point or a line moves it and everything that depends on it (with grid and object snap: a dragged point goes
+  to the snapped position, a line moves by snapped steps); dragging a circle changes its radius; dragging
   a dimension moves its label. `Del` deletes the selection, `Ctrl+Z` / `Ctrl+Y` undo and redo the steps of the sketch.
 - **Constraints** for the selection: *Coincident* (`K`; two points on one place, or points on a line, circle or arc),
   *Horizontal* (`H`), *Vertical* (`V`), *Parallel*, *Perpendicular*, *Tangent* (`T`), *Equal* (`E`, lengths or radii),
   *Midpoint* (`M`), *Symmetric* (two points and the line of symmetry) and *Fix* (`F`). A constraint that contradicts
-  others or that they already give is not added; the message window says why.
+  others or that they already give is not added; the message window says why. A midpoint, or a coincidence with an end of a
+  line or arc, replaces a point-on-object it includes.
 - **Fillet** (`G`) and **Chamfer** (`N`): select corners (points where two lines meet, or two lines that meet) and give
   the radius or the length cut off each line, a number or a formula. The lines are shortened and joined by a tangent
   arc or a straight chamfer; the radius or chamfer length becomes a dimension you can change later. The old corner
