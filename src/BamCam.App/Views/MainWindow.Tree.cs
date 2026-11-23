@@ -228,9 +228,22 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// A double-click on a drawing object edits it as a double-click in the drawing does (a sketch in the sketch mode,
+    /// a text in its dialog, other objects by their points); a script object opens its script.
+    /// </summary>
     private void OnTreeDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (SelectedTags().FirstOrDefault() is TextEntity t) _ = EditTextEntity(t);
+        switch (SelectedTags().FirstOrDefault())
+        {
+            case ScriptEntity script:
+                _ = EditScript(script);
+                break;
+            case Entity entity:
+                EditInView(entity);
+                View.Focus();
+                break;
+        }
     }
 
     private async Task EditTextEntity(TextEntity t)

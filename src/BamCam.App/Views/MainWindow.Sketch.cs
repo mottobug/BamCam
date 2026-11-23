@@ -15,6 +15,8 @@ public partial class MainWindow
     /// <summary>Draw ▸ Sketch: a new, empty sketch in the active layer, opened in the sketch mode.</summary>
     private void NewSketch()
     {
+        // Already sketching: the toolbar button or Draw ▸ Sketch again starts no second sketch.
+        if (View.Tool is SketchTool) return;
         var entity = new SketchEntity();
         entity.SetSketch(Sketch.CreateNew());
         var doc = _session.Document;

@@ -1503,6 +1503,7 @@
   "C# script that adds the outlines (Edit > Edit Script). Runs only after you allowed it.": "C#-Skript, das die Konturen erzeugt (Bearbeiten > Skript bearbeiten). Läuft erst, nachdem Sie es erlaubt haben.",
   "Edit Scr_ipt...": "Skr_ipt bearbeiten...",
   "Edit Script": "Skript bearbeiten",
+  "Sketch: geometry held by constraints and dimensions": "Skizze: Geometrie, gehalten von Bedingungen und Maßen",
   "Edit script": "Skript bearbeiten",
   "Insert script object": "Skript-Objekt einfügen",
   "Script": "Skript",

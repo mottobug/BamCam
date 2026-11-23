@@ -31,8 +31,8 @@ commands and plugins.
 
 | Area | What it is for |
 |---|---|
-| Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code). |
-| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Several operations or parts selected with Ctrl or Shift are enabled or disabled together: Space, right-click ▸ Disable, or *Enabled* in the properties. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. |
+| Menu and toolbar | All commands; the toolbar has the common ones (drawing tools, snapping, align, operations, generate, G-code, the sketch mode). |
+| **Drawing** tab (left) | Layers with their objects, parts with their machining operations. Right-click for more. Several operations or parts selected with Ctrl or Shift are enabled or disabled together: Space, right-click ▸ Disable, or *Enabled* in the properties. Drag objects onto another layer, and operations onto another operation (before or after it) or a part to reorder or move them. Double-click an object to edit it as in the drawing: a sketch in the sketch mode, a text in its dialog, a script object in the script editor, other objects by their points. |
 | **System** tab (left) | Configuration, post processors, CAM styles and tool libraries. Changes to a post processor are saved at once to its `.cbpp` file in the `post` folder of the system folder; a built-in post or one of a CamBam installation is saved there as a copy of the same name, which takes its place from then on (CamBam's file stays unchanged). Right-click *CAM Styles* or *Tools* for a new library; a library of a CamBam installation is read-only until you copy it to BamCam (right-click it). In own style libraries right-click for new, duplicate or delete style; double-click a style to edit its name, parent style and values (D = inherited). A style holds values for every kind of operation; *Show values for* only chooses which are shown, and the next style opens with the same kind. Each style opens in one window. |
 | Properties (left, below) | Settings of whatever is selected: object, operation, part, layer, drawing. `?` shows the help text. |
 | Drawing view | Left button selects (click, window from left to right, crossing window from right to left); Shift + left drag on a selected object moves the whole selection (Esc cancels), as in CamBam; middle button or wheel pans and zooms (without a middle button, as on a notebook: hold Space and drag with the left button, or use the arrow keys); Alt + left drag rotates (Tools ▸ Options ▸ Rotation Mode also allows holding the middle or right button and dragging with the left one, as in CamBam); right button opens the context menu. 3D meshes appear as shaded surfaces; View ▸ Shade Surfaces switches to wireframes. Lines and toolpaths always lie over a surface, even when they run behind it. |
@@ -88,7 +88,7 @@ quadrants (diamond) and intersections (cross).
 
 **Changing objects** (Edit menu, right-click menu):
 
-- double-click an object to drag its points; Edit ▸ Polyline ▸ Edit Points for a table;
+- double-click an object (in the drawing or in the Drawing tab) to drag its points; Edit ▸ Polyline ▸ Edit Points for a table;
 - move (`Ctrl+M`), rotate (`Ctrl+R`), resize (`Ctrl+E`), mirror, array copies, align (toolbar button with the
   arrow: left / centre / right / top / middle / bottom, to the last or first selected object, the selection, the
   drawing, the origin or the stock);

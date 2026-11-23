@@ -640,6 +640,7 @@ public partial class MainWindow
         p.Children.Add(ToolModeButton("IconRect", "Rectangle (R)", () => View.SetTool(new RectangleTool()), t => t is RectangleTool));
         p.Children.Add(ToolModeButton("IconPoints", "Point list (D)", () => View.SetTool(new PointListTool()), t => t is PointListTool));
         p.Children.Add(ToolModeButton("IconText", "Text (T)", DrawText, t => t is TextTool));
+        p.Children.Add(ToolModeButton("IconSketch", "Sketch: geometry held by constraints and dimensions", NewSketch, t => t is Sketching.SketchTool));
         p.Children.Add(ToolSeparator());
         // One button for aligning: a menu with the six edges and the reference.
         // A plain toolbar button (same look and height as the others) with a small arrow and a menu.
