@@ -11,7 +11,8 @@ Download the package for your system from the [releases](https://github.com/mott
   (installer) or the `.zip` (unpack and run `BamCam.exe`).
 - **macOS:** the `.zip` for Apple Silicon (`osx-arm64`) or Intel (`osx-x64`). The app is not notarised: open it
   once with right click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
-- **Linux:** the `.tar.gz` for x64 or arm64; unpack and run `BamCam`.
+- **Linux:** the `.AppImage` for x86_64 or aarch64: make it executable (`chmod +x`) and start it, nothing to install. Or the
+  `.tar.gz` for x64 or arm64: unpack and run `BamCam`, or `install.sh` for a menu entry and the file type.
 
 At the first start BamCam asks whether it may check for new versions once a day (only the version list is
 requested from GitHub). The interface follows the system language (English or German); Tools ▸ Options changes it.

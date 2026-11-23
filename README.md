@@ -112,7 +112,7 @@ powershell -ExecutionPolicy Bypass -File build/package.ps1 -Rid win-x64 -Version
 | Platform | Result in `artifacts/` |
 |---|---|
 | `win-x64` | `BamCam-<version>-win-x64.zip`, plus `-setup.exe` when Inno Setup 6 is installed |
-| `linux-x64`, `linux-arm64` | `.tar.gz` with `install.sh` (per user, or `sudo ./install.sh --system`), `.desktop` entry and icon |
+| `linux-x64`, `linux-arm64` | `.tar.gz` with `install.sh` (per user, or `sudo ./install.sh --system`), `.desktop` entry and icon; and an `.AppImage` (`x86_64`, `aarch64`) that runs without installing (built when `-AppImageTool` and `-AppImageRuntime` are given, as the CI does) |
 | `osx-x64`, `osx-arm64` | `.zip` with `BamCam.app`. Icon, executable permissions and the ad-hoc signature are only added when built on macOS |
 
 Build the Linux and macOS packages on their own systems (the CI does this) so that executable permissions

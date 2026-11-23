@@ -5,6 +5,7 @@
 .DESCRIPTION
   win-*   : BamCam-<version>-<rid>.zip, plus a setup .exe when Inno Setup (iscc) is available
   linux-* : BamCam-<version>-<rid>.tar.gz with a .desktop entry, icon and install.sh
+            and, with -AppImageTool and -AppImageRuntime, BamCam-<version>-<arch>.AppImage
   osx-*   : BamCam-<version>-<rid>.zip containing a BamCam.app bundle (ad-hoc signed when built on macOS)
 
   Works with Windows PowerShell 5.1 and PowerShell 7 (pwsh) on Windows, Linux and macOS.
@@ -18,7 +19,10 @@ param(
     [Parameter(Mandatory = $true)][string]$Rid,
     [string]$Version = "",
     [string]$Configuration = "Release",
-    [string]$OutDir = ""
+    [string]$OutDir = "",
+    # Linux only: appimagetool and the AppImage runtime for the architecture of -Rid; without them no AppImage is built.
+    [string]$AppImageTool = "",
+    [string]$AppImageRuntime = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -160,6 +164,41 @@ elseif ($Rid -like "linux-*") {
     & tar -czf $tgz -C (Join-Path $OutDir "stage") $name
     if ($LASTEXITCODE -ne 0) { throw "tar failed" }
     $results += $tgz
+
+    # AppImage: one file that runs without installing. The AppDir holds the program in usr/lib/bamcam, the .desktop
+    # entry and the icon at its top, and AppRun, which starts the program with the arguments (a drawing to open).
+    if ($AppImageTool -ne "" -and $AppImageRuntime -ne "") {
+        $arch = if ($Rid -like "*arm64") { "aarch64" } else { "x86_64" }
+        $appDirImage = Join-Path $OutDir "stage/$name.AppDir"
+        if (Test-Path $appDirImage) { Remove-Item -Recurse -Force $appDirImage }
+        $libDir = Join-Path $appDirImage "usr/lib/bamcam"
+        New-Item -ItemType Directory -Force $libDir | Out-Null
+        Copy-Item -Recurse (Join-Path $publishDir "*") $libDir
+        Set-Executable (Join-Path $libDir "BamCam")
+        $mimeDir = Join-Path $appDirImage "usr/share/mime/packages"
+        New-Item -ItemType Directory -Force $mimeDir | Out-Null
+        Copy-Item (Join-Path $stage "bamcam-mime.xml") (Join-Path $mimeDir "bamcam.xml")
+        Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $appDirImage "bamcam.png")
+        Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $appDirImage ".DirIcon")
+        $desktopLines = @((Get-Content (Join-Path $stage "bamcam.desktop")) -replace "@EXEC@", "BamCam")
+        Write-TextLf (Join-Path $appDirImage "bamcam.desktop") $desktopLines
+        Write-TextLf (Join-Path $appDirImage "AppRun") @(
+            "#!/bin/sh",
+            "HERE=`"`$(dirname `"`$(readlink -f `"`$0`")`")`"",
+            "exec `"`$HERE/usr/lib/bamcam/BamCam`" `"`$@`""
+        )
+        Set-Executable (Join-Path $appDirImage "AppRun")
+
+        $appImage = Join-Path $OutDir "BamCam-$Version-$arch.AppImage"
+        if (Test-Path $appImage) { Remove-Item $appImage }
+        Write-Host "==> AppImage $arch"
+        # appimagetool is itself an AppImage: extracted instead of mounted, since build machines often have no FUSE.
+        $env:APPIMAGE_EXTRACT_AND_RUN = "1"
+        $env:ARCH = $arch
+        & $AppImageTool --no-appstream --runtime-file $AppImageRuntime $appDirImage $appImage
+        if ($LASTEXITCODE -ne 0) { throw "appimagetool failed" }
+        $results += $appImage
+    }
 }
 elseif ($Rid -like "osx-*") {
     $stage = Join-Path $OutDir "stage/$name"

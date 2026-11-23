@@ -71,11 +71,28 @@ jobs:
         run: |
           $v = if ("${{ github.ref_type }}" -eq "tag") { "${{ github.ref_name }}".TrimStart("v") } else { "0.0.0-ci.${{ github.run_number }}" }
           "version=$v" >> $env:GITHUB_OUTPUT
+      # AppImages (issue 41): appimagetool and the AppImage runtimes from the AppImage project, at fixed versions.
+      - name: AppImage tools
+        if: matrix.name == 'linux'
+        run: |
+          mkdir -p "$RUNNER_TEMP/appimage"
+          cd "$RUNNER_TEMP/appimage"
+          curl -fsSL -o appimagetool https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          for arch in x86_64 aarch64; do
+            curl -fsSL -o runtime-$arch https://github.com/AppImage/type2-runtime/releases/download/20251108/runtime-$arch
+          done
+          chmod +x appimagetool
+          sha256sum appimagetool runtime-*
       - name: Package
         shell: pwsh
         run: |
           foreach ($rid in "${{ matrix.rids }}".Split(" ")) {
-            ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }}
+            $extra = @{}
+            if ($rid -like "linux-*") {
+              $arch = if ($rid -like "*arm64") { "aarch64" } else { "x86_64" }
+              $extra = @{ AppImageTool = "$env:RUNNER_TEMP/appimage/appimagetool"; AppImageRuntime = "$env:RUNNER_TEMP/appimage/runtime-$arch" }
+            }
+            ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }} @extra
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
       - name: NuGet packages for plugin authors
@@ -111,6 +128,7 @@ jobs:
           path: |
             artifacts/*.zip
             artifacts/*.tar.gz
+            artifacts/*.AppImage
             artifacts/*-setup.exe
             artifacts/*.nupkg
           if-no-files-found: error
