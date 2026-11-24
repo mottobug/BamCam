@@ -9,12 +9,14 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
     <Product>Squircle</Product>
     <Company>BamCam project</Company>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- BamCam provides these at run time: reference them without copying them to the output. -->
     <ProjectReference Include="..\..\src\BamCam.PluginApi\BamCam.PluginApi.csproj" Private="false" ExcludeAssets="runtime" />
     <ProjectReference Include="..\..\src\BamCam.Core\BamCam.Core.csproj" Private="false" ExcludeAssets="runtime" />
+    <!-- The window: BamCam's Avalonia, also provided at run time (keep the version of src/BamCam.App). -->
+    <PackageReference Include="Avalonia" Version="11.3.22" ExcludeAssets="runtime" />
   </ItemGroup>
 </Project>

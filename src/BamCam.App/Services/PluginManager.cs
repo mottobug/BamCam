@@ -93,6 +93,9 @@ public sealed class PluginManager
     public List<PluginFileFormatEntry> Importers { get; } = [];
     public List<PluginFileFormatEntry> Exporters { get; } = [];
 
+    /// <summary>Editors of plugin object types (by type), opened by a double-click on such an object.</summary>
+    public Dictionary<Type, Func<ICommandContext, ParametricEntity, Task>> EntityEditors { get; } = [];
+
     /// <summary>The plugin folder in the user's system folder.</summary>
     public static string UserFolder => System.IO.Path.Combine(SystemLibrary.SystemFolder, "plugins");
 
@@ -247,6 +250,9 @@ public sealed class PluginManager
 
         public void AddEntityType<TEntity>() where TEntity : ParametricEntity, new() =>
             ParametricEntities.Register(new TEntity().ParametricType, () => new TEntity());
+
+        public void AddEntityEditor<TEntity>(Func<ICommandContext, TEntity, Task> edit) where TEntity : ParametricEntity =>
+            manager.EntityEditors[typeof(TEntity)] = (context, entity) => edit(context, (TEntity)entity);
 
         public void AddPostMacro(string name, Func<PostMacroContext, string> evaluate) =>
             GCodePoster.RegisterMacro(name, (doc, op, args) => evaluate(new PostMacroContext(doc, op, args)));

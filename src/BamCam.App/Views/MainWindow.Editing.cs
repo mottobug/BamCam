@@ -68,7 +68,22 @@ public partial class MainWindow
     {
         if (entity is TextEntity t) _ = EditTextEntity(t);
         else if (entity is SketchEntity sketch) StartSketch(sketch);
+        else if (entity is ParametricEntity p && _plugins.EntityEditors.TryGetValue(p.GetType(), out var editor)) _ = RunEntityEditor(editor, p);
         else View.SetTool(new EditPointsTool(entity));
+    }
+
+    /// <summary>A plugin's own editor of its object (e.g. a window with the parameters).</summary>
+    private async Task RunEntityEditor(Func<Plugins.ICommandContext, ParametricEntity, Task> editor, ParametricEntity entity)
+    {
+        try
+        {
+            await editor(new CommandContext(this), entity);
+        }
+        catch (Exception ex)
+        {
+            Log(F("Editing {0} failed: {1}", entity.TypeName, (ex as TargetInvocationException)?.InnerException?.Message ?? ex.Message));
+        }
+        View.Invalidate();
     }
 
     /// <summary>Operation whose drawing objects are being re-selected (keeps it in the property grid meanwhile).</summary>

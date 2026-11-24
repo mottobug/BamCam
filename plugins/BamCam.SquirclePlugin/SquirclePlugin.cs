@@ -9,25 +9,48 @@ using BamCam.Plugins;
 
 namespace Squircle;
 
-/// <summary>Draw ▸ Squircle: inserts a squircle, whose values are then changed in the properties.</summary>
+/// <summary>
+/// Draw ▸ Squircle: a window with the values and a preview, which inserts squircle objects. A double-click on a
+/// squircle opens the window again with its values; they can also be changed in the properties.
+/// </summary>
 public sealed class SquirclePlugin : IBamCamPlugin
 {
+    /// <summary>The values of the last squircle made in this session: the window starts with them.</summary>
+    private static readonly SquircleEntity LastValues = new();
+
     public void Initialize(IPluginHost host)
     {
         var german = host.Language == "de";
         host.AddEntityType<SquircleEntity>();
         host.AddCommand(new PluginCommand
         {
-            Header = "S_quircle",
+            Header = "S_quircle...",
             Menu = "Draw",
             Description = german
-                ? "Squircle und Superellipse: Form und Werte im Eigenschaftenfenster wählen"
-                : "Squircle and superellipse: choose the shape and values in the properties",
-            Execute = context =>
+                ? "Squircle und Superellipse: Werte mit Vorschau wählen"
+                : "Squircle and superellipse: choose the values with a preview",
+            Execute = async context =>
             {
-                context.AddEntities(german ? "Squircle zeichnen" : "Draw squircle", [new SquircleEntity()]);
-                return Task.CompletedTask;
+                var values = new SquircleEntity();
+                values.CopyValues(LastValues);
+                await SquircleWindow.Show(values, german, editing: false, make: () =>
+                {
+                    var squircle = new SquircleEntity();
+                    squircle.CopyValues(values);
+                    LastValues.CopyValues(values);
+                    context.AddEntities(german ? "Squircle zeichnen" : "Draw squircle", [squircle]);
+                });
             },
+        });
+        host.AddEntityEditor<SquircleEntity>(async (context, squircle) =>
+        {
+            var values = new SquircleEntity();
+            values.CopyValues(squircle);
+            await SquircleWindow.Show(values, german, editing: true, make: () =>
+            {
+                LastValues.CopyValues(values);
+                context.Change(german ? "Squircle ändern" : "Change squircle", () => squircle.CopyValues(values));
+            });
         });
     }
 }
@@ -124,6 +147,26 @@ public sealed class SquircleEntity : ParametricEntity
             if (Note.Length == 0) hidden.Add(nameof(Note));
             return hidden;
         }
+    }
+
+    /// <summary>Takes over all values of <paramref name="other"/> (not the drawing data such as id or layer).</summary>
+    public void CopyValues(SquircleEntity other)
+    {
+        ShapeType = other.ShapeType;
+        M = other.M;
+        N1 = other.N1;
+        N2 = other.N2;
+        N3 = other.N3;
+        A = other.A;
+        B = other.B;
+        RadX = other.RadX;
+        RadY = other.RadY;
+        OrigX = other.OrigX;
+        OrigY = other.OrigY;
+        Accuracy = other.Accuracy;
+        Angle = other.Angle;
+        EdgeLength = other.EdgeLength;
+        Invalidate();
     }
 
     private double Rx => Math.Max(RadX, Smallest);

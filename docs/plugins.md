@@ -210,6 +210,39 @@ Drawings store the object as ordinary polylines (the computed outlines, in drawi
 with type and parameters. CamBam and BamCam without the plugin therefore show the polylines and can machine them;
 with the plugin the object is parametric again.
 
+**Own editor:** by default a double-click on such an object edits its points. With an editor, a double-click (in the
+drawing or in the Drawing tab) opens it instead, e.g. a window with all parameters and a preview:
+
+```csharp
+host.AddEntityEditor<GearEntity>(async (ctx, gear) =>
+{
+    var values = new GearEntity();
+    values.CopyValues(gear);                        // your own method: the window changes a copy
+    if (await GearWindow.Show(values))              // true on OK
+        ctx.Change("Change gear", () => { gear.CopyValues(values); gear.Invalidate(); });   // one undo step
+});
+```
+
+### Windows with many values
+
+For one or two values `ctx.AskNumber` and `ctx.AskText` are enough. A plugin with many values (8 or 10, as many
+CamBam plugins have) opens its own window, built with BamCam's user interface library
+[Avalonia](https://avaloniaui.net) (Windows Forms is not available: BamCam also runs on Linux and macOS). Add the
+Avalonia package as described under [For plugin authors](#for-plugin-authors) and build the window in code, or in
+XAML with the Avalonia extension for Visual Studio, which also has a designer and preview.
+
+The plugin **Squircle** that comes with BamCam is a complete example:
+[`plugins/BamCam.SquirclePlugin/SquircleWindow.cs`](../plugins/BamCam.SquirclePlugin/SquircleWindow.cs) builds a
+window in code with number fields, radio buttons, a live preview and Make / Close buttons:
+
+- Show it with BamCam's main window as the owner, so that it stays in front:
+  `Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } owner }`,
+  then `await window.ShowDialog(owner)`.
+- Let the window change a copy of the values, and change the drawing only on Make or OK, through
+  `ctx.AddEntities` or `ctx.Change`, so that each is one undo step.
+- To keep the values between uses in a session, keep the last ones in a `static` field (Squircle does that); to keep
+  them in the drawing, use an object type (above), whose parameters are saved with it.
+
 ### File formats
 
 ```csharp

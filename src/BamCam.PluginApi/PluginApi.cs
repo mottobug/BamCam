@@ -63,6 +63,14 @@ public interface IPluginHost
     /// (<see cref="ICommandContext.AddEntities"/>).
     /// </summary>
     void AddEntityType<TEntity>() where TEntity : ParametricEntity, new();
+
+    /// <summary>
+    /// Opens the plugin's own editor (e.g. a window with the parameters) when a <typeparamref name="TEntity"/> is
+    /// double-clicked, in the drawing or in the Drawing tab, instead of editing its points. Change the object through
+    /// <see cref="ICommandContext.Change"/> (and call <see cref="ParametricEntity.Invalidate"/>) so that it is
+    /// undoable. Without an editor the parameters are changed in the property grid only.
+    /// </summary>
+    void AddEntityEditor<TEntity>(Func<ICommandContext, TEntity, Task> edit) where TEntity : ParametricEntity { }
 }
 
 /// <summary>A file type: its name in file dialogs and its extensions (".xyz").</summary>

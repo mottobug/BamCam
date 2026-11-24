@@ -238,5 +238,7 @@ public class SquirclePluginTests
 
         Assert.Equal(PluginState.Loaded, info.State);
         Assert.Equal("Draw", Assert.Single(manager.Commands).Command.Menu);
+        // A double-click on a squircle opens its window.
+        Assert.Contains(manager.EntityEditors.Keys, t => t.FullName == typeof(SquircleEntity).FullName); // loaded in its own context
     }
 }

@@ -493,6 +493,22 @@ public partial class MainWindow : Window
                     _ => null,
                 };
                 extra?.Show(this);
+                // plugin:<text>: runs the plugin command whose menu text contains it; edit: double-clicks the first
+                // object of the drawing. The window that opens (a plugin's own) is saved.
+                if (which.StartsWith("plugin:") || which == "edit")
+                {
+                    var before = OwnedWindows.ToList();
+                    if (which == "edit")
+                    {
+                        if (_session.Document.AllEntities().FirstOrDefault() is { } first) EditInView(first);
+                    }
+                    else if (_plugins.Commands.FirstOrDefault(c => c.Command.Header.Replace("_", "").Contains(which[7..], StringComparison.OrdinalIgnoreCase)) is { } command)
+                        _ = RunPluginCommand(command);
+                    await Task.Delay(1000);
+                    extra = OwnedWindows.Except(before).LastOrDefault();
+                    Log($"--window {which}: {(extra == null ? "no window" : extra.Title)}");
+                    which = which.Replace(':', '-');
+                }
                 if (extra is SimulationWindow simulation)
                 {
                     await Task.Delay(6000); // simulation runs on a worker thread

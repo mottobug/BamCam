@@ -176,8 +176,10 @@ are left out with a warning when a transform would take them out of the XY plane
 **Centre lines** (Draw ▸ Centre Lines): a horizontal and a vertical centre line for the selected circle or rectangle.
 This is a plugin that comes with BamCam; Tools ▸ Plugins switches it off.
 
-**Squircle** (Draw ▸ Squircle): a shape whose values you change in the properties. *Simple* goes from circle over rounded
-rectangle to diamond with the exponent n1: 2 gives a circle or ellipse, more a rounded rectangle, 1 to 2 a rounded
+**Squircle** (Draw ▸ Squircle): a window with the values on the left and a preview on the right; *Make Squircle*
+adds one (the window stays open for more), and the window starts with the values of the last one. A double-click on a
+squircle opens the window again with its values; they can also be changed in the properties. *Simple* goes from
+circle over rounded rectangle to diamond with the exponent n1: 2 gives a circle or ellipse, more a rounded rectangle, 1 to 2 a rounded
 diamond, and below 1 a concave diamond. *Complex* gives a wide variety of shapes from m, n1, n2, n3, a and b. The
 accuracy is set by the angle or the length of the segments. Also a plugin that comes with BamCam. The idea, formulas and
 parameters come from GeoffreyGRoy, author of the
