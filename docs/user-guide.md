@@ -13,6 +13,9 @@ Download the package for your system from the [releases](https://github.com/mott
   once with right click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
 - **Linux:** the `.AppImage` for x86_64 or aarch64: make it executable (`chmod +x`) and start it, nothing to install. Or the
   `.tar.gz` for x64 or arm64: unpack and run `BamCam`, or `install.sh` for a menu entry and the file type.
+  If the window flickers when the mouse moves or shows what is behind it (some graphics drivers, often without a
+  compositor, e.g. on LinuxCNC machines), start BamCam with software drawing: `BAMCAM_RENDERING=software ./BamCam`
+  (or `./BamCam-...AppImage --rendering software`). The message window then shows the mode.
 
 At the first start BamCam asks whether it may check for new versions once a day (only the version list is
 requested from GitHub). The interface follows the system language (English or German); Tools ▸ Options changes it.

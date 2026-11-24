@@ -144,6 +144,7 @@ public partial class MainWindow : Window
 
         OnDocumentReplaced();
         Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf / .svg)."));
+        if (OperatingSystem.IsLinux() && Program.RenderingChoice is { } rendering) Log(F("Rendering: {0} (--rendering or BAMCAM_RENDERING).", rendering));
         // Plugins after the window is shown: new plugins are confirmed in a dialog.
         Opened += async (_, _) =>
         {

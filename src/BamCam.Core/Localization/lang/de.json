@@ -249,6 +249,7 @@
   "Part: {0}": "Teil: {0}",
   "Language: {0}": "Sprache: {0}",
   "BamCam ready. Draw or open a drawing (.cb / .dxf / .svg).": "BamCam ist bereit. Zeichnen Sie oder öffnen Sie eine Zeichnung (.cb / .dxf / .svg).",
+  "Rendering: {0} (--rendering or BAMCAM_RENDERING).": "Darstellung: {0} (--rendering oder BAMCAM_RENDERING).",
   "Internal error: {0} (details in crash.log)": "Interner Fehler: {0} (Details in crash.log)",
   "Default post processor '{0}' not found; using '{1}'.": "Standard-Postprozessor '{0}' nicht gefunden; '{1}' wird verwendet.",
   "Post processor '{0}' of this drawing not found; using '{1}'.": "Postprozessor '{0}' dieser Zeichnung nicht gefunden; '{1}' wird verwendet.",
