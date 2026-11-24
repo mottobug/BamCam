@@ -312,6 +312,13 @@ BamCam brings them. For simple questions `AskNumber` and `AskText` need no Avalo
 1. **Fork** the repository: on [github.com/mottobug/BamCam](https://github.com/mottobug/BamCam) click **Fork** (top
    right), then **Create fork**. You now have your own copy, `github.com/<your account>/BamCam`, which you may change
    freely.
+
+   **Already have a fork from an earlier plugin?** Bring it up to date first, once your earlier pull request has
+   been merged: on the start page of your fork click **Sync fork**. If it offers **Discard N commits**, click that;
+   otherwise **Update branch**. The maintainer merges a pull request as one new commit, so your fork still holds your
+   original commits of the earlier plugin. Without discarding them they come along into the next pull request and
+   clash with BamCam's version of the same files (GitHub then reports a conflict, and the pull request cannot be
+   merged). Discarding loses nothing: the earlier plugin is in BamCam by then, and the synced fork has it again.
 2. In your fork, open `plugins/community`. Click **Add file ▸ Upload files** and drag the **folder** of your plugin into
    the page. Name the folder `<Author>.<Name>`, e.g. `GeoffRoy.Revolve`, and start from a copy of
    [`_Template`](../plugins/community/_Template): its `.csproj` already references BamCam correctly. Upload the source
@@ -336,7 +343,8 @@ the merge and appears under **Assets** of the next BamCam release.
 
 ### Changing a plugin
 
-1. In your fork, first click **Sync fork ▸ Update branch**, so that it has the current BamCam.
+1. In your fork, first click **Sync fork**, so that it has the current BamCam: **Discard N commits** if it offers that
+   (see above), otherwise **Update branch**.
 2. Open the file, click the pencil to edit it (or **Add file ▸ Upload files** to replace files), raise `<Version>` in
    the `.csproj` and add a line to *Changes* in your `README.md`, then **Commit changes**.
 3. **Contribute ▸ Open pull request** as before.
