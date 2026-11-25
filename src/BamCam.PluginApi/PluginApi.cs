@@ -139,6 +139,22 @@ public interface ICommandContext
     Task<string?> AskText(string title, string label, string defaultValue = "");
 
     /// <summary>
+    /// Asks for several values in one window, without designing one: BamCam shows a field for every public property
+    /// of <paramref name="values"/> with a getter and a setter, as in its property grid (numbers, yes/no, a list for an
+    /// enum, text). <c>[DisplayName]</c>, <c>[Description]</c> (the tooltip) and <c>[Category]</c> work as for
+    /// object types. The fields change <paramref name="values"/> directly; Cancel puts back what it held before.
+    /// <paramref name="preview"/>, when given, returns outlines (drawing coordinates) that a picture beside the fields
+    /// shows and redraws after every change. True on OK.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// static readonly RevolveValues Last = new();   // keeps the values for the session
+    /// if (!await ctx.AskValues("Revolve", Last)) return;
+    /// </code>
+    /// </example>
+    Task<bool> AskValues(string title, object values, Func<IEnumerable<Path2>?>? preview = null) => Task.FromResult(false);
+
+    /// <summary>
     /// The G-code of the whole drawing as text, with the post processor of the drawing: toolpaths are generated when
     /// needed, warnings go to the message window. No file is written and no post-build command runs, so that nothing
     /// is sent to a machine. Null when there is nothing to post (or in a host that does not offer this).

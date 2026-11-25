@@ -225,11 +225,48 @@ host.AddEntityEditor<GearEntity>(async (ctx, gear) =>
 
 ### Windows with many values
 
-For one or two values `ctx.AskNumber` and `ctx.AskText` are enough. A plugin with many values (8 or 10, as many
-CamBam plugins have) opens its own window, built with BamCam's user interface library
-[Avalonia](https://avaloniaui.net) (Windows Forms is not available: BamCam also runs on Linux and macOS). Add the
-Avalonia package as described under [For plugin authors](#for-plugin-authors) and build the window in code, or in
-XAML with the Avalonia extension for Visual Studio, which also has a designer and preview.
+For one or two values `ctx.AskNumber` and `ctx.AskText` are enough. For many values (8 or 10, as many CamBam plugins
+have) **`ctx.AskValues`** shows a window without any designing: write a class with a property for each value, and
+BamCam shows a field for each, as in its property grid.
+
+```csharp
+public sealed class RevolveValues
+{
+    [DisplayName("Angle"), Description("Degrees, more than 0 and at most 360.")]
+    public double Angle { get; set; } = 360;
+    [Category("Mesh"), Description("Number of steps around the axis.")]
+    public int Segments { get; set; } = 36;
+    [Category("Mesh"), DisplayName("Close Ends")]
+    public bool CloseEnds { get; set; } = true;
+    public Direction Direction { get; set; }           // an enum: a list to choose from
+}
+
+private static readonly RevolveValues Last = new();    // keeps the values for the session
+
+Execute = async ctx =>
+{
+    if (!await ctx.AskValues("Revolve", Last, preview: () => BuildOutlines(Last))) return;   // false = Cancel
+    // use Last.Angle, Last.Segments, ...
+};
+```
+
+- Every public property with a getter and a setter is a field: numbers, yes/no (a check box), an enum (a list to
+  choose from) and text. `[DisplayName]` sets the label, `[Description]` the help shown below the fields,
+  `[Category]` groups them (`using System.ComponentModel;`).
+- The fields change the object directly; **Cancel** puts back what it held before. Keeping the object in a `static`
+  field keeps the values between uses in a session.
+- `preview` is optional: a function that returns outlines (`Path2`, drawing coordinates) for the current values. A
+  picture beside the fields shows them and is redrawn after every change. It may return null while the values do
+  not make a shape.
+- Scripts of the Scripts menu can use `AskValues` the same way.
+- Labels and descriptions are shown as written. A label that is also one of BamCam's own texts (such as "Points")
+  appears in the user interface language.
+
+**An own window** is for a layout of your own (as the Squircle plugin has). It is built with BamCam's user interface
+library [Avalonia](https://avaloniaui.net) (Windows Forms is not available: BamCam also runs on Linux and macOS).
+Add the Avalonia package as described under [For plugin authors](#for-plugin-authors) and build the window in code,
+or in XAML. The *Avalonia for Visual Studio* extension shows a live preview of the XAML while you type it; there is no
+drag-and-drop designer as for Windows Forms.
 
 The plugin **Squircle** that comes with BamCam is a complete example:
 [`plugins/BamCam.SquirclePlugin/SquircleWindow.cs`](../plugins/BamCam.SquirclePlugin/SquircleWindow.cs) builds a
@@ -333,6 +370,11 @@ your installed BamCam: BamCam installed in its default folder is found by itself
 `.csproj` builds against BamCam's source code, which is what the release build does. So keep the template's `.csproj`
 (only rename it and change Product, Company and Version): a `.csproj` with paths of your own computer would not build
 there.
+
+**Keep your BamCam current:** building against your installed BamCam means you can use what that version offers.
+Examples and this guide follow the newest BamCam, including betas (Help ▸ Also Offer Betas). When the compiler says
+that `IPluginHost` or `ICommandContext` has no member such as `AddEntityEditor` or `AskValues`, your installed BamCam
+is older than the example: update it.
 
 **Own windows or controls (Avalonia):** BamCam's user interface library is [Avalonia](https://avaloniaui.net). A plugin
 that opens its own window uses BamCam's Avalonia: in the template's `.csproj`, remove the two comment lines around the

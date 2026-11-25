@@ -11,6 +11,9 @@ namespace BamCam.App.Services;
 
 public enum OutFilePrompt { IfExists, Always, Never }
 
+/// <summary>How windows are drawn on Linux: with the processor, or with the graphics card (OpenGL).</summary>
+public enum LinuxRendering { Software, [Description("OpenGL")] OpenGL }
+
 /// <summary>Grid definition for one unit system.</summary>
 public sealed class GridInfo
 {
@@ -90,6 +93,13 @@ public sealed class AppSettings
     [Category("Drawing"), DisplayName("Spline To Polyline Tolerance"),
      Description("Largest deviation of the lines and arcs used for splines (display, toolpaths, export as polylines).")]
     public double SplineTolerance { get; set; } = 0.001;
+
+    // ---- Display ----
+    [Category("Display"), DisplayName("Linux Rendering"),
+     Description("Linux only, from the next start: how windows are drawn. Software: with the processor; never flickers. OpenGL: with the graphics card, faster with very large drawings, but with some graphics drivers (often without a compositor, e.g. on LinuxCNC machines) the window flickers when the mouse moves and shows what is behind it. The start option --rendering or BAMCAM_RENDERING takes precedence.")]
+    public LinuxRendering LinuxRendering { get; set; } = LinuxRendering.Software;
+    /// <summary>The note about Linux Rendering was shown (once, at the first start on Linux).</summary>
+    [Browsable(false)] public bool LinuxRenderingNoted { get; set; }
 
     // ---- CAM ----
     [Category("CAM"), DisplayName("Default Post Processor"), Description("Post processor used when a drawing does not name one.")]

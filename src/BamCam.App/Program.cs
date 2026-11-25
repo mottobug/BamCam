@@ -1,11 +1,15 @@
 using Avalonia;
+using BamCam.App.Services;
 
 namespace BamCam.App;
 
 internal static class Program
 {
-    /// <summary>The Linux rendering modes asked for with --rendering or BAMCAM_RENDERING, or null for Avalonia's default.</summary>
+    /// <summary>On Linux: the rendering modes in use ("software", "glx,software", ...), else null.</summary>
     internal static string? RenderingChoice { get; private set; }
+
+    /// <summary>Where <see cref="RenderingChoice"/> comes from: "--rendering", "BAMCAM_RENDERING" or "settings".</summary>
+    internal static string? RenderingSource { get; private set; }
 
     [STAThread]
     public static void Main(string[] args) => BuildAvaloniaApp(args).StartWithClassicDesktopLifetime(args);
@@ -18,30 +22,43 @@ internal static class Program
             .UsePlatformDetect()
             .WithInterFont()
             .LogToTrace();
-        // Linux: how windows are drawn. Avalonia uses OpenGL (GLX) and falls back to software; with some graphics
-        // drivers, often without a compositor (e.g. on LinuxCNC machines), OpenGL flickers and shows what is behind the
-        // window. --rendering software (or BAMCAM_RENDERING=software) draws with the CPU instead. Several modes with
-        // commas are tried in order: glx, egl, vulkan, software.
+        if (!OperatingSystem.IsLinux()) return builder;
+
+        // Linux: how windows are drawn. With OpenGL (Avalonia's default) some graphics drivers, often without a
+        // compositor (e.g. on LinuxCNC machines), make the window flicker on every mouse move and show what is behind
+        // it; software drawing with the processor never does. The start option --rendering and BAMCAM_RENDERING
+        // (glx, egl, vulkan, software; several with commas, in order) take precedence over Tools > Options.
         var index = Array.IndexOf(args, "--rendering");
-        RenderingChoice = index >= 0 && index + 1 < args.Length ? args[index + 1] : Environment.GetEnvironmentVariable("BAMCAM_RENDERING");
-        if (OperatingSystem.IsLinux() && !string.IsNullOrWhiteSpace(RenderingChoice))
+        string? choice;
+        if (index >= 0 && index + 1 < args.Length)
         {
-            var modes = RenderingChoice.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(m => Enum.TryParse<X11RenderingMode>(m, ignoreCase: true, out var mode) ? mode : (X11RenderingMode?)null)
-                .OfType<X11RenderingMode>().ToList();
-            if (modes.Count > 0)
-            {
-                // Software always last, so that the window still opens when the others are not available.
-                if (!modes.Contains(X11RenderingMode.Software)) modes.Add(X11RenderingMode.Software);
-                builder = builder.With(new X11PlatformOptions
-                {
-                    RenderingMode = modes,
-                    // Software: keep the last frame, so that only the changed part is drawn again.
-                    UseRetainedFramebuffer = modes[0] == X11RenderingMode.Software,
-                });
-            }
-            else RenderingChoice = null;
+            choice = args[index + 1];
+            RenderingSource = "--rendering";
         }
-        return builder;
+        else if (Environment.GetEnvironmentVariable("BAMCAM_RENDERING") is { Length: > 0 } variable)
+        {
+            choice = variable;
+            RenderingSource = "BAMCAM_RENDERING";
+        }
+        else
+        {
+            var path = Environment.GetEnvironmentVariable("BAMCAM_SETTINGS") is { Length: > 0 } p ? p : AppSettings.DefaultPath;
+            choice = AppSettings.Load(path, out _).LinuxRendering == LinuxRendering.Software ? "software" : "glx";
+            RenderingSource = "settings";
+        }
+
+        var modes = choice.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(m => Enum.TryParse<X11RenderingMode>(m, ignoreCase: true, out var mode) ? mode : (X11RenderingMode?)null)
+            .OfType<X11RenderingMode>().Distinct().ToList();
+        if (modes.Count == 0) modes.Add(X11RenderingMode.Software);
+        // Software always last, so that the window still opens when the others are not available.
+        if (!modes.Contains(X11RenderingMode.Software)) modes.Add(X11RenderingMode.Software);
+        RenderingChoice = string.Join(",", modes).ToLowerInvariant();
+        return builder.With(new X11PlatformOptions
+        {
+            RenderingMode = modes,
+            // Software: keep the last frame, so that only the changed part is drawn again.
+            UseRetainedFramebuffer = modes[0] == X11RenderingMode.Software,
+        });
     }
 }

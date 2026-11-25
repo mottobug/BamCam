@@ -1,3 +1,4 @@
+using BamCam.Core.Geometry;
 using BamCam.Core.Model;
 
 namespace BamCam.Plugins;
@@ -62,6 +63,18 @@ public class CommandScriptContext(ICommandContext commands, Func<Func<Task>, Tas
         cancel.ThrowIfCancellationRequested();
         string? answer = null;
         await onUserInterface(async () => answer = await commands.AskText(title, label, defaultValue));
+        return answer;
+    }
+
+    /// <summary>
+    /// Asks for several values in one window: a field for every public property of <paramref name="values"/>, an
+    /// optional preview of outlines; Cancel puts the values back. True on OK.
+    /// </summary>
+    public async Task<bool> AskValues(string title, object values, Func<IEnumerable<Path2>?>? preview = null)
+    {
+        cancel.ThrowIfCancellationRequested();
+        var answer = false;
+        await onUserInterface(async () => answer = await commands.AskValues(title, values, preview));
         return answer;
     }
 

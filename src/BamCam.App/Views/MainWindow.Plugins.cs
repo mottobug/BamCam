@@ -123,6 +123,8 @@ public partial class MainWindow
         public void Log(string message) => window.Log(message);
         public Task<double?> AskNumber(string title, string label, double defaultValue) => Dialogs.PromptNumber(window, title, label, defaultValue);
         public Task<string?> AskText(string title, string label, string defaultValue = "") => Dialogs.Prompt(window, title, label, defaultValue);
+        public Task<bool> AskValues(string title, object values, Func<IEnumerable<Path2>?>? preview = null) =>
+            new ValuesDialog(title, values, preview).ShowFor(window);
         public Task<string?> PostGCode() => window.PostGCodeText();
         public void StartTool(PluginTool tool) => window.View.SetTool(new PluginToolAdapter(window, tool));
     }
@@ -229,6 +231,7 @@ public partial class MainWindow
         public void Log(string message) => _commands.Log(message);
         public Task<double?> AskNumber(string title, string label, double defaultValue) => _commands.AskNumber(title, label, defaultValue);
         public Task<string?> AskText(string title, string label, string defaultValue = "") => _commands.AskText(title, label, defaultValue);
+        public Task<bool> AskValues(string title, object values, Func<IEnumerable<Path2>?>? preview = null) => _commands.AskValues(title, values, preview);
         public void StartTool(PluginTool next) => _commands.StartTool(next);
 
         private void Run(Action action)

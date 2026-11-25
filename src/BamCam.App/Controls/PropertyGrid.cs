@@ -36,6 +36,9 @@ public sealed partial class PropertyGrid : DockPanel
 
     public double NameColumnWidth { get; set; } = 150;
 
+    /// <summary>Text of the heading instead of the one that names the object (e.g. the title of a dialog).</summary>
+    public string? Title { get; set; }
+
     /// <summary>Hides properties for which this returns false (e.g. the general settings of an operation in the style editor).</summary>
     public Func<PropertyInfo, bool>? PropertyFilter { get; set; }
 
@@ -307,7 +310,7 @@ public sealed partial class PropertyGrid : DockPanel
             _title.Text = "";
             return;
         }
-        _title.Text = _target switch
+        _title.Text = Title ?? _target switch
         {
             Entity e => Tr.F("{0} ({1})", Tr.T(e.TypeName), e.Id),
             MachineOp op => $"{Tr.T(op.DisplayType)}: {op.Name}",

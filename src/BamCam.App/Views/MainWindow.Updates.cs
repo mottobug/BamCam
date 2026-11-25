@@ -40,6 +40,16 @@ public partial class MainWindow
         await CheckForUpdates(manual: false);
     }
 
+    /// <summary>Linux, once: how windows are drawn and where to change it.</summary>
+    private async Task LinuxRenderingNote()
+    {
+        if (_screenshotMode || !OperatingSystem.IsLinux() || _settings.LinuxRenderingNoted) return;
+        _settings.LinuxRenderingNoted = true;
+        SaveSettings();
+        await Dialogs.Message(this, T("Linux Rendering"),
+            T("BamCam draws its windows with the processor (software rendering). With OpenGL some graphics drivers, often without a compositor (e.g. on LinuxCNC machines), make the window flicker when the mouse moves and show what is behind it; software rendering never does.\n\nIf your graphics card works well with OpenGL and you work with very large drawings, choose OpenGL in Tools > Options > Linux Rendering. It takes effect at the next start."));
+    }
+
     /// <summary>Asks GitHub for the newest release; Help ▸ Check for Updates shows the result in any case.</summary>
     private async Task CheckForUpdates(bool manual)
     {

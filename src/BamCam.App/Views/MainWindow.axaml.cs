@@ -144,12 +144,16 @@ public partial class MainWindow : Window
 
         OnDocumentReplaced();
         Log(T("BamCam ready. Draw or open a drawing (.cb / .dxf / .svg)."));
-        if (OperatingSystem.IsLinux() && Program.RenderingChoice is { } rendering) Log(F("Rendering: {0} (--rendering or BAMCAM_RENDERING).", rendering));
+        if (OperatingSystem.IsLinux() && Program.RenderingChoice is { } rendering)
+            Log(Program.RenderingSource == "settings"
+                ? F("Rendering: {0} (Tools > Options > Linux Rendering).", rendering)
+                : F("Rendering: {0} (from {1}).", rendering, Program.RenderingSource));
         // Plugins after the window is shown: new plugins are confirmed in a dialog.
         Opened += async (_, _) =>
         {
             await LoadPluginsAsync();
             await StartupUpdateCheck();
+            await LinuxRenderingNote();
         };
     }
 
@@ -491,6 +495,7 @@ public partial class MainWindow : Window
                     "transform" => CreateNumericTransformWindow(),
                     "resize" => ResizeDialog.Preview(Core.Cad.CadOps.Bounds(_session.Document.AllEntities())),
                     "scriptfile" => new ScriptEditorWindow("var a = 1 +;\nAdd(Circel(0, 0, 1));\nLog(Document.Name);\n", null, new ScriptFileActions((_, _) => Task.FromResult<string?>(null), _ => { })),
+                    "values" => DiagnosticValuesDialog(),
                     _ => null,
                 };
                 extra?.Show(this);

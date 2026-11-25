@@ -1029,6 +1029,29 @@ public partial class MainWindow
         View.Invalidate();
     }
 
+    /// <summary>Values as a plugin passes them to AskValues, for the --window values screenshot.</summary>
+    private sealed class DiagnosticStar
+    {
+        [System.ComponentModel.Category("Star"), System.ComponentModel.Description("Number of points of the star.")]
+        public int Points { get; set; } = 5;
+        [System.ComponentModel.Category("Star"), System.ComponentModel.DisplayName("Outer Radius")] public double Outer { get; set; } = 50;
+        [System.ComponentModel.Category("Star"), System.ComponentModel.DisplayName("Inner Radius")] public double Inner { get; set; } = 20;
+        [System.ComponentModel.Category("Position")] public double Rotation { get; set; }
+        [System.ComponentModel.Category("Position")] public bool Closed { get; set; } = true;
+        [System.ComponentModel.Category("Position")] public DrawingUnits Units { get; set; }
+    }
+
+    private ValuesDialog DiagnosticValuesDialog()
+    {
+        var star = new DiagnosticStar();
+        return new ValuesDialog("Star", star, () =>
+        {
+            var points = Enumerable.Range(0, 2 * Math.Max(star.Points, 2)).Select(i =>
+                Point2.FromAngle(Math.PI / 2 + Angles.ToRadians(star.Rotation) + Math.PI * i / Math.Max(star.Points, 2), i % 2 == 0 ? star.Outer : star.Inner));
+            return [Path2.FromPoints(points.ToList(), star.Closed)];
+        });
+    }
+
     /// <summary>Simulation window for the selection, for the --window simulation screenshot.</summary>
     private SimulationWindow SimulationForDiagnostics()
     {
