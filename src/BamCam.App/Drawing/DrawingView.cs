@@ -177,6 +177,11 @@ public sealed partial class DrawingView : Control, IToolHost
         var pos = pt.Position;
         var props = pt.Properties;
 
+        if (props.IsLeftButtonPressed && AxisIndicatorHit(pos) is { } plane)
+        {
+            SetStandardView(plane);
+            return;
+        }
         if (props.IsLeftButtonPressed && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || AltGrHeld))
         {
             if (e.ClickCount == 2)
@@ -644,6 +649,7 @@ public sealed partial class DrawingView : Control, IToolHost
                 foreach (var (from, to) in preview) dc.DrawLine(previewPen, _view.ToScreen(from), _view.ToScreen(to));
             }
             (_tool as DrawTool)?.RenderCursorLabel(dc, _view);
+            if (Settings.ShowAxisIndicator) RenderAxisIndicator(dc);
         }
     }
 
@@ -1063,6 +1069,8 @@ public sealed class ViewSettings
 {
     public bool ShowGrid { get; set; } = true;
     public bool ShowAxis { get; set; } = true;
+    /// <summary>The axis indicator in the lower left corner, showing the direction of view.</summary>
+    public bool ShowAxisIndicator { get; set; } = true;
     public bool ShowToolpaths { get; set; } = true;
     public bool ShowRapids { get; set; } = true;
     public bool ShowStock { get; set; } = true;

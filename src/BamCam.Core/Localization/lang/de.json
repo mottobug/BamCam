@@ -71,6 +71,7 @@
   "Show meshes as shaded surfaces instead of wireframes.": "Netze als schattierte Flächen statt als Drahtgitter anzeigen.",
   "Show _Grid": "_Raster anzeigen",
   "Show _Axis": "_Achsen anzeigen",
+  "Show Axis In_dicator": "Achsen_kreuz anzeigen",
   "Show _Nests": "_Verschachtelung anzeigen",
   "Holding Tab Drag Toolpath Refresh": "Werkzeugweg beim Ziehen von Haltestegen aktualisieren",
   "Toolpath View _Filter...": "Werkzeugweg-_Filter...",
@@ -944,6 +945,8 @@
   // ---------------------------------------------------------------- Konfiguration
   "Show Grid": "Raster anzeigen",
   "Show Axis": "Achsen anzeigen",
+  "Show Axis Indicator": "Achsenkreuz anzeigen",
+  "X, Y and Z arrows in the lower left corner of the drawing that show the direction of view. A click on an arrow tip looks along that axis, a click on the centre gives the isometric view.": "Pfeile für X, Y und Z unten links in der Zeichnung, die die Blickrichtung zeigen. Ein Klick auf eine Pfeilspitze schaut entlang dieser Achse, ein Klick auf die Mitte gibt die isometrische Ansicht.",
   "Show Toolpaths": "Werkzeugwege anzeigen",
   "Show Direction Arrows": "Richtungspfeile anzeigen",
   "Show Nests": "Verschachtelung anzeigen",

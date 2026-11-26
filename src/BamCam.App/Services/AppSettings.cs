@@ -48,6 +48,8 @@ public sealed class AppSettings
     // ---- Display ----
     [Category("Display"), DisplayName("Show Grid")] public bool ShowGrid { get; set; } = true;
     [Category("Display"), DisplayName("Show Axis")] public bool ShowAxis { get; set; } = true;
+    [Category("Display"), DisplayName("Show Axis Indicator"), Description("X, Y and Z arrows in the lower left corner of the drawing that show the direction of view. A click on an arrow tip looks along that axis, a click on the centre gives the isometric view.")]
+    public bool ShowAxisIndicator { get; set; } = true;
     [Category("Display"), DisplayName("Show Toolpaths")] public bool ShowToolpaths { get; set; } = true;
     [Category("Display"), DisplayName("Show Direction Arrows")] public bool ShowDirectionArrows { get; set; } = true;
     [Category("Display"), DisplayName("Shade Surfaces"), Description("Show meshes as shaded surfaces instead of wireframes.")]
@@ -268,6 +270,7 @@ public sealed class AppSettings
         static Avalonia.Media.Color C(RgbColor c) => Avalonia.Media.Color.FromRgb(c.R, c.G, c.B);
         v.ShowGrid = ShowGrid;
         v.ShowAxis = ShowAxis;
+        v.ShowAxisIndicator = ShowAxisIndicator;
         v.ShowToolpaths = ShowToolpaths;
         v.ShowDirectionArrows = ShowDirectionArrows;
         v.ShadeSurfaces = ShadeSurfaces;
@@ -303,6 +306,7 @@ public sealed class AppSettings
     {
         ShowGrid = v.ShowGrid;
         ShowAxis = v.ShowAxis;
+        ShowAxisIndicator = v.ShowAxisIndicator;
         ShowToolpaths = v.ShowToolpaths;
         ShowDirectionArrows = v.ShowDirectionArrows;
         ShadeSurfaces = v.ShadeSurfaces;

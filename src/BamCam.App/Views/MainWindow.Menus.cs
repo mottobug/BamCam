@@ -287,6 +287,7 @@ public partial class MainWindow
             Check("Shade S_urfaces", () => s.ShadeSurfaces, v => s.ShadeSurfaces = v),
             Check("Show _Grid", () => s.ShowGrid, v => s.ShowGrid = v),
             Check("Show _Axis", () => s.ShowAxis, v => s.ShowAxis = v),
+            Check("Show Axis In_dicator", () => s.ShowAxisIndicator, v => s.ShowAxisIndicator = v),
             Check("Show _Nests", () => s.ShowNests, v => s.ShowNests = v),
             Check("Holding Tab Drag Toolpath Refresh", () => s.TabDragToolpathRefresh, v => s.TabDragToolpathRefresh = v),
             Item("Toolpath View _Filter...", ShowToolpathFilter, "Ctrl+F"),
