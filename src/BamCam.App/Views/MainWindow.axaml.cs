@@ -127,7 +127,11 @@ public partial class MainWindow : Window
 
         AddHandler(KeyDownEvent, OnWindowKeyDown, RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent, OnWindowKeyUp, RoutingStrategies.Tunnel);
-        Deactivated += (_, _) => View.SpaceReleased();
+        Deactivated += (_, _) =>
+        {
+            View.SpaceReleased();
+            View.AltGrHeld = false;
+        };
         AddHandler(DragDrop.DropEvent, OnDrop);
         DragDrop.SetAllowDrop(this, true);
         // macOS hands a double-clicked drawing to the running app as an event, not on the command line.
@@ -929,6 +933,8 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyDown(object? sender, KeyEventArgs e)
     {
+        // AltGr held: a left drag in the drawing rotates the view as with Alt. Not handled, so AltGr still types characters.
+        if (Drawing.DrawingView.IsAltGr(e)) View.AltGrHeld = true;
         var inText = FocusManager?.GetFocusedElement() is TextBox;
         if (inText && e.KeyModifiers == KeyModifiers.None) return;
         if (inText && e.Key is Key.C or Key.V or Key.X or Key.Z or Key.Y or Key.A) return;
@@ -968,6 +974,7 @@ public partial class MainWindow : Window
 
     private void OnWindowKeyUp(object? sender, KeyEventArgs e)
     {
+        if (Drawing.DrawingView.IsAltGr(e)) View.AltGrHeld = false;
         if (e.Key != Key.Space || !View.SpaceHeld) return;
         if (View.SpaceReleased()) View.ForwardKeyToTool(Key.Space, KeyModifiers.None);
         e.Handled = true;

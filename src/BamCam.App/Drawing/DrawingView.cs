@@ -177,7 +177,7 @@ public sealed partial class DrawingView : Control, IToolHost
         var pos = pt.Position;
         var props = pt.Properties;
 
-        if (props.IsLeftButtonPressed && e.KeyModifiers.HasFlag(KeyModifiers.Alt))
+        if (props.IsLeftButtonPressed && (e.KeyModifiers.HasFlag(KeyModifiers.Alt) || AltGrHeld))
         {
             if (e.ClickCount == 2)
             {
@@ -413,6 +413,15 @@ public sealed partial class DrawingView : Control, IToolHost
         }
         if (HandleNavigationKey(e.Key, e.KeyModifiers)) e.Handled = true;
     }
+
+    /// <summary>
+    /// Whether AltGr (the right Alt key) is held: then a left drag rotates the view as with Alt. Windows reports AltGr as
+    /// Ctrl+Alt, but Linux (X11) as a key of its own without the Alt modifier, so the main window tracks the key.
+    /// </summary>
+    public bool AltGrHeld { get; set; }
+
+    /// <summary>Whether a key event is AltGr, the right Alt key (by key or by position on the keyboard).</summary>
+    public static bool IsAltGr(KeyEventArgs e) => e.Key == Key.RightAlt || e.PhysicalKey == PhysicalKey.AltRight;
 
     private bool _spaceHeld;
     private bool _spacePanned;

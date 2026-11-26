@@ -464,7 +464,7 @@ Storage **[doc]**: tool libraries are one XML file per library in `<System>/tool
 
 | Action | Default input (Rotation Mode = ALT+Left) |
 |--------|------------------------------------------|
-| Rotate view | Alt + left drag. Alternatives (config **Rotation Mode**): *Left+Middle* (hold middle, drag with left; middle can be released) or *Left+Right* (press right then left and drag; right can be released). |
+| Rotate view | Alt (or AltGr, the right Alt key) + left drag. Alternatives (config **Rotation Mode**): *Left+Middle* (hold middle, drag with left; middle can be released) or *Left+Right* (press right then left and drag; right can be released). |
 | Pan | Middle-button drag, or cursor keys. |
 | Zoom | Mouse wheel, centred on the cursor position. Num+ / Num−, PgDn (in) / PgUp (out). |
 | Reset view | Alt + double-click (or the per-mode equivalent), Home, View ▸ Reset. |
@@ -1079,7 +1079,7 @@ Standard relations: RPM = Vc·1000/(π·D) in metric. Feed = RPM·z·fz. Results
 | Page Down / Num + | Zoom in |
 | Home | Reset view |
 | Alt+double-click | Reset view (Zoom to fit, XY) |
-| Alt+left drag | Rotate view (default Rotation Mode) |
+| Alt+left drag, AltGr+left drag | Rotate view (default Rotation Mode) |
 | Middle drag | Pan |
 | Wheel | Zoom at the cursor |
 | Shift+left drag (on selection) | Move selection freehand |
