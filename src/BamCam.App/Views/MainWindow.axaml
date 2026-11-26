@@ -113,16 +113,17 @@
 
       <!-- Right: prompt line, drawing view, messages -->
       <Grid x:Name="RightGrid" Grid.Column="2" RowDefinitions="Auto,*,4,110">
-        <StackPanel Grid.Row="0">
-          <Border Background="#FFFFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="6,2" x:Name="PromptBar" IsVisible="False">
-            <TextBlock x:Name="PromptText" TextWrapping="Wrap" />
-          </Border>
-          <!-- Sketch mode: drawing, constraint and dimension commands -->
-          <Border Background="{StaticResource ChromeBrush}" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="4,2" x:Name="SketchBar" IsVisible="False">
-            <WrapPanel x:Name="SketchBarPanel" Orientation="Horizontal" />
-          </Border>
-        </StackPanel>
+        <!-- Sketch mode: drawing, constraint and dimension commands -->
+        <Border Grid.Row="0" Background="{StaticResource ChromeBrush}" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1" Padding="4,2" x:Name="SketchBar" IsVisible="False">
+          <WrapPanel x:Name="SketchBarPanel" Orientation="Horizontal" />
+        </Border>
         <d:DrawingView Grid.Row="1" x:Name="View" />
+        <!-- The prompt of the active tool lies over the top of the drawing, so that the drawing does not move when it
+             appears; clicks go through it to the drawing. -->
+        <Border Grid.Row="1" VerticalAlignment="Top" Background="#E6FFF8D0" BorderBrush="{StaticResource ChromeBorderBrush}" BorderThickness="0,0,0,1"
+                Padding="6,2" x:Name="PromptBar" IsVisible="False" IsHitTestVisible="False">
+          <TextBlock x:Name="PromptText" TextWrapping="Wrap" Foreground="Black" />
+        </Border>
         <GridSplitter Grid.Row="2" ResizeDirection="Rows" />
         <DockPanel Grid.Row="3">
           <Border DockPanel.Dock="Top" Classes="panelHeader"><TextBlock Text="Messages" x:Name="MessagesHeader" /></Border>
