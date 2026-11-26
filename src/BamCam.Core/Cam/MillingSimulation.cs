@@ -331,7 +331,7 @@ public static class MillingSimulation
             return;
         }
         var tool = step.Tool;
-        var r = tool.Radius;
+        var r = Reach(f, tool);
         if (tool.Through || Math.Abs(step.From.Z - step.To.Z) < 1e-9)
         {
             // Level move: every cell is cut by the tool at its nearest point of the move (exact and fast). A torch cuts
@@ -387,7 +387,7 @@ public static class MillingSimulation
     private static void CutFromBelow(HeightField f, Step step)
     {
         var tool = step.Tool;
-        var r = tool.Radius;
+        var r = Reach(f, tool);
         var stamp = Stamp(f.Cell, tool);
         var length = Point3.Distance(step.From, step.To);
         var n = Math.Max(1, (int)Math.Ceiling(length / (f.Cell * 0.5)));
@@ -412,6 +412,12 @@ public static class MillingSimulation
             }
         }
     }
+
+    /// <summary>
+    /// How far from its axis the tool cuts in the height field: its radius, but at least half the diagonal of a cell, so
+    /// that a tool thinner than a cell (or one without a diameter, which runs on the line) still marks the cells it passes.
+    /// </summary>
+    private static double Reach(HeightField f, SimTool tool) => Math.Max(tool.Radius, f.Cell * 0.71);
 
     private static readonly Dictionary<(double, double), List<(int, int)>> Stamps = [];
 

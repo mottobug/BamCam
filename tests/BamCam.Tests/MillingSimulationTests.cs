@@ -35,6 +35,22 @@ public class MillingSimulationTests
     }
 
     [Fact]
+    public void A_tool_without_a_diameter_still_marks_the_cells_it_passes()
+    {
+        // A profile without a tool diameter runs on the line: the simulation showed nothing, its tool being far thinner
+        // than a cell. It cuts one cell wide now, level and sloped, but not the cells beside it.
+        var f = new HeightField(0, 0, 0.1, 200, 200, 0, -10);
+        var none = new SimTool(0, ToolProfile.EndMill);
+        MillingSimulation.Cut(f, new MillingSimulation.Step(new(2, 5.03, -4), new(18, 5.03, -4), none, null!));
+        Assert.Equal(-4, At(f, 10, 5.05), 3);
+        Assert.Equal(0, At(f, 10, 5.25), 3);
+        Assert.Equal(0, At(f, 10, 4.85), 3);
+
+        MillingSimulation.Cut(f, new MillingSimulation.Step(new(5.03, 10, 0), new(5.03, 14, -4), none, null!));
+        Assert.True(At(f, 5.05, 13.95) < -3.5);
+    }
+
+    [Fact]
     public void Pocket_leaves_rest_material_only_in_the_corners()
     {
         var doc = new CadDocument();
