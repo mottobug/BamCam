@@ -158,7 +158,12 @@ public sealed partial class SketchTool : ViewTool
         _ => T("Sketch: select and drag geometry; double-click a dimension to change it  [Enter = finish, Del = delete]"),
     }) + "    — " + StatusText;
 
-    private void UpdatePrompt() => Host.SetPrompt(Prompt);
+    // A finished or cancelled sketch writes no prompt: Esc finishes and then updated the prompt, which put the sketch's
+    // text back into the prompt bar after the next tool had cleared it.
+    private void UpdatePrompt()
+    {
+        if (!_closed) Host.SetPrompt(Prompt);
+    }
 
     private bool _wasHidden;
 
@@ -377,7 +382,11 @@ public sealed partial class SketchTool : ViewTool
                 if (Mode == SketchMode.Line && _lineStart != null || _first != null) ResetDrawing();
                 else if (Mode != SketchMode.Select) SetMode(SketchMode.Select);
                 else if (_selection.Count > 0) _selection.Clear();
-                else Finish();
+                else
+                {
+                    Finish();
+                    return true;
+                }
                 UpdatePrompt();
                 Host.Invalidate();
                 return true;
