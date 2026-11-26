@@ -325,6 +325,42 @@ public partial class MainWindow
 
     private void ConvertToRegion() => ReplaceSelection(T("Convert to region"), s => CadOps.ToRegions(s));
 
+    /// <summary>
+    /// Edit ▸ Convert To ▸ Sketch: the selected objects become one sketch in their place (see
+    /// <see cref="Core.Sketching.SketchConversion"/>); operations that used them use the sketch.
+    /// </summary>
+    private void ConvertToSketch()
+    {
+        if (!RequireSelection()) return;
+        var sources = Selected.Where(e => e is not SketchEntity).ToList();
+        var paths = sources.SelectMany(e => e.ToPaths()).ToList();
+        if (Core.Sketching.SketchConversion.FromPaths(paths, out var z, out var error) is not { } sketch)
+        {
+            Log(error ?? "");
+            return;
+        }
+        var entity = new SketchEntity();
+        entity.SetSketch(sketch);
+        if (Math.Abs(z) > 1e-12) entity.ApplyTransform(Matrix4.Translation(0, 0, z));
+        var doc = _session.Document;
+        var removed = sources.Select(e => e.Id).ToHashSet();
+        _session.Execute(T("Convert to sketch"), () =>
+        {
+            var layer = sources[0].Layer ?? doc.ActiveLayer;
+            foreach (var s in sources) doc.RemoveEntity(s);
+            doc.AddEntity(entity, layer);
+            foreach (var op in doc.Parts.SelectMany(p => p.Operations))
+            {
+                var at = op.PrimitiveIds.FindIndex(removed.Contains);
+                if (at < 0) continue;
+                op.PrimitiveIds.RemoveAll(removed.Contains);
+                op.PrimitiveIds.Insert(Math.Min(at, op.PrimitiveIds.Count), entity.Id);
+            }
+        });
+        _session.Select(new List<Entity> { entity });
+        Log(F("Converted {0} object(s) into a sketch ({1}); double-click it to add dimensions.", sources.Count, entity.Status));
+    }
+
     private void ReversePolylines()
     {
         var plines = Selected.OfType<PolylineEntity>().ToList();

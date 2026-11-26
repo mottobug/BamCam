@@ -242,6 +242,11 @@ cross together with a point or line. The value may be
   the bar and the property *Constraint Status* say how many degrees of freedom are left.
 - **Finish** (Enter, or Esc with nothing selected) keeps the sketch as one undo step; **Cancel** drops the changes of this
   session. Move, rotate and copy a sketch like any other object.
+- **From existing objects:** Edit ▸ Convert To ▸ **Sketch** turns the selected polylines, lines, arcs, circles and
+  rectangles into one sketch in their place. Ends that meet stay joined (also with the origin), horizontal and vertical
+  lines keep their direction and smooth joins of arcs stay tangent; there are no dimensions yet, so double-click the
+  sketch and add them. Operations that used the objects use the sketch. The objects must lie at one height (Z); at most
+  1500 segments at once.
 
 **Scripts menu:** your own C# scripts as `.csx` files, run with a click. They can read and change the whole drawing.
 New, edit, check and run them in the script editor, or copy files into the script folder. Before a file runs for the

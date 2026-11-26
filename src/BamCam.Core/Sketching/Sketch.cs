@@ -408,6 +408,9 @@ public sealed class Sketch
             while (grew)
             {
                 grew = false;
+                // A chain that has closed takes nothing more: outlines touching at a point (two shapes sharing a corner
+                // or an edge) stay separate instead of running into each other.
+                if (chain.SegmentCount > 1 && Near(chain.StartPoint, chain.EndPoint, tol)) break;
                 for (var i = 0; i < open.Count; i++)
                 {
                     var o = open[i];
