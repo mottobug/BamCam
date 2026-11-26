@@ -5,7 +5,8 @@
 .DESCRIPTION
   win-*   : BamCam-<version>-<rid>.zip, plus a setup .exe when Inno Setup (iscc) is available
   linux-* : BamCam-<version>-<rid>.tar.gz with a .desktop entry, icon and install.sh
-            and, with -AppImageTool and -AppImageRuntime, BamCam-<version>-<arch>.AppImage
+            and, with -AppImageTool and -AppImageRuntime, BamCam-<version>-<arch>.AppImage;
+            BamCam-<version>-<rid>.deb when dpkg-deb is available, BamCam-<version>-<rid>.rpm when rpmbuild is
   osx-*   : BamCam-<version>-<rid>.zip containing a BamCam.app bundle (ad-hoc signed when built on macOS)
 
   Works with Windows PowerShell 5.1 and PowerShell 7 (pwsh) on Windows, Linux and macOS.
@@ -198,6 +199,110 @@ elseif ($Rid -like "linux-*") {
         & $AppImageTool --no-appstream --runtime-file $AppImageRuntime $appDirImage $appImage
         if ($LASTEXITCODE -ne 0) { throw "appimagetool failed" }
         $results += $appImage
+    }
+
+    # .deb and .rpm, installed with the package manager: the program in /usr/lib/bamcam, the command bamcam, the menu
+    # entry, the icon and the file type. Built when dpkg-deb or rpmbuild is there. A beta "0.9.5-beta.1" becomes the
+    # package version "0.9.5~beta.1", which both package managers sort before 0.9.5.
+    $dpkgDeb = Get-Command dpkg-deb -ErrorAction SilentlyContinue
+    $rpmbuild = Get-Command rpmbuild -ErrorAction SilentlyContinue
+    if (-not $onWindows -and ($dpkgDeb -or $rpmbuild)) {
+        $pkgVersion = $Version -replace "-", "~"
+        $pkgRoot = Join-Path $OutDir "stage/$name.pkgroot"
+        if (Test-Path $pkgRoot) { Remove-Item -Recurse -Force $pkgRoot }
+        $pkgLib = Join-Path $pkgRoot "usr/lib/bamcam"
+        $pkgDirs = "usr/bin", "usr/share/applications", "usr/share/icons/hicolor/256x256/apps", "usr/share/mime/packages"
+        New-Item -ItemType Directory -Force (@($pkgLib) + ($pkgDirs | ForEach-Object { Join-Path $pkgRoot $_ })) | Out-Null
+        Copy-Item -Recurse (Join-Path $publishDir "*") $pkgLib
+        Copy-Item (Join-Path $stage "bamcam-mime.xml") (Join-Path $pkgRoot "usr/share/mime/packages/bamcam.xml")
+        Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $pkgRoot "usr/share/icons/hicolor/256x256/apps/bamcam.png")
+        Write-TextLf (Join-Path $pkgRoot "usr/share/applications/bamcam.desktop") @((Get-Content (Join-Path $stage "bamcam.desktop")) -replace "@EXEC@", "bamcam")
+        # Files readable by all, only the programs executable.
+        & chmod -R "u=rwX,go=rX" $pkgRoot
+        foreach ($exe in "BamCam", "createdump") {
+            if (Test-Path (Join-Path $pkgLib $exe)) { & chmod 755 (Join-Path $pkgLib $exe) }
+        }
+        & ln -s ../lib/bamcam/BamCam (Join-Path $pkgRoot "usr/bin/bamcam")
+        $summary = "2.5D/3D CAD/CAM, compatible with CamBam drawings"
+        $about = "BamCam draws 2D and 3D geometry, generates toolpaths and G-code for milling, engraving and cutting, and reads and writes CamBam drawings (.cb)."
+
+        if ($dpkgDeb) {
+            $debArch = if ($Rid -like "*arm64") { "arm64" } else { "amd64" }
+            $sizeKb = [long][Math]::Ceiling(((Get-ChildItem -Recurse -File $pkgRoot | Measure-Object Length -Sum).Sum) / 1024)
+            $control = Join-Path $pkgRoot "DEBIAN"
+            New-Item -ItemType Directory -Force $control | Out-Null
+            & chmod 755 $control
+            # ICU (needed by .NET) and OpenSSL (for the update check) have the version in the package name: recommended
+            # with alternatives, so that the package still installs on a distribution whose version is not listed.
+            Write-TextLf (Join-Path $control "control") @(
+                "Package: bamcam",
+                "Version: $pkgVersion",
+                "Architecture: $debArch",
+                "Maintainer: BamCam project <5029928+mottobug@users.noreply.github.com>",
+                "Installed-Size: $sizeKb",
+                "Depends: libc6, libgcc-s1 | libgcc1, libstdc++6, libfontconfig1, libx11-6, libice6, libsm6",
+                "Recommends: libicu78 | libicu76 | libicu74 | libicu72 | libicu71 | libicu70 | libicu67 | libicu66 | libicu63, libssl3t64 | libssl3 | libssl1.1",
+                "Section: graphics",
+                "Priority: optional",
+                "Homepage: https://github.com/mottobug/BamCam",
+                "Description: $summary",
+                " $about"
+            )
+            $deb = Join-Path $OutDir "$name.deb"
+            if (Test-Path $deb) { Remove-Item $deb }
+            Write-Host "==> .deb $debArch"
+            & dpkg-deb --root-owner-group --build $pkgRoot $deb
+            if ($LASTEXITCODE -ne 0) { throw "dpkg-deb failed" }
+            Remove-Item -Recurse -Force $control
+            $results += $deb
+        }
+
+        if ($rpmbuild) {
+            $rpmArch = if ($Rid -like "*arm64") { "aarch64" } else { "x86_64" }
+            $top = Join-Path $OutDir "stage/$name.rpmbuild"
+            if (Test-Path $top) { Remove-Item -Recurse -Force $top }
+            New-Item -ItemType Directory -Force (Join-Path $top "SPECS") | Out-Null
+            $spec = Join-Path $top "SPECS/bamcam.spec"
+            # The files are built already: no automatic dependencies from the bundled libraries, no stripping or debug
+            # packages (they would break the .NET program). Dependencies by library name work on Fedora and openSUSE alike.
+            Write-TextLf $spec @(
+                "%global debug_package %{nil}",
+                "%global __os_install_post %{nil}",
+                "%global __arch_install_post %{nil}",
+                "%global _build_id_links none",
+                "Name: bamcam",
+                "Version: $pkgVersion",
+                "Release: 1",
+                "Summary: $summary",
+                "License: MIT",
+                "URL: https://github.com/mottobug/BamCam",
+                "AutoReqProv: no",
+                "Requires: libX11.so.6()(64bit), libICE.so.6()(64bit), libSM.so.6()(64bit), libfontconfig.so.1()(64bit), libstdc++.so.6()(64bit)",
+                "Recommends: libicu",
+                "Recommends: openssl-libs",
+                "",
+                "%description",
+                $about,
+                "",
+                "%install",
+                "cp -a '$pkgRoot/.' %{buildroot}/",
+                "",
+                "%files",
+                "/usr/lib/bamcam",
+                "/usr/bin/bamcam",
+                "/usr/share/applications/bamcam.desktop",
+                "/usr/share/icons/hicolor/256x256/apps/bamcam.png",
+                "/usr/share/mime/packages/bamcam.xml"
+            )
+            Write-Host "==> .rpm $rpmArch"
+            & rpmbuild -bb --target $rpmArch --define "_topdir $top" $spec
+            if ($LASTEXITCODE -ne 0) { throw "rpmbuild failed" }
+            $built = Get-ChildItem (Join-Path $top "RPMS") -Recurse -Filter *.rpm | Select-Object -First 1
+            if (-not $built) { throw "rpmbuild made no package" }
+            $rpm = Join-Path $OutDir "$name.rpm"
+            Move-Item -Force $built.FullName $rpm
+            $results += $rpm
+        }
     }
 }
 elseif ($Rid -like "osx-*") {

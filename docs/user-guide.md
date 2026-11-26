@@ -11,7 +11,11 @@ Download the package for your system from the [releases](https://github.com/mott
   (installer) or the `.zip` (unpack and run `BamCam.exe`).
 - **macOS:** the `.zip` for Apple Silicon (`osx-arm64`) or Intel (`osx-x64`). The app is not notarised: open it
   once with right click ▸ Open, or allow it in System Settings ▸ Privacy & Security.
-- **Linux:** the `.AppImage` for x86_64 or aarch64: make it executable (`chmod +x`) and start it, nothing to install. Or the
+- **Linux:** the `.deb` (Debian, Ubuntu, Linux Mint, LinuxCNC) or `.rpm` (Fedora, openSUSE) for x64 or arm64,
+  installed with the package manager: `sudo apt install ./BamCam-x.y.z-linux-x64.deb` or
+  `sudo dnf install ./BamCam-x.y.z-linux-x64.rpm`. That gives the command `bamcam`, a menu entry and the file type; a
+  newer package is installed the same way over it, and `sudo apt remove bamcam` / `sudo dnf remove bamcam` removes it.
+  Or the `.AppImage` for x86_64 or aarch64: make it executable (`chmod +x`) and start it, nothing to install. Or the
   `.tar.gz` for x64 or arm64: unpack and run `BamCam`, or `install.sh` for a menu entry and the file type.
   If the window flickers when the mouse moves or shows what is behind it (some graphics drivers, often without a
   compositor, e.g. on LinuxCNC machines), start BamCam with software drawing: `BAMCAM_RENDERING=software ./BamCam`

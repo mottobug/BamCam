@@ -89,6 +89,10 @@ jobs:
           00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444  runtime-aarch64
           EOF
           chmod +x appimagetool
+      # .rpm packages: rpmbuild from Ubuntu's own package sources (dpkg-deb for the .deb packages is there already).
+      - name: rpmbuild
+        if: matrix.name == 'linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
       - name: Package
         shell: pwsh
         run: |
@@ -101,6 +105,14 @@ jobs:
             ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }} @extra
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
+      # The x64 .deb must install with its dependencies; the .rpm packages must hold the files.
+      - name: Check Linux packages
+        if: matrix.name == 'linux'
+        run: |
+          sudo apt-get install -y ./artifacts/BamCam-*-linux-x64.deb
+          test -x /usr/lib/bamcam/BamCam && test -L /usr/bin/bamcam && test -f /usr/share/applications/bamcam.desktop
+          sudo apt-get remove -y bamcam
+          for rpm in artifacts/*.rpm; do rpm -qip "$rpm"; rpm -qlp "$rpm" | grep -qx /usr/lib/bamcam/BamCam; done
       - name: NuGet packages for plugin authors
         if: matrix.name == 'win-x64'
         shell: pwsh
@@ -135,6 +147,8 @@ jobs:
             artifacts/*.zip
             artifacts/*.tar.gz
             artifacts/*.AppImage
+            artifacts/*.deb
+            artifacts/*.rpm
             artifacts/*-setup.exe
             artifacts/*.nupkg
           if-no-files-found: error
