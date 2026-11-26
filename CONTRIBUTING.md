@@ -28,7 +28,7 @@ See the README for packages and the project structure.
   or `F("...", args)`.
 - Translations: add the German text to `src/BamCam.Core/Localization/lang/de.json`. The
   `LocalizationTests` report missing entries. New languages are new `<code>.json` files (see README).
-- Plugins are often the better place for special functions; see `samples/BamCam.SamplePlugin`.
+- Plugins are often the better place for special functions; see the demos in `plugins/community/BamCam.Example`.
 
 ## Clean-room rule
 

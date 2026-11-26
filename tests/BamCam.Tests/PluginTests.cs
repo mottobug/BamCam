@@ -7,7 +7,7 @@ using BamCam.Plugins;
 
 namespace BamCam.Tests;
 
-/// <summary>Loads the sample plugin once (like a third-party plugin from a folder) for all tests of the class.</summary>
+/// <summary>Loads the demo plugin (plugins/community/BamCam.Example) once (like a third-party plugin from a folder) for all tests of the class.</summary>
 public sealed class SamplePluginFixture
 {
     public string DllPath { get; }
@@ -18,8 +18,8 @@ public sealed class SamplePluginFixture
     public SamplePluginFixture()
     {
         var sep = Path.DirectorySeparatorChar;
-        DllPath = Path.Combine(AppContext.BaseDirectory.Replace($"tests{sep}BamCam.Tests", $"samples{sep}BamCam.SamplePlugin"), "BamCam.SamplePlugin.dll");
-        Info = PluginManager.Inspect(DllPath) ?? throw new InvalidOperationException("sample plugin not found: " + DllPath);
+        DllPath = Path.Combine(AppContext.BaseDirectory.Replace($"tests{sep}BamCam.Tests", $"plugins{sep}community{sep}BamCam.Example"), "BamCam.Example.dll");
+        Info = PluginManager.Inspect(DllPath) ?? throw new InvalidOperationException("demo plugin not found: " + DllPath);
         Manager.Plugins.Add(Info);
         Manager.Load(Info, new Version(1, 0), Log.Add);
     }
@@ -30,9 +30,9 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     [Fact]
     public void Plugins_are_recognised_from_metadata_only()
     {
-        Assert.Equal("BamCam Sample Plugin", plugin.Info.Name);
+        Assert.Equal("Plugin Demos (Example)", plugin.Info.Name);
         Assert.Equal("BamCam project", plugin.Info.Vendor);
-        Assert.Equal("1.0.0", plugin.Info.Version);
+        Assert.Equal("2.0.0", plugin.Info.Version);
         // BamCam's own assemblies and other DLLs are no plugins.
         Assert.Null(PluginManager.Inspect(typeof(MachineOp).Assembly.Location));
         Assert.Null(PluginManager.Inspect(typeof(IBamCamPlugin).Assembly.Location));
@@ -85,7 +85,7 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
         Directory.CreateDirectory(dir);
         try
         {
-            var copy = Path.Combine(dir, "BamCam.SamplePlugin.dll");
+            var copy = Path.Combine(dir, "BamCam.Example.dll");
             File.Copy(plugin.DllPath, copy);
             var hash = PluginManager.Inspect(copy)!.Hash;
             HashSet<string> bundled = [hash.ToLowerInvariant(), hash];
@@ -149,7 +149,7 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
         Directory.CreateDirectory(Path.Combine(dir, "sample"));
         try
         {
-            var copy = Path.Combine(dir, "sample", "BamCam.SamplePlugin.dll");
+            var copy = Path.Combine(dir, "sample", "BamCam.Example.dll");
             File.Copy(plugin.DllPath, copy);
             var manager = new PluginManager();
 
@@ -177,8 +177,12 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
     public void Loading_registers_commands_and_operations()
     {
         Assert.Equal(PluginState.Loaded, plugin.Info.State);
-        Assert.Equal(3, plugin.Manager.Commands.Count);
-        Assert.All(plugin.Manager.Commands, c => Assert.Equal("Draw", c.Command.Menu));
+        // One command per demo (two for changing the selection), in the menus they belong to.
+        Assert.Equal(8, plugin.Manager.Commands.Count);
+        Assert.Equal(["Draw", "Draw", "Draw", "Draw", "Draw", "Edit", "Edit", "Machining"],
+            plugin.Manager.Commands.Select(c => c.Command.Menu).OrderBy(m => m));
+        // The gear opens its own editor on a double-click.
+        Assert.Contains(plugin.Manager.EntityEditors.Keys, t => t.Name == "GearEntity");
         var format = Assert.Single(plugin.Manager.Importers);
         Assert.Equal([".xyz"], format.Format.Extensions);
         Assert.Single(plugin.Manager.Exporters);
@@ -246,7 +250,46 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
 
     private PluginCommand Command(string english) =>
         plugin.Manager.Commands.Select(c => c.Command).Single(c => c.Header.Replace("_", "").Contains(english, StringComparison.OrdinalIgnoreCase) ||
-                                                               c.Header.Replace("_", "").Contains(english switch { "Polygon" => "Vieleck", "Gear" => "Zahnrad", _ => "Stern" }));
+                                                               c.Header.Replace("_", "").Contains(english switch
+                                                               {
+                                                                   "Polygon" => "Vieleck", "Gear" => "Zahnrad", "Bolt Circle" => "Lochkreis",
+                                                                   "Raise" => "anheben", _ => "Stern",
+                                                               }));
+
+    [Fact]
+    public async Task AskValues_values_are_read_after_OK_and_kept_for_the_next_use()
+    {
+        // The window is answered by setting values, as a user would, then OK.
+        var context = new FakeContext([], values =>
+        {
+            Set(values, "Holes", 4);
+            Set(values, "PitchDiameter", 50.0);
+            Set(values, "Tag", "M6");
+        });
+        await Command("Bolt Circle").Execute(context);
+        var holes = context.Added.OfType<CircleEntity>().ToList();
+        Assert.Equal(4, holes.Count);
+        Assert.All(holes, h => Assert.Equal(25, h.Center.XY.Length, 9));
+        Assert.All(holes, h => Assert.Equal("M6", h.Tag));
+        Assert.NotEmpty(context.Previews);   // the preview had outlines
+
+        // Cancel: nothing is drawn.
+        var cancelled = new FakeContext([], null);
+        await Command("Bolt Circle").Execute(cancelled);
+        Assert.Empty(cancelled.Added);
+    }
+
+    private static void Set(object values, string name, object value) => values.GetType().GetProperty(name)!.SetValue(values, value);
+
+    [Fact]
+    public async Task Commands_change_the_selection_as_one_step()
+    {
+        var circle = new CircleEntity { Diameter = 10 };
+        var context = new FakeContext([2.5]) { Selected = [circle] };
+        await Command("Raise").Execute(context);
+        Assert.Equal(1, context.Changes);
+        Assert.Equal(2.5, circle.Center.Z, 9);
+    }
 
     [Fact]
     public async Task Plugin_object_types_are_parametric_and_survive_saving()
@@ -333,15 +376,32 @@ public class PluginTests(SamplePluginFixture plugin) : IClassFixture<SamplePlugi
         public void StartTool(PluginTool tool) { }
     }
 
-    private sealed class FakeContext(double[] answers) : ICommandContext
+    /// <param name="answers">Answers to AskNumber, in order.</param>
+    /// <param name="fillValues">Fills the values of AskValues and answers OK; null answers Cancel.</param>
+    private sealed class FakeContext(double[] answers, Action<object>? fillValues = null) : ICommandContext
     {
         private int _next;
         public PluginTool? Started { get; private set; }
         public void StartTool(PluginTool tool) => Started = tool;
         public List<Entity> Added { get; } = [];
+        public List<Path2> Previews { get; } = [];
+        public int Changes { get; private set; }
+        public List<Entity> Selected { get; init; } = [];
         public CadDocument Document { get; } = new();
-        public IReadOnlyList<Entity> Selection => [];
-        public void Change(string description, Action change) => change();
+        public IReadOnlyList<Entity> Selection => Selected;
+        public void Change(string description, Action change)
+        {
+            Changes++;
+            change();
+        }
+
+        public Task<bool> AskValues(string title, object values, Func<IEnumerable<Path2>?>? preview = null)
+        {
+            if (fillValues == null) return Task.FromResult(false);
+            fillValues(values);
+            if (preview?.Invoke() is { } outlines) Previews.AddRange(outlines);
+            return Task.FromResult(true);
+        }
         public void AddEntities(string description, IEnumerable<Entity> entities) => Added.AddRange(entities);
         public void Select(IEnumerable<Entity> entities) { }
         public void Log(string message) { }

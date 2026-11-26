@@ -5,15 +5,15 @@
     <Project Path="src/BamCam.IO/BamCam.IO.csproj" />
     <Project Path="src/BamCam.PluginApi/BamCam.PluginApi.csproj" />
   </Folder>
-  <Folder Name="/samples/">
-    <Project Path="samples/BamCam.SamplePlugin/BamCam.SamplePlugin.csproj" />
-  </Folder>
   <Folder Name="/plugins/">
     <Project Path="plugins/BamCam.CentreLinesPlugin/BamCam.CentreLinesPlugin.csproj" />
     <Project Path="plugins/BamCam.GCodeViewerPlugin/BamCam.GCodeViewerPlugin.csproj" />
     <Project Path="plugins/BamCam.SquirclePlugin/BamCam.SquirclePlugin.csproj" />
     <Project Path="plugins/BamCam.GearPlugin/BamCam.GearPlugin.csproj" />
     <Project Path="plugins/BamCam.MatmillPlugin/BamCam.MatmillPlugin.csproj" />
+  </Folder>
+  <Folder Name="/plugins/community/">
+    <Project Path="plugins/community/BamCam.Example/BamCam.Example.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/BamCam.Tests/BamCam.Tests.csproj" />

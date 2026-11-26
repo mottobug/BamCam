@@ -1,15 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Example community plugin, made from _Template: the folder, this file and the namespace renamed, Product and Company
-       filled in. It builds inside the repository and anywhere else against an installed BamCam (see _Template). -->
+  <!-- Plugin demos: one menu entry per way of writing a plugin, made from _Template (folder, this file and the namespace
+       renamed, Product and Company filled in, the Avalonia block switched on for the own window of Demo 3). It builds
+       inside the repository and anywhere else against an installed BamCam (see _Template). -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableDynamicLoading>true</EnableDynamicLoading>
-    <Product>Example (Square)</Product>
+    <Product>Plugin Demos (Example)</Product>
     <Company>BamCam project</Company>
-    <Version>1.0.0</Version>
+    <Version>2.0.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(BamCamDir)' == ''">
@@ -25,6 +26,12 @@
   <ItemGroup Condition="!Exists('..\..\..\src\BamCam.PluginApi\BamCam.PluginApi.csproj')">
     <Reference Include="BamCam.PluginApi" HintPath="$(BamCamDir)BamCam.PluginApi.dll" Private="false" />
     <Reference Include="BamCam.Core" HintPath="$(BamCamDir)BamCam.Core.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Demo 3 opens its own window: BamCam's user interface library Avalonia, which BamCam brings at run time (keep the
+       version of src/BamCam.App/BamCam.App.csproj). Not needed for any other demo. -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" ExcludeAssets="runtime" />
   </ItemGroup>
 
   <Target Name="CheckBamCamDir" BeforeTargets="ResolveAssemblyReferences"

@@ -19,9 +19,12 @@ replacing CamBam's API calls with the interfaces described here; see
 with `await context.PostGCode()`, without writing a file or running the post-build command, and opens it in a viewer
 (CutViewer, NC Viewer or CAMotics). It comes with BamCam.
 
-The complete example is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin): a *Regular Polygon*
-command, a *Star* tool (two clicks), a *Facing* operation, an *XYZ point list* file format and the macro
-`{$sample.opcount}`.
+**Demos of every kind:** the plugin [`plugins/community/BamCam.Example`](../plugins/community/BamCam.Example) has one
+menu entry for each way of writing a plugin, each in its own file to look up and copy: a simple command (AskNumber),
+many values in one window (AskValues), an own window (Avalonia), a mouse tool with a toolbar button, changing the
+selection, a parametric object with a double-click editor, a machining operation, a file format, and reading the G-code
+with a post processor macro. It builds against an installed BamCam like your own plugin, and each release has it as a
+ZIP to try.
 
 ## Project
 

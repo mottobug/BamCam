@@ -139,8 +139,9 @@ drawing (typed lengths, angles, diameters), fillet / chamfer, trim / extend, ali
 3. For operations: open a drawing saved with the CamBam version and check that the operation and its values load,
    then compare the G-code with CamBam's output.
 
-The working example with all kinds of extensions is [`samples/BamCam.SamplePlugin`](../samples/BamCam.SamplePlugin)
-(drawing commands, a mouse tool, a facing operation, a file format and a macro).
+The working examples of all kinds of extensions are in [`plugins/community/BamCam.Example`](../plugins/community/BamCam.Example),
+one file per demo (commands, a window with many values, an own window, a mouse tool, changing the selection, a
+parametric object, a machining operation, a file format, G-code and a macro).
 
 ## 7. A complete example: Centre Lines
 

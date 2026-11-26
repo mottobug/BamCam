@@ -16,7 +16,7 @@ BamCam.
 
 | Plugin | Author | What it does |
 |---|---|---|
-| [Example (Square)](BamCam.Example) | BamCam project | Example: Draw ▸ Square (Example) draws a square around the origin. Shows what a community plugin looks like. |
+| [Plugin Demos (Example)](BamCam.Example) | BamCam project | For plugin authors: one menu entry per way of writing a plugin (simple command, many values with AskValues, own window, mouse tool, changing the selection, parametric object, machining operation, file format, G-code), each in its own file. |
 | [Wrap G-Code](GeoffRoy.WrapGCode) | Geoffrey G Roy | Plugins ▸ Wrap G-Code (X to A): turns a G-code file for a 4th axis by replacing the X values with A angles between a start and an end angle. |
 | [Revolve XY](GeoffRoy.RevolveXY) | Geoffrey G Roy | Plugins ▸ Revolve XY...: revolves a shape drawn in X,Y about the Z axis (X is the radius, Y the height) through an angle up to 360° and makes a surface of it. |
 
