@@ -105,12 +105,15 @@ jobs:
             ./build/package.ps1 -Rid $rid -Version ${{ steps.version.outputs.version }} @extra
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
-      # The x64 .deb must install with its dependencies; the .rpm packages must hold the files.
+      # The x64 .deb must install with its dependencies; the .rpm packages must hold the files. The AppStream metainfo
+      # must pass appstreamcli, as the AppImage catalog (appimage.github.io) checks it.
       - name: Check Linux packages
         if: matrix.name == 'linux'
         run: |
           sudo apt-get install -y ./artifacts/BamCam-*-linux-x64.deb
           test -x /usr/lib/bamcam/BamCam && test -L /usr/bin/bamcam && test -f /usr/share/applications/bamcam.desktop
+          sudo apt-get install -y --no-install-recommends appstream
+          appstreamcli validate --no-net --explain /usr/share/metainfo/io.github.mottobug.BamCam.metainfo.xml
           sudo apt-get remove -y bamcam
           for rpm in artifacts/*.rpm; do rpm -qip "$rpm"; rpm -qlp "$rpm" | grep -qx /usr/lib/bamcam/BamCam; done
       - name: NuGet packages for plugin authors

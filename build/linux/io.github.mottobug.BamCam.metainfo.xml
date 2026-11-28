@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metainfo of BamCam: what software centres and the AppImage catalog (appimage.github.io) show about it,
+     with its screenshots. build/package.ps1 puts it into the AppImage and the .deb and .rpm packages (as
+     usr/share/metainfo/io.github.mottobug.BamCam.metainfo.xml) and fills in the release (@VERSION@, @DATE@, @TYPE@). -->
+<component type="desktop-application">
+  <id>io.github.mottobug.BamCam</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>BamCam</name>
+  <summary>CAD/CAM for CNC machining</summary>
+  <developer_name>mottobug</developer_name>
+  <description>
+    <p>
+      BamCam is a 2.5D/3D CAD/CAM application whose workflow and feature set follow CamBam. It draws 2D and 3D
+      geometry, generates toolpaths for milling, turning, engraving and plasma cutting, simulates them and writes the
+      G-code for the machine.
+    </p>
+    <ul>
+      <li>Reads and writes CamBam drawings (.cb) and post processors (.cbpp); imports DXF, SVG, STL and G-code</li>
+      <li>Parametric sketches held in place by constraints and dimensions</li>
+      <li>Profiles, pockets, drilling, 3D profiles, V-engraving, lathe operations and more</li>
+      <li>3D simulation of the material removal</li>
+      <li>Plugins and C# scripts</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">bamcam.desktop</launchable>
+  <url type="homepage">https://mottobug.github.io/BamCam/</url>
+  <url type="vcs-browser">https://github.com/mottobug/BamCam</url>
+  <url type="bugtracker">https://github.com/mottobug/BamCam/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>A mounting plate drawn as a sketch, with the toolpaths of its holes and outline</caption>
+      <image>https://raw.githubusercontent.com/mottobug/BamCam/main/docs/screenshots/sketch-toolpaths.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The sketch of the mounting plate with its constraints and dimensions</caption>
+      <image>https://raw.githubusercontent.com/mottobug/BamCam/main/docs/screenshots/sketch-dimensions.png</image>
+    </screenshot>
+  </screenshots>
+  <provides>
+    <mediatype>application/x-bamcam-drawing</mediatype>
+  </provides>
+  <categories>
+    <category>Graphics</category>
+    <category>Engineering</category>
+  </categories>
+  <content_rating type="oars-1.1" />
+  <releases>
+    <release version="@VERSION@" date="@DATE@" type="@TYPE@" />
+  </releases>
+</component>

@@ -140,6 +140,12 @@ elseif ($Rid -like "linux-*") {
         '  </mime-type>',
         '</mime-info>'
     )
+    # AppStream metainfo (software centres, the AppImage catalog): description and screenshots, with this release.
+    $metainfoName = "io.github.mottobug.BamCam.metainfo.xml"
+    $releaseType = if ($Version -like "*-*") { "development" } else { "stable" }
+    $metainfo = (Get-Content (Join-Path $PSScriptRoot "linux/$metainfoName") -Raw).Replace("@VERSION@", $Version)
+    $metainfo = $metainfo.Replace("@DATE@", [DateTime]::UtcNow.ToString("yyyy-MM-dd")).Replace("@TYPE@", $releaseType)
+    [System.IO.File]::WriteAllText((Join-Path $stage $metainfoName), $metainfo.Replace("`r`n", "`n"), (New-Object System.Text.UTF8Encoding $false))
     Write-TextLf (Join-Path $stage "install.sh") @(
         "#!/bin/sh",
         "# Installs BamCam for the current user (~/.local), or system-wide with: sudo ./install.sh --system",
@@ -179,6 +185,9 @@ elseif ($Rid -like "linux-*") {
         $mimeDir = Join-Path $appDirImage "usr/share/mime/packages"
         New-Item -ItemType Directory -Force $mimeDir | Out-Null
         Copy-Item (Join-Path $stage "bamcam-mime.xml") (Join-Path $mimeDir "bamcam.xml")
+        $metainfoDir = Join-Path $appDirImage "usr/share/metainfo"
+        New-Item -ItemType Directory -Force $metainfoDir | Out-Null
+        Copy-Item (Join-Path $stage $metainfoName) $metainfoDir
         Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $appDirImage "bamcam.png")
         Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $appDirImage ".DirIcon")
         $desktopLines = @((Get-Content (Join-Path $stage "bamcam.desktop")) -replace "@EXEC@", "BamCam")
@@ -211,10 +220,11 @@ elseif ($Rid -like "linux-*") {
         $pkgRoot = Join-Path $OutDir "stage/$name.pkgroot"
         if (Test-Path $pkgRoot) { Remove-Item -Recurse -Force $pkgRoot }
         $pkgLib = Join-Path $pkgRoot "usr/lib/bamcam"
-        $pkgDirs = "usr/bin", "usr/share/applications", "usr/share/icons/hicolor/256x256/apps", "usr/share/mime/packages"
+        $pkgDirs = "usr/bin", "usr/share/applications", "usr/share/icons/hicolor/256x256/apps", "usr/share/mime/packages", "usr/share/metainfo"
         New-Item -ItemType Directory -Force (@($pkgLib) + ($pkgDirs | ForEach-Object { Join-Path $pkgRoot $_ })) | Out-Null
         Copy-Item -Recurse (Join-Path $publishDir "*") $pkgLib
         Copy-Item (Join-Path $stage "bamcam-mime.xml") (Join-Path $pkgRoot "usr/share/mime/packages/bamcam.xml")
+        Copy-Item (Join-Path $stage $metainfoName) (Join-Path $pkgRoot "usr/share/metainfo")
         Copy-Item (Join-Path $assets "bamcam.png") (Join-Path $pkgRoot "usr/share/icons/hicolor/256x256/apps/bamcam.png")
         Write-TextLf (Join-Path $pkgRoot "usr/share/applications/bamcam.desktop") @((Get-Content (Join-Path $stage "bamcam.desktop")) -replace "@EXEC@", "bamcam")
         # Files readable by all, only the programs executable.
@@ -292,7 +302,8 @@ elseif ($Rid -like "linux-*") {
                 "/usr/bin/bamcam",
                 "/usr/share/applications/bamcam.desktop",
                 "/usr/share/icons/hicolor/256x256/apps/bamcam.png",
-                "/usr/share/mime/packages/bamcam.xml"
+                "/usr/share/mime/packages/bamcam.xml",
+                "/usr/share/metainfo/$metainfoName"
             )
             Write-Host "==> .rpm $rpmArch"
             & rpmbuild -bb --target $rpmArch --define "_topdir $top" $spec
