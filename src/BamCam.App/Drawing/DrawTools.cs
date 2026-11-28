@@ -378,8 +378,11 @@ public sealed class SplineTool : DrawTool
     public override void RenderOverlay(DrawingContext dc, ViewTransform view)
     {
         if (_pts.Count == 0) return;
-        var pts = _pts.Append(Cursor).Select(p => p.ToPoint3()).ToList();
-        if (pts.Count >= 2 && !pts[^1].XY.AlmostEquals(pts[^2].XY, Tolerance.Point))
+        // Through the clicked points and the cursor; right after a click the cursor is on the new point, then through
+        // the clicked points only (the curve showed again only when the mouse moved).
+        var pts = _pts.Select(p => p.ToPoint3()).ToList();
+        if (!Cursor.AlmostEquals(_pts[^1], Tolerance.Point)) pts.Add(Cursor.ToPoint3());
+        if (pts.Count >= 2)
             DrawPath(dc, view, SplineEditing.FromAnchors(pts, false).LocalPath, PreviewPen);
         foreach (var p in _pts)
         {
