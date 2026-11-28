@@ -78,6 +78,51 @@ public static class SplineEditing
     }
 
     /// <summary>
+    /// Closes or opens a Bezier chain (the Closed property of a spline). Closing adds a smooth segment from the last
+    /// anchor back to the first one: the handles at the two ends are placed as the spline tool places them for a closed
+    /// chain, the inner handles stay as they are. A last anchor already on the first one is joined smoothly instead.
+    /// Opening removes the closing segment. Other splines are left as they are.
+    /// </summary>
+    public static void SetChainClosed(SplineEntity s, bool closed)
+    {
+        if (!IsBezierChain(s) || s.Weights.Count > 0) return;
+        var pts = s.ControlPoints;
+        var anchors = pts.Where((_, i) => IsAnchor(i)).ToList();
+        var endsMeet = Distance(anchors[0], anchors[^1]) < 1e-9;
+        if (!closed)
+        {
+            // Only a chain that really comes back to its start has a closing segment to remove.
+            if (!endsMeet || anchors.Count < 3) return;
+            var open = pts.Take(pts.Count - 3).ToList();
+            ReplaceChain(s, open);
+            return;
+        }
+
+        // The anchors of the closed chain: a last anchor on the first one is the same point.
+        var original = pts.ToList();
+        if (endsMeet) anchors.RemoveAt(anchors.Count - 1);
+        var n = anchors.Count;
+        if (n < 3) return; // two points give no curve worth closing: the straight line stays
+        var ctrl = FromAnchors(anchors, closed: true).ControlPoints.ToList();
+        // Handles of the inner anchors as they were (edited by hand perhaps); index 3k is anchor k, 3k±1 its handles.
+        var lastInner = endsMeet ? n - 1 : n - 2;
+        for (var k = 1; k <= lastInner; k++)
+        {
+            ctrl[3 * k - 1] = original[3 * k - 1];
+            if (k < n - 1 || endsMeet) ctrl[3 * k + 1] = original[3 * k + 1];
+        }
+        ReplaceChain(s, ctrl);
+    }
+
+    private static void ReplaceChain(SplineEntity s, List<Point3> ctrl)
+    {
+        s.ControlPoints.Clear();
+        s.ControlPoints.AddRange(ctrl);
+        s.Knots.Clear();
+        s.Knots.AddRange(ChainKnots((ctrl.Count - 1) / 3));
+    }
+
+    /// <summary>
     /// Moves one control point. In a Bezier chain an anchor takes its handles along, and with
     /// <paramref name="linked"/> a handle keeps the opposite handle of its anchor on one line (its length stays).
     /// Other splines move just the control point.

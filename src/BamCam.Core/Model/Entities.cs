@@ -172,8 +172,24 @@ public sealed class SplineEntity : Entity
     [Category("Spline"), Description("Polynomial degree of the curve (3 = cubic).")]
     public int Degree { get; private set; } = 3;
 
-    [Category("Spline"), Description("Whether the curve ends where it starts.")]
-    public bool Closed { get; set; }
+    private bool _closed;
+
+    /// <summary>
+    /// Whether the curve ends where it starts. Ticked on a spline drawn as a Bezier chain, a smooth segment from the
+    /// last point back to the first one closes it (as the spline tool does); unticked, that segment is removed again.
+    /// Other splines (from DXF files) only get the flag, their outline closes with a straight line.
+    /// </summary>
+    [Category("Spline"), Description("Whether the curve ends where it starts. A spline drawn in BamCam or CamBam is closed with a smooth segment back to its first point.")]
+    public bool Closed
+    {
+        get => _closed;
+        set
+        {
+            if (value == _closed) return;
+            SplineEditing.SetChainClosed(this, value);
+            _closed = value;
+        }
+    }
 
     [Category("Spline"), DisplayName("Control Points"),
      Description("Control points of the spline (the curve is pulled towards them). Click [...] to edit.")]
@@ -211,7 +227,7 @@ public sealed class SplineEntity : Entity
         ControlPoints.AddRange(controlPoints);
         if (knots != null) Knots.AddRange(knots);
         if (weights != null) Weights.AddRange(weights);
-        Closed = closed;
+        _closed = closed; // as given: loading a file does not reshape the curve
         Normalize();
     }
 

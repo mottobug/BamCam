@@ -1038,6 +1038,7 @@
   "Control Points": "Kontrollpunkte",
   "Polynomial degree of the curve (3 = cubic).": "Polynomgrad der Kurve (3 = kubisch).",
   "Whether the curve ends where it starts.": "Ob die Kurve dort endet, wo sie beginnt.",
+  "Whether the curve ends where it starts. A spline drawn in BamCam or CamBam is closed with a smooth segment back to its first point.": "Ob die Kurve dort endet, wo sie beginnt. Ein in BamCam oder CamBam gezeichneter Spline wird mit einem glatten Stück zurück zum ersten Punkt geschlossen.",
   "Control points of the spline (the curve is pulled towards them). Click [...] to edit.": "Kontrollpunkte des Splines (die Kurve wird zu ihnen hingezogen). Zum Bearbeiten [...] klicken.",
 
   "_Spline": "_Spline",

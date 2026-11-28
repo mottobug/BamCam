@@ -176,4 +176,66 @@ public class SplineTests
         Assert.Equal(new Point3(-2, -2, 0), s.ControlPoints[^1]);
         Assert.True(s.ToPaths().Single().Closed);
     }
+
+    [Fact]
+    public void Ticking_Closed_closes_a_drawn_spline_with_a_smooth_segment_and_unticking_opens_it()
+    {
+        // Reported in issue 44: Closed drew a straight line from the last point back to the first one.
+        Point3[] anchors = [new(0, 0, 0), new(20, 10, 0), new(40, 0, 0), new(20, -15, 0)];
+        var s = SplineEditing.FromAnchors(anchors, closed: false);
+        SplineEditing.MoveControlPoint(s, 4, new Point3(30, 14, 0), linked: true); // a handle edited by hand
+        var edited = s.ControlPoints.ToList();
+
+        s.Closed = true;
+        Assert.True(SplineEditing.IsBezierChain(s));
+        Assert.Equal(4 * 3 + 1, s.ControlPoints.Count);
+        Assert.Equal(s.ControlPoints[0], s.ControlPoints[^1]);
+        // The inner anchors keep their handles; the closing segment is a curve, as drawn with C in the spline tool.
+        for (var i = 2; i <= 7; i++) Assert.Equal(edited[i], s.ControlPoints[i]);
+        Assert.Equal(SplineEditing.FromAnchors(anchors, closed: true).ControlPoints[^2], s.ControlPoints[^2]);
+        // Smooth at the start: the handles on both sides of the first anchor lie on one line through it.
+        var a0 = s.ControlPoints[0].XY;
+        Assert.Equal(0, Point2.Cross(s.ControlPoints[1].XY - a0, s.ControlPoints[^2].XY - a0), 9);
+        var path = s.ToPaths().Single();
+        Assert.True(path.Closed);
+        // The closing segment is curved: its middle lies well beside the straight line from (20,-15) to (0,0).
+        var c = s.ControlPoints;
+        var middle = ((c[^4] + c[^3] * 3 + c[^2] * 3 + c[^1]) * 0.125).XY;
+        Assert.True(Point2.Distance(middle, new Point2(10, -7.5)) > 1);
+
+        s.Closed = false;
+        Assert.Equal(3 * 3 + 1, s.ControlPoints.Count);
+        for (var i = 2; i <= 7; i++) Assert.Equal(edited[i], s.ControlPoints[i]);
+        Assert.Equal(anchors[3], s.ControlPoints[^1]);
+    }
+
+    [Fact]
+    public void Ticking_Closed_with_the_last_point_on_the_first_joins_them_smoothly()
+    {
+        var s = SplineEditing.FromAnchors([new(0, 0, 0), new(20, 10, 0), new(40, 0, 0), new(0, 0, 0)], closed: false);
+        s.Closed = true;
+        // No extra segment: three segments as before, with the start now smooth.
+        Assert.Equal(3 * 3 + 1, s.ControlPoints.Count);
+        var a0 = s.ControlPoints[0].XY;
+        Assert.Equal(0, Point2.Cross(s.ControlPoints[1].XY - a0, s.ControlPoints[^2].XY - a0), 9);
+        Assert.True(Point2.Dot(s.ControlPoints[1].XY - a0, s.ControlPoints[^2].XY - a0) < 0);
+    }
+
+    [Fact]
+    public void Loading_or_ticking_Closed_on_another_spline_keeps_its_control_points()
+    {
+        // A NURBS curve that is not a Bezier chain (as from a DXF file) only gets the flag.
+        Point3[] ctrl = [new(0, 0, 0), new(10, 10, 0), new(20, 0, 0), new(30, 10, 0), new(40, 0, 0)];
+        var s = new SplineEntity(3, ctrl, closed: true);
+        Assert.Equal(ctrl, s.ControlPoints);
+        s.Closed = false;
+        s.Closed = true;
+        Assert.Equal(ctrl, s.ControlPoints);
+
+        // A closed Bezier chain read from a file stays as it is.
+        var drawn = SplineEditing.FromAnchors([new(0, 0, 0), new(20, 10, 0), new(40, 0, 0)], closed: true);
+        var copy = (SplineEntity)drawn.CloneEntity();
+        Assert.Equal(drawn.ControlPoints, copy.ControlPoints);
+        Assert.True(copy.Closed);
+    }
 }
